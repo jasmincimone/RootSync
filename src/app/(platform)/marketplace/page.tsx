@@ -1,7 +1,7 @@
-import nextDynamic from "next/dynamic";
 import Link from "next/link";
 
 import { Container } from "@/components/Container";
+import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { Card } from "@/components/ui/Card";
 import { formatPrice } from "@/lib/format";
@@ -16,18 +16,6 @@ export const metadata = {
 
 /** Avoid static generation at build time (needs DB + env on Vercel). */
 export const dynamic = "force-dynamic";
-
-const MarketplaceMap = nextDynamic(
-  () => import("@/components/MarketplaceMap").then((m) => ({ default: m.MarketplaceMap })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-[420px] max-h-[55vh] items-center justify-center rounded-2xl border border-fix-border/20 bg-fix-bg-muted/60 text-sm text-fix-text-muted">
-        Loading map…
-      </div>
-    ),
-  }
-);
 
 export default async function MarketplacePage() {
   const vendorsRaw = await prisma.vendorProfile.findMany({
@@ -85,7 +73,7 @@ export default async function MarketplacePage() {
 
       <div className="mt-8">
         <h2 className="sr-only">Vendor map</h2>
-        <MarketplaceMap vendors={mapVendors} />
+        <MarketplaceMapDynamic vendors={mapVendors} />
         {mapVendors.length === 0 ? (
           <p className="mt-3 text-sm text-fix-text-muted">
             Map pins appear when vendors add latitude and longitude to their vendor profile.

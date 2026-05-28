@@ -42,16 +42,12 @@ export async function GET() {
  * Uses only the properties requested in your requirements.
  */
 export async function POST(request: NextRequest) {
-  let phase = "init";
   try {
-    phase = "session";
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    phase = "parse_body";
     const body = await request.json().catch(() => ({}));
-    phase = "load_user";
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, email: true, name: true, stripeConnectAccountId: true },
@@ -88,9 +84,7 @@ export async function POST(request: NextRequest) {
         ? body.contactEmail.trim()
         : user.email;
 
-    phase = "stripe_client";
     const stripeClient = getConnectStripeClient();
-    phase = "stripe_create_account";
     const account = await stripeClient.v2.core.accounts.create({
       display_name: displayName,
       contact_email: contactEmail,
@@ -117,7 +111,6 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      phase = "save_mapping";
       await prisma.user.update({
         where: { id: userId },
         data: { stripeConnectAccountId: account.id },
@@ -135,22 +128,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    phase = "fetch_status";
     const onboarding = await fetchConnectAccountStatus(account.id);
     return NextResponse.json({ accountId: account.id, onboarding }, { status: 201 });
   } catch (err) {
-    console.error(`[connect/account POST] failed at ${phase}:`, err);
-    const errorMessage = stripeConnectErrorMessage(err) || "Unknown error.";
-    let debug = "";
-    try {
-      debug = JSON.stringify(err);
-    } catch {
-      debug = "";
-    }
+    console.error("[connect/account POST] failed:", err);
     return NextResponse.json(
       {
-        error: `Create failed at ${phase}: ${errorMessage}`,
-        debug: debug || undefined,
+        error: stripeConnectErrorMessage(err) || "Failed to create connected account.",
       },
       { status: 500 }
     );

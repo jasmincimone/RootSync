@@ -21,7 +21,6 @@ type AccountResponse = {
 };
 
 export function ConnectDemoDashboard() {
-  const debugBuildTag = "connect-debug-2026-04-26-3";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
@@ -75,7 +74,6 @@ export function ConnectDemoDashboard() {
         error?: string;
         message?: string;
         hint?: string;
-        debug?: string;
         recoverableAccountId?: string;
       } = {};
       try {
@@ -88,7 +86,7 @@ export function ConnectDemoDashboard() {
         return;
       }
       if (!res.ok) {
-        const parts = [data.error, data.hint, data.debug].filter((x): x is string => Boolean(x && x.trim()));
+        const parts = [data.error, data.hint].filter((x): x is string => Boolean(x && x.trim()));
         setError(parts.length ? parts.join(" ") : `Create account failed (HTTP ${res.status}).`);
         if (typeof data.recoverableAccountId === "string") {
           setExistingAccountId(data.recoverableAccountId);
@@ -269,7 +267,6 @@ export function ConnectDemoDashboard() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-fix-text-muted">Debug build: {debugBuildTag}</p>
       {error ? <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
       {message ? <p className="rounded-md border border-forest/40 bg-forest/10 px-3 py-2 text-sm text-fix-heading">{message}</p> : null}
 

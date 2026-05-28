@@ -18,7 +18,15 @@ Open `http://localhost:3000`.
 
 ## Node version
 
-This repo currently runs on Node `>=18.13`. For best security/support (and to upgrade Next.js past the 13.x line), use Node 20+ (see `.nvmrc`).
+This repo requires Node `>=20.9.0` (see `.nvmrc`).
+
+Recommended local setup:
+
+```bash
+nvm install 20
+nvm use 20
+node -v
+```
 
 ## Scripts
 
@@ -97,6 +105,40 @@ If pages that use the database show errors or the community feed is empty with a
 ```bash
 npm run db:migrate
 ```
+
+3. If you see `prisma: command not found`, use one of these instead:
+
+```bash
+npm run db:migrate
+npx prisma migrate dev
+```
+
+4. Keep `prisma/.env` aligned with `.env.local` for CLI commands (`migrate`, `generate`, `studio`).
+5. Regenerate Prisma client after dependency/env changes:
+
+```bash
+npx prisma generate
+```
+
+6. Quick DB connectivity check:
+
+```bash
+npx prisma migrate status
+```
+
+## Local Stripe + Auth gotchas (test mode)
+
+If local login keeps redirecting to production, or Connect account creation fails unexpectedly:
+
+1. In local `.env.local`, set:
+   - `NEXTAUTH_URL="http://localhost:3001"` (if running `npm run dev:3001`)
+   - test Stripe keys (`sk_test...` + `pk_test...`)
+2. Restart dev server after env changes.
+3. Clear browser cookies/site data (or use incognito) after changing `NEXTAUTH_URL` or auth secrets.
+4. Do **not** mix live/test Stripe resources:
+   - test keys cannot read live `acct_...`
+   - live keys cannot read test `acct_...`
+5. If a user is linked to an inaccessible/stale `stripeConnectAccountId`, clear mapping in Connect demo (dev) and create a fresh test connected account.
 
 ## Deploy (Vercel + PostgreSQL + custom domain)
 

@@ -1,10 +1,10 @@
-import nextDynamic from "next/dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { CommunityPostRoleBadge } from "@/components/CommunityPostRoleBadge";
 import { Container } from "@/components/Container";
+import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
 import { MessageUserLink } from "@/components/MessageUserLink";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { Card } from "@/components/ui/Card";
@@ -45,18 +45,6 @@ async function loadVendorForPage(profileId: string, viewerUserId: string | undef
   }
   return { vendor: own, isOwnerPreview: true as const };
 }
-
-const MarketplaceMap = nextDynamic(
-  () => import("@/components/MarketplaceMap").then((m) => ({ default: m.MarketplaceMap })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-[280px] max-h-[40vh] items-center justify-center rounded-2xl border border-fix-border/20 bg-fix-bg-muted/60 text-sm text-fix-text-muted">
-        Loading map…
-      </div>
-    ),
-  }
-);
 
 export const dynamic = "force-dynamic";
 
@@ -210,7 +198,7 @@ export default async function PublicVendorProfilePage({
               Pin shows where this vendor is based (from their profile).
             </p>
             <div className="mt-4">
-              <MarketplaceMap vendors={mapVendors} />
+              <MarketplaceMapDynamic vendors={mapVendors} compact />
             </div>
           </section>
         ) : null}
