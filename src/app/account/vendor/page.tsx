@@ -7,6 +7,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { ROLES, VENDOR_STATUS } from "@/lib/roles";
+import { canManageVendorListings } from "@/lib/vendorListingAccess";
 
 export default async function VendorDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -43,7 +44,8 @@ export default async function VendorDashboardPage() {
           <span className="font-medium text-fix-heading">{profile.status}</span>
           {profile.status === VENDOR_STATUS.PENDING &&
             " — your application is waiting for admin review."}
-          {profile.status === VENDOR_STATUS.APPROVED && " — you can manage listings and view orders."}
+          {profile.status === VENDOR_STATUS.APPROVED &&
+            " — you can manage listings, your shop landing page, and view orders."}
           {profile.status === VENDOR_STATUS.REJECTED && " — contact support if you have questions."}
         </p>
         {session.user.role === ROLES.CUSTOMER && profile.status === VENDOR_STATUS.PENDING && (
@@ -53,7 +55,7 @@ export default async function VendorDashboardPage() {
         )}
       </Card>
 
-      {profile.status === VENDOR_STATUS.APPROVED && session.user.role === ROLES.VENDOR && (
+      {canManageVendorListings(session.user.role ?? "CUSTOMER", profile.status) && (
         <div className="flex flex-wrap gap-3">
           <ButtonLink href="/account/vendor/listings" variant="secondary" size="sm">
             My listings
@@ -62,7 +64,10 @@ export default async function VendorDashboardPage() {
             Vendor orders
           </ButtonLink>
           <ButtonLink href="/account/vendor/profile" variant="secondary" size="sm">
-            Edit profile
+            Edit profile &amp; shop page
+          </ButtonLink>
+          <ButtonLink href={`/marketplace/vendors/${profile.id}`} variant="secondary" size="sm">
+            View my vendor page
           </ButtonLink>
           <Link href="/marketplace" className="text-sm font-medium text-fix-link hover:text-fix-link-hover">
             Marketplace (public)

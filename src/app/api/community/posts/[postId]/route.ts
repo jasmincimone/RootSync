@@ -6,14 +6,14 @@ import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
 
-  const postId = params.postId;
+  const { postId } = await params;
   const body = await request.json();
   const content = typeof body?.content === "string" ? body.content.trim() : "";
   if (!content || content.length > 8000) {
@@ -47,14 +47,14 @@ export async function PATCH(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
 
-  const postId = params.postId;
+  const { postId } = await params;
   const existing = await prisma.communityPost.findUnique({
     where: { id: postId },
   });

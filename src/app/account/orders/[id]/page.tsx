@@ -20,14 +20,15 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function AccountOrderDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return null;
 
   const order = await prisma.order.findFirst({
     where: {
-      id: params.id,
+      id,
       OR: [{ email: session.user.email }, { userId: session.user.id }],
     },
     include: { items: true },

@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/authOptions";
 import { rootSyncPrismaReady } from "@/lib/ensureRootSyncPrisma";
 import { prisma } from "@/lib/prisma";
 
-type RouteContext = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, context: RouteContext) {
   const session = await getServerSession(authOptions);
@@ -16,7 +16,7 @@ export async function GET(_request: Request, context: RouteContext) {
   const ready = rootSyncPrismaReady();
   if (!ready.ok) return ready.response;
 
-  const id = context.params.id;
+  const { id } = await context.params;
   const conv = await prisma.rootSyncConversation.findFirst({
     where: { id, userId: session.user.id },
     include: {
@@ -53,7 +53,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const ready = rootSyncPrismaReady();
   if (!ready.ok) return ready.response;
 
-  const id = context.params.id;
+  const { id } = await context.params;
   const result = await prisma.rootSyncConversation.deleteMany({
     where: { id, userId: session.user.id },
   });

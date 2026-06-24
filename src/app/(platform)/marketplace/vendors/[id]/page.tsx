@@ -9,11 +9,13 @@ import { MessageUserLink } from "@/components/MessageUserLink";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
+import { ShopMediaCarousel } from "@/components/ShopMediaCarousel";
 import { authOptions } from "@/lib/authOptions";
 import { formatCommunityDate, formatCommunityDateTime } from "@/lib/formatCommunityDate";
 import { formatPrice } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { LISTING_STATUS, VENDOR_STATUS } from "@/lib/roles";
+import { loadVendorCarousel } from "@/lib/vendorCarousel";
 
 import type { Prisma } from "@prisma/client";
 import type { MarketplaceMapVendor } from "@/components/MarketplaceMap";
@@ -51,10 +53,11 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const vendor = await prisma.vendorProfile.findFirst({
-    where: { id: params.id, status: VENDOR_STATUS.APPROVED },
+    where: { id, status: VENDOR_STATUS.APPROVED },
     select: { displayName: true, bio: true },
   });
   if (!vendor) return { title: "Vendor" };
@@ -73,12 +76,15 @@ export async function generateMetadata({
 export default async function PublicVendorProfilePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
-  const loaded = await loadVendorForPage(params.id, session?.user?.id);
+  const loaded = await loadVendorForPage(id, session?.user?.id);
   if (!loaded) notFound();
   const { vendor, isOwnerPreview } = loaded;
+
+  const mediaCarousel = await loadVendorCarousel(vendor.id);
 
   const hasCoords =
     vendor.latitude != null &&
@@ -173,6 +179,14 @@ export default async function PublicVendorProfilePage({
           </div>
         </Container>
       </section>
+
+      {mediaCarousel.length > 0 ? (
+        <section className="border-b border-fix-border/15 bg-fix-bg-muted/30">
+          <Container className="py-8 sm:py-10">
+            <ShopMediaCarousel items={mediaCarousel} />
+          </Container>
+        </section>
+      ) : null}
 
       <Container className="py-10 sm:py-12">
         {vendor.bio ? (

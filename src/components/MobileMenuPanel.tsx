@@ -48,13 +48,6 @@ export function MobileMenuPanel({ onClose, closeHref }: Props) {
               Home
             </Link>
             <Link
-              href="/shops"
-              onClick={onClose}
-              className="mt-2 block rounded-xl border border-fix-border/15 bg-fix-surface px-3 py-2.5 text-sm font-semibold text-fix-heading hover:bg-fix-bg-muted"
-            >
-              The Fix Shops
-            </Link>
-            <Link
               href="/rootsync"
               onClick={onClose}
               className="mt-2 block rounded-xl border border-fix-border/15 bg-fix-bg-muted px-3 py-2.5 text-sm font-semibold text-fix-heading hover:bg-fix-bg-muted/80"

@@ -24,13 +24,14 @@ async function getVendorListing(userId: string, listingId: string) {
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const listing = await getVendorListing(session.user.id, params.id);
+  const { id } = await params;
+  const listing = await getVendorListing(session.user.id, id);
   if (!listing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -39,13 +40,14 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const existing = await getVendorListing(session.user.id, params.id);
+  const { id } = await params;
+  const existing = await getVendorListing(session.user.id, id);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -102,13 +104,14 @@ export async function PATCH(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const existing = await getVendorListing(session.user.id, params.id);
+  const { id } = await params;
+  const existing = await getVendorListing(session.user.id, id);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

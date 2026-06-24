@@ -12,9 +12,10 @@ export const runtime = "nodejs";
  */
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { accountId: string } }
+  { params }: { params: Promise<{ accountId: string }> },
 ) {
-  const accountId = params.accountId?.trim();
+  const { accountId: rawAccountId } = await params;
+  const accountId = rawAccountId?.trim();
   if (!accountId?.startsWith("acct_")) {
     return NextResponse.json({ error: "Invalid connected account id." }, { status: 400 });
   }

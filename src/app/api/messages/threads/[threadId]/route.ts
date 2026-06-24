@@ -40,14 +40,14 @@ function peerSubtitle(peer: {
 
 export async function GET(
   _req: Request,
-  { params }: { params: { threadId: string } }
+  { params }: { params: Promise<{ threadId: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const uid = session.user.id;
-  const { threadId } = params;
+  const { threadId } = await params;
 
   let thread;
   try {
@@ -117,14 +117,14 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  { params }: { params: { threadId: string } }
+  { params }: { params: Promise<{ threadId: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const uid = session.user.id;
-  const { threadId } = params;
+  const { threadId } = await params;
 
   let body: { body?: string };
   try {

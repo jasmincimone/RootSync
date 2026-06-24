@@ -8,16 +8,20 @@ import { ROLES, VENDOR_STATUS } from "@/lib/roles";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!isAdmin(session)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json();
-  const action = body?.action as string | undefined;
-  const userId = params.userId;
+  const { userId } = await params;
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const action = body.action as string | undefined;
 
   const profile = await prisma.vendorProfile.findUnique({
     where: { userId },

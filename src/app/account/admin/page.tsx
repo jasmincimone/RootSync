@@ -8,7 +8,7 @@ export default function AdminHomePage() {
       <div>
         <h2 className="text-lg font-semibold text-fix-heading">Administration</h2>
         <p className="mt-1 text-sm text-fix-text-muted">
-          Manage vendor applications, user roles, and the four platform shops.
+          Manage vendor applications and user roles.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -27,19 +27,6 @@ export default function AdminHomePage() {
           <p className="mt-2 text-sm text-fix-text-muted">Assign admin, vendor, or customer roles.</p>
           <Link
             href="/account/admin/users"
-            className="mt-3 inline-block text-sm font-medium text-fix-link hover:text-fix-link-hover"
-          >
-            Open →
-          </Link>
-        </Card>
-        <Card className="p-5 sm:col-span-2">
-          <div className="text-sm font-semibold text-fix-heading">Platform shops</div>
-          <p className="mt-2 text-sm text-fix-text-muted">
-            Edit Urban Roots, Self Care Co, Stitch, and Survival Kits landing pages and catalog
-            listings.
-          </p>
-          <Link
-            href="/account/admin/shops"
             className="mt-3 inline-block text-sm font-medium text-fix-link hover:text-fix-link-hover"
           >
             Open →

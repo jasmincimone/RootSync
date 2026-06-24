@@ -38,7 +38,7 @@ export default function AboutPage() {
             to stay connected to what&apos;s happening right where you are.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/shops" variant="cta" size="md">
+            <ButtonLink href="/marketplace" variant="cta" size="md">
               Explore the shops
             </ButtonLink>
             <ButtonLink href="/signup" variant="secondary" size="md">

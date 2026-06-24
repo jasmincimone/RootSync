@@ -6,6 +6,10 @@ import {
   type ShopSlug,
 } from "@/config/shops";
 import type { ShopFeatureCard } from "@/config/shopFeatures";
+import {
+  parseMediaCarouselJson,
+  type ShopMediaCarouselItem,
+} from "@/config/shopMediaCarousel";
 import { LISTING_STATUS } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
 
@@ -50,6 +54,7 @@ export type MergedShopPageDisplay = {
   description: string;
   content: ShopLandingContent;
   features: ShopFeatureCard[];
+  mediaCarousel: ShopMediaCarouselItem[];
 };
 
 async function loadRecentFeaturedForShop(shopSlug: string): Promise<ShopProduct[]> {
@@ -82,6 +87,7 @@ export async function loadMergedShopDisplay(slug: string): Promise<MergedShopPag
   const content: ShopLandingContent = { categories, featured };
 
   const features = parseFeatureSectionsJson(row?.featureSectionsJson) ?? [];
+  const mediaCarousel = parseMediaCarouselJson(row?.mediaCarouselJson) ?? [];
 
   return {
     shopSlug: shopKey,
@@ -90,5 +96,6 @@ export async function loadMergedShopDisplay(slug: string): Promise<MergedShopPag
     description: row?.description?.trim() || shop.description,
     content,
     features,
+    mediaCarousel,
   };
 }

@@ -49,7 +49,7 @@ export function CartContent() {
           <h2 className="text-lg font-semibold text-fix-heading">Your cart</h2>
           <p className="mt-2 text-fix-text-muted">Your cart is empty.</p>
           <div className="mt-6">
-            <ButtonLink href="/shops" variant="primary" size="md">
+            <ButtonLink href="/marketplace" variant="primary" size="md">
               Continue shopping
             </ButtonLink>
           </div>
@@ -135,7 +135,7 @@ export function CartContent() {
           })}
         </ul>
         <div className="mt-4">
-          <ButtonLink href="/shops" variant="secondary" size="sm">
+          <ButtonLink href="/marketplace" variant="secondary" size="sm">
             Continue shopping
           </ButtonLink>
         </div>

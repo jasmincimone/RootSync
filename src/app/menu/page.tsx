@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { MenuBackdropClose, MenuCloseButton } from "@/components/MenuCloseButton";
 import { MenuAccountLink } from "@/components/MenuAccountLink";
+import { MenuFeaturedVendors } from "@/components/MenuFeaturedVendors";
 import { PLATFORM_NAV_LINKS } from "@/config/platformNav";
 
 export const metadata = {
@@ -17,6 +18,14 @@ function AccountLinkFallback() {
       aria-hidden
     >
       …
+    </div>
+  );
+}
+
+function FeaturedVendorsFallback() {
+  return (
+    <div className="mb-6 border-t border-fix-border/15 pt-6 px-1 text-sm text-fix-text-muted">
+      Loading vendors…
     </div>
   );
 }
@@ -46,12 +55,6 @@ export default function MenuPage() {
                 Home
               </Link>
               <Link
-                href="/shops"
-                className="mt-2 block rounded-xl border border-fix-border/15 bg-fix-surface px-3 py-2.5 text-sm font-semibold text-fix-heading hover:bg-fix-bg-muted"
-              >
-                The Fix Shops
-              </Link>
-              <Link
                 href="/rootsync"
                 className="mt-2 block rounded-xl border border-fix-border/15 bg-fix-bg-muted px-3 py-2.5 text-sm font-semibold text-fix-heading hover:bg-fix-bg-muted/80"
               >
@@ -73,6 +76,10 @@ export default function MenuPage() {
                 ))}
               </ul>
             </section>
+
+            <Suspense fallback={<FeaturedVendorsFallback />}>
+              <MenuFeaturedVendors />
+            </Suspense>
 
             <div className="mt-auto border-t border-fix-border/15 pt-6">
               <Link

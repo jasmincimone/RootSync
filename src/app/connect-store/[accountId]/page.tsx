@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function ConnectedStorefrontPage({
   params,
 }: {
-  params: { accountId: string };
+  params: Promise<{ accountId: string }>;
 }) {
-  const accountId = params.accountId;
+  const { accountId } = await params;
   const stripeClient = getConnectStripeClient();
   const products = await stripeClient.products.list(
     {

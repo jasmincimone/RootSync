@@ -12,8 +12,11 @@ import { getStripePaymentLink } from "@/lib/paymentLinks";
 import { getMergedProductForPublic } from "@/lib/shopCatalog";
 import { ProductSeedChoice } from "@/components/ProductSeedChoice";
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  const product = await getMergedProductForPublic(params.id);
+type ProductPageParams = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: ProductPageParams) {
+  const { id } = await params;
+  const product = await getMergedProductForPublic(id);
   if (!product) return {};
   return {
     title: product.name,
@@ -21,8 +24,9 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   };
 }
 
-export default async function ProductPage({ params }: { params: { id: string } }) {
-  const product = await getMergedProductForPublic(params.id);
+export default async function ProductPage({ params }: ProductPageParams) {
+  const { id } = await params;
+  const product = await getMergedProductForPublic(id);
   if (!product) notFound();
 
   const shop = getShop(product.shop);
@@ -33,8 +37,8 @@ export default async function ProductPage({ params }: { params: { id: string } }
       <section className="border-b border-fix-border/15">
         <Container className="py-8 sm:py-12">
           <nav className="text-sm text-fix-text-muted">
-            <Link href="/shops" className="text-fix-link hover:text-fix-link-hover">
-              Shops
+            <Link href="/marketplace" className="text-fix-link hover:text-fix-link-hover">
+              Marketplace
             </Link>
             <span className="mx-2">/</span>
             <Link href={`/shops/${product.shop}`} className="text-fix-link hover:text-fix-link-hover">

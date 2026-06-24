@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // Roles stored as strings; see src/lib/roles.ts
@@ -157,6 +158,10 @@ model VendorProfile {
   /// WGS84 — set in vendor profile for map pin (optional)
   latitude        Float?
   longitude       Float?
+  /// Platform shop this vendor manages (urban-roots | self-care | stitch | survival-kits)
+  shopSlug        String?  @unique
+  /// Image/video carousel on the public vendor profile
+  mediaCarouselJson Json?
   status          String   @default("PENDING") // PENDING | APPROVED | REJECTED | SUSPENDED
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -266,6 +271,9 @@ model ShopPage {
   featuredJson        Json?
   /// “Coming soon” cards (JSON array of { title, description, href, cta })
   featureSectionsJson Json?
+  /// Image/video carousel between featured items and coming soon
+  /// (JSON array of { id, type: "image"|"video", url, alt?, caption? })
+  mediaCarouselJson   Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }

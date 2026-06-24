@@ -18,7 +18,7 @@ export async function GET() {
       name: true,
       role: true,
       createdAt: true,
-      vendorProfile: { select: { status: true } },
+      vendorProfile: { select: { status: true, shopSlug: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 200,

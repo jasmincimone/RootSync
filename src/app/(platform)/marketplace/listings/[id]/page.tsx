@@ -44,9 +44,10 @@ async function loadListingForPage(listingId: string, viewerUserId: string | unde
   return null;
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
-  const loaded = await loadListingForPage(params.id, session?.user?.id);
+  const loaded = await loadListingForPage(id, session?.user?.id);
   if (!loaded) return { title: "Listing" };
 
   const { listing } = loaded;
@@ -64,10 +65,11 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 export default async function MarketplaceListingPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
-  const loaded = await loadListingForPage(params.id, session?.user?.id);
+  const loaded = await loadListingForPage(id, session?.user?.id);
   if (!loaded) notFound();
 
   const { listing, isOwnerPreview } = loaded;

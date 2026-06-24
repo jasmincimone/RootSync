@@ -149,7 +149,8 @@ If local login keeps redirecting to production, or Connect account creation fail
 2. **Import the GitHub repo** in Vercel → New Project → select `TheFixCollective`.
 
 3. **Environment variables** (Vercel → Project → Settings → Environment Variables), for **Production** (and Preview if you want):
-   - `DATABASE_URL` — Postgres URL from step 1  
+   - `DATABASE_URL` — Postgres URL from step 1 (Neon: use the **pooled** connection string)  
+   - `DIRECT_URL` — Neon **direct** connection (host without `-pooler`); required for `prisma migrate deploy` during build  
    - `NEXTAUTH_URL` — `https://your-domain.com` (no trailing slash)  
    - `NEXTAUTH_SECRET` — long random string (e.g. `openssl rand -base64 32`)  
    - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`  

@@ -56,7 +56,7 @@ export default function AdminVendorsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-fix-heading">Vendor requests</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">Pending applications only.</p>
+        <p className="mt-1 text-sm text-fix-text-muted">Pending marketplace vendor applications.</p>
       </div>
 
       {error && <p className="text-sm text-bark">{error}</p>}

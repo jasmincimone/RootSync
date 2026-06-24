@@ -38,7 +38,7 @@ export default async function AccountOrdersPage() {
         <Card className="mt-6 p-8 text-center">
           <p className="text-fix-text-muted">You haven&apos;t placed any orders yet.</p>
           <Link
-            href="/shops"
+            href="/marketplace"
             className="mt-4 inline-block text-sm font-medium text-fix-link hover:text-fix-link-hover"
           >
             Browse shops

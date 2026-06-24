@@ -50,7 +50,6 @@ export function AccountNav() {
     { href: "/account/vendor/listings", label: "My listings", show: isVendorApproved },
     { href: "/account/vendor/orders", label: "Vendor orders", show: isVendorApproved },
     { href: "/account/admin", label: "Admin", show: isAdmin },
-    { href: "/account/admin/shops", label: "Platform shops", show: isAdmin },
     { href: "/account/admin/vendors", label: "Vendor requests", show: isAdmin },
     { href: "/account/admin/users", label: "Users & roles", show: isAdmin },
   ];
