@@ -4,8 +4,7 @@ import { getShop, type ShopSlug } from "@/config/shops";
 import { parseShopSlugParam } from "@/lib/adminShop";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/permissions";
-import { ROLES, VENDOR_STATUS } from "@/lib/roles";
-import { canManageVendorListings } from "@/lib/vendorListingAccess";
+import { VENDOR_STATUS } from "@/lib/roles";
 
 export async function getVendorProfileForUser(userId: string) {
   return prisma.vendorProfile.findUnique({ where: { userId } });
@@ -19,7 +18,9 @@ export async function getAssignedShopSlugForUser(userId: string): Promise<ShopSl
 
 export function canEditShopLandingAsVendor(session: Session | null, vendorStatus: string): boolean {
   if (!session?.user?.id) return false;
-  return canManageVendorListings(session.user.role ?? ROLES.CUSTOMER, vendorStatus);
+  // Approved marketplace vendors can edit their public page regardless of User.role
+  // (some accounts were approved before role was set to VENDOR).
+  return vendorStatus === VENDOR_STATUS.APPROVED;
 }
 
 export async function canManageShopCarousel(

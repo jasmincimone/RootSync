@@ -7,6 +7,8 @@ import { VendorProfileForm } from "@/components/VendorProfileForm";
 import { VendorShopCarouselForm } from "@/components/VendorShopCarouselForm";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { VENDOR_STATUS } from "@/lib/roles";
+import { loadVendorCarousel } from "@/lib/vendorCarousel";
 
 export default async function VendorProfilePage() {
   const session = await getServerSession(authOptions);
@@ -20,6 +22,9 @@ export default async function VendorProfilePage() {
   if (!profile) {
     redirect("/account/vendor/apply");
   }
+
+  const mediaCarousel = await loadVendorCarousel(profile.id);
+  const canEditCarousel = profile.status === VENDOR_STATUS.APPROVED;
 
   return (
     <div className="space-y-6">
@@ -49,7 +54,15 @@ export default async function VendorProfilePage() {
       </Card>
 
       <Card className="p-6">
-        <VendorShopCarouselForm />
+        <VendorShopCarouselForm
+          initial={{
+            canEdit: canEditCarousel,
+            vendorProfileId: profile.id,
+            shopName: profile.displayName,
+            publicUrl: `/marketplace/vendors/${profile.id}`,
+            mediaCarousel,
+          }}
+        />
       </Card>
     </div>
   );

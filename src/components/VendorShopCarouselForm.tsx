@@ -7,13 +7,43 @@ import { FormFeedback } from "@/components/ui/FormFeedback";
 import { ShopCarouselEditor } from "@/components/ShopCarouselEditor";
 import type { ShopMediaCarouselItem } from "@/config/shopMediaCarousel";
 
-export function VendorShopCarouselForm() {
-  const [vendorProfileId, setVendorProfileId] = useState<string | null>(null);
-  const [shopName, setShopName] = useState<string | null>(null);
-  const [publicUrl, setPublicUrl] = useState<string | null>(null);
-  const [items, setItems] = useState<ShopMediaCarouselItem[]>([]);
-  const [canEdit, setCanEdit] = useState(false);
-  const [loading, setLoading] = useState(true);
+type CarouselInitial = {
+  canEdit: boolean;
+  vendorProfileId: string;
+  shopName: string;
+  publicUrl: string;
+  mediaCarousel: ShopMediaCarouselItem[];
+};
+
+async function readJsonResponse(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text.trim()) {
+    return {};
+  }
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(
+      res.ok
+        ? "Server returned an invalid response."
+        : `Request failed (${res.status}). Try refreshing the page.`,
+    );
+  }
+}
+
+type Props = {
+  initial?: CarouselInitial;
+};
+
+export function VendorShopCarouselForm({ initial }: Props) {
+  const [vendorProfileId, setVendorProfileId] = useState<string | null>(
+    initial?.vendorProfileId ?? null,
+  );
+  const [shopName, setShopName] = useState<string | null>(initial?.shopName ?? null);
+  const [publicUrl, setPublicUrl] = useState<string | null>(initial?.publicUrl ?? null);
+  const [items, setItems] = useState<ShopMediaCarouselItem[]>(initial?.mediaCarousel ?? []);
+  const [canEdit, setCanEdit] = useState(initial?.canEdit ?? false);
+  const [loading, setLoading] = useState(!initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -23,14 +53,16 @@ export function VendorShopCarouselForm() {
     setError(null);
     try {
       const res = await fetch("/api/vendor/shop-page/carousel");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load carousel");
+      const data = await readJsonResponse(res);
+      if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : "Failed to load carousel");
+      }
 
       setCanEdit(!!data.canEdit);
-      setVendorProfileId(data.vendorProfileId ?? null);
-      setShopName(data.shopName ?? null);
-      setPublicUrl(data.publicUrl ?? null);
-      setItems(data.mediaCarousel ?? []);
+      setVendorProfileId(typeof data.vendorProfileId === "string" ? data.vendorProfileId : null);
+      setShopName(typeof data.shopName === "string" ? data.shopName : null);
+      setPublicUrl(typeof data.publicUrl === "string" ? data.publicUrl : null);
+      setItems(Array.isArray(data.mediaCarousel) ? (data.mediaCarousel as ShopMediaCarouselItem[]) : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error loading carousel");
     } finally {
@@ -39,8 +71,10 @@ export function VendorShopCarouselForm() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!initial) {
+      void load();
+    }
+  }, [initial, load]);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -55,8 +89,10 @@ export function VendorShopCarouselForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaCarousel: items }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Save failed");
+      const data = await readJsonResponse(res);
+      if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : "Save failed");
+      }
       setSuccess("Carousel saved.");
       await load();
     } catch (err) {
@@ -106,6 +142,12 @@ export function VendorShopCarouselForm() {
       ) : (
         <p className="text-xs text-fix-text-muted">
           Carousel editing is available after your vendor application is approved.
+          {vendorProfileId ? (
+            <>
+              {" "}
+              If you were approved already, refresh the page or sign out and back in, then try again.
+            </>
+          ) : null}
         </p>
       )}
     </form>
