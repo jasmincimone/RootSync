@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { VendorProfileImageField } from "@/components/VendorProfileImageField";
 import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
 
 type Profile = {
   displayName: string;
+  profileImageUrl: string | null;
   bio: string | null;
   contactEmail: string | null;
   pickupLocation: string | null;
@@ -19,6 +21,7 @@ type Profile = {
 export function VendorProfileForm({ initial }: { initial: Profile }) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(initial.displayName);
+  const [profileImageUrl, setProfileImageUrl] = useState(initial.profileImageUrl ?? "");
   const [bio, setBio] = useState(initial.bio ?? "");
   const [contactEmail, setContactEmail] = useState(initial.contactEmail ?? "");
   const [pickupLocation, setPickupLocation] = useState(initial.pickupLocation ?? "");
@@ -106,8 +109,14 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg space-y-4">
+    <form onSubmit={handleSubmit} className="max-w-lg space-y-6">
       <FormFeedback success={saveSuccess} error={error} />
+      <VendorProfileImageField
+        imageUrl={profileImageUrl}
+        displayName={displayName}
+        onImageUrlChange={setProfileImageUrl}
+        disabled={saving}
+      />
       <div>
         <label htmlFor="displayName" className="block text-sm font-medium text-fix-text">
           Display name

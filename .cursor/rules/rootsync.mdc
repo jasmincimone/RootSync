@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+Always read the /docs folder before making recommendations.
+
+The RootSync Constitution is the highest authority.
+
+The Product Bible defines product philosophy.
+
+Reuse existing components.
+
+Favor platform capabilities over one-off features.
+
+Keep PostgreSQL as the source of truth.
+
+Build mobile-first.
+
+Never duplicate functionality.
+
+Recommend implementation plans before coding.
+
+Follow the RootSync Design System.

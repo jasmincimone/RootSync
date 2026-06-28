@@ -10,8 +10,9 @@ import { cn } from "@/lib/cn";
 const linkClass =
   "block rounded-lg px-3 py-2 text-sm font-medium text-fix-text hover:bg-fix-bg-muted hover:text-fix-heading";
 const activeClass = "bg-fix-bg-muted text-fix-heading";
+const sectionClass =
+  "mt-5 px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-fix-text-muted first:mt-0";
 
-/** Pick the most specific nav href so /account/vendor does not stay active on /account/vendor/listings. */
 function longestMatchingHref(pathname: string, hrefs: string[]): string | null {
   let best: string | null = null;
   for (const href of hrefs) {
@@ -23,6 +24,35 @@ function longestMatchingHref(pathname: string, hrefs: string[]): string | null {
   return best;
 }
 
+type NavItem = { href: string; label: string };
+
+function NavSection({
+  title,
+  items,
+  activeHref,
+}: {
+  title?: string;
+  items: NavItem[];
+  activeHref: string | null;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      {title ? <p className={sectionClass}>{title}</p> : null}
+      <div className="mt-0.5 flex flex-col gap-0.5">
+        {items.map(({ href, label }) => {
+          const active = activeHref === href;
+          return (
+            <Link key={href} href={href} className={cn(linkClass, active && activeClass)}>
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function AccountNav() {
   const pathname = usePathname() || "/account";
   const { data: session } = useSession();
@@ -32,42 +62,50 @@ export function AccountNav() {
   const vendorStatus = session.user.vendorStatus;
   const isAdmin = role === ROLES.ADMIN;
   const isVendorApproved = role === ROLES.VENDOR && vendorStatus === VENDOR_STATUS.APPROVED;
-  const hasVendorProfile = role === ROLES.VENDOR || vendorStatus != null;
+  const hasPendingVendor = vendorStatus === VENDOR_STATUS.PENDING;
 
-  const items: Array<{ href: string; label: string; show: boolean }> = [
-    { href: "/account", label: "Overview", show: true },
-    { href: "/account/settings", label: "Account Settings", show: true },
-    { href: "/account/orders", label: "Order history", show: true },
-    { href: "/account/community", label: "Community", show: true },
-    { href: "/messages/inbox", label: "Messages", show: true },
-    {
-      href: "/account/vendor/apply",
-      label: "Become a vendor",
-      show: vendorStatus == null,
-    },
-    { href: "/account/vendor", label: "Vendor dashboard", show: hasVendorProfile || isVendorApproved },
-    { href: "/account/vendor/profile", label: "Vendor profile", show: hasVendorProfile || isVendorApproved },
-    { href: "/account/vendor/listings", label: "My listings", show: isVendorApproved },
-    { href: "/account/vendor/orders", label: "Vendor orders", show: isVendorApproved },
-    { href: "/account/admin", label: "Admin", show: isAdmin },
-    { href: "/account/admin/vendors", label: "Vendor requests", show: isAdmin },
-    { href: "/account/admin/users", label: "Users & roles", show: isAdmin },
+  const memberItems: NavItem[] = [
+    { href: "/account", label: "Overview" },
+    { href: "/account/settings", label: "Account settings" },
+    { href: "/account/orders", label: "Order history" },
+    { href: "/account/bookings", label: "My bookings" },
+    { href: "/account/community", label: "Community" },
+    { href: "/messages/inbox", label: "Messages" },
   ];
 
-  const visible = items.filter((i) => i.show);
-  const hrefList = visible.map((i) => i.href);
-  const activeHref = longestMatchingHref(pathname, hrefList);
+  if (vendorStatus == null) {
+    memberItems.push({ href: "/account/vendor/apply", label: "Become a vendor" });
+  }
+  if (hasPendingVendor) {
+    memberItems.push({ href: "/account/vendor", label: "Vendor application" });
+  }
+
+  const vendorItems: NavItem[] = isVendorApproved
+    ? [
+        { href: "/account/vendor", label: "Vendor dashboard" },
+        { href: "/account/vendor/profile", label: "Vendor profile" },
+        { href: "/account/vendor/listings", label: "My listings" },
+        { href: "/account/vendor/orders", label: "Orders received" },
+        { href: "/account/vendor/bookings", label: "Incoming appointments" },
+      ]
+    : [];
+
+  const adminItems: NavItem[] = isAdmin
+    ? [
+        { href: "/account/admin", label: "Admin overview" },
+        { href: "/account/admin/vendors", label: "Vendor requests" },
+        { href: "/account/admin/users", label: "Users & roles" },
+      ]
+    : [];
+
+  const allHrefs = [...memberItems, ...vendorItems, ...adminItems].map((i) => i.href);
+  const activeHref = longestMatchingHref(pathname, allHrefs);
 
   return (
-    <nav className="flex flex-col gap-0.5" aria-label="Account">
-      {visible.map(({ href, label }) => {
-        const active = activeHref === href;
-        return (
-          <Link key={href} href={href} className={cn(linkClass, active && activeClass)}>
-            {label}
-          </Link>
-        );
-      })}
+    <nav className="flex flex-col" aria-label="Account">
+      <NavSection items={memberItems} activeHref={activeHref} />
+      <NavSection title="Vendor services" items={vendorItems} activeHref={activeHref} />
+      <NavSection title="Admin" items={adminItems} activeHref={activeHref} />
     </nav>
   );
 }

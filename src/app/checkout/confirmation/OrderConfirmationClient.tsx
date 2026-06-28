@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Container } from "@/components/Container";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
+import { BookingMeetLink } from "@/components/BookingMeetLink";
 import { formatPrice } from "@/lib/format";
 
 type OrderFromApi = {
@@ -36,6 +37,16 @@ type OrderFromApi = {
     type: string;
     format: string | null;
   }>;
+  booking?: {
+    id: string;
+    status: string;
+    scheduledStartAt: string;
+    scheduledEndAt: string;
+    timeZone: string;
+    meetLink: string | null;
+    calendarHtmlLink: string | null;
+    serviceTitle: string;
+  } | null;
 };
 
 export function OrderConfirmationClient() {
@@ -51,16 +62,35 @@ export function OrderConfirmationClient() {
       setLoading(false);
       return;
     }
-    fetch(`/api/orders/by-session?session_id=${encodeURIComponent(sessionId)}`)
-      .then((res) => {
-        if (!res.ok) {
-          setNotFound(true);
-          return;
-        }
-        return res.json();
-      })
+
+    const sid = sessionId;
+
+    async function loadOrder(confirmIfNeeded: boolean) {
+      if (confirmIfNeeded) {
+        await fetch("/api/bookings/confirm-from-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: sid }),
+        }).catch(() => undefined);
+      }
+
+      const res = await fetch(`/api/orders/by-session?session_id=${encodeURIComponent(sid)}`);
+      if (!res.ok) {
+        setNotFound(true);
+        return null;
+      }
+      return res.json() as Promise<OrderFromApi>;
+    }
+
+    void loadOrder(true)
       .then((data) => {
+        if (!data) return;
         setOrder(data);
+        if (data.booking?.status === "PENDING_PAYMENT") {
+          return loadOrder(true).then((retry) => {
+            if (retry) setOrder(retry);
+          });
+        }
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
@@ -128,7 +158,7 @@ export function OrderConfirmationClient() {
             </svg>
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-fix-heading">
-            Thank you for your order
+            {order.booking ? "Booking confirmed" : "Thank you for your order"}
           </h1>
           <p className="mt-2 text-fix-text-muted">
             Order <strong className="text-fix-heading">{order.id}</strong> placed on {date}.
@@ -137,6 +167,39 @@ export function OrderConfirmationClient() {
             A confirmation has been sent to <strong className="text-fix-heading">{order.email}</strong>.
           </p>
         </div>
+
+        {order.booking ? (
+          <Card className="mt-8 p-6">
+            <h2 className="text-lg font-semibold text-fix-heading">Appointment</h2>
+            <p className="mt-2 text-fix-heading">{order.booking.serviceTitle}</p>
+            <p className="mt-2 text-sm text-fix-text-muted">
+              {new Intl.DateTimeFormat("en-US", {
+                timeZone: order.booking.timeZone,
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }).format(new Date(order.booking.scheduledStartAt))}
+            </p>
+            <BookingMeetLink
+              className="mt-4 justify-center"
+              meetLink={order.booking.meetLink}
+              calendarHtmlLink={order.booking.calendarHtmlLink}
+              status={order.booking.status}
+            />
+            <p className="mt-4 text-center text-sm text-fix-text-muted">
+              Confirmation and calendar details were sent to{" "}
+              <strong className="text-fix-heading">{order.email}</strong>.
+            </p>
+            <p className="mt-3 text-center">
+              <Link href="/account/bookings" className="text-sm text-fix-link hover:text-fix-link-hover">
+                View all bookings
+              </Link>
+            </p>
+          </Card>
+        ) : null}
 
         <Card className="mt-8 p-6">
           <h2 className="text-lg font-semibold text-fix-heading">Order details</h2>

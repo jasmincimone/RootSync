@@ -1,14 +1,15 @@
 import Link from "next/link";
 
+import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
-import { LISTING_STATUS, VENDOR_STATUS } from "@/lib/roles";
+import { VENDOR_STATUS } from "@/lib/roles";
 
 export async function MenuFeaturedVendors() {
   const vendors = await prisma.vendorProfile.findMany({
     where: { status: VENDOR_STATUS.APPROVED },
     include: {
       listings: {
-        where: { status: LISTING_STATUS.PUBLISHED },
+        where: publicListingRelationWhere,
         select: { id: true },
       },
     },

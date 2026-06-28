@@ -6,8 +6,9 @@ import { FeaturedListingCard } from "@/components/FeaturedListingCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { AMARA_KIT_CATALOG_ID } from "@/config/featuredCatalog";
 import { getMergedProductForPublic } from "@/lib/shopCatalog";
+import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
-import { LISTING_STATUS, VENDOR_STATUS } from "@/lib/roles";
+import { VENDOR_STATUS } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,7 +20,7 @@ export default async function HomePage() {
       where: { status: VENDOR_STATUS.APPROVED },
       include: {
         listings: {
-          where: { status: LISTING_STATUS.PUBLISHED },
+          where: publicListingRelationWhere,
           select: { id: true },
         },
       },

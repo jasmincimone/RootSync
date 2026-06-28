@@ -67,6 +67,7 @@ export const authOptions: AuthOptions = {
         token.id = user.id;
         token.email = user.email ?? undefined;
         token.name = user.name ?? undefined;
+        token.picture = user.image ?? undefined;
         token.role = user.role ?? ROLES.CUSTOMER;
         token.vendorStatus = toVendorStatus(user.vendorStatus as string | null | undefined);
       } else if (token.id) {
@@ -78,6 +79,7 @@ export const authOptions: AuthOptions = {
         if (u) {
           token.email = u.email ?? undefined;
           token.name = u.name ?? undefined;
+          token.picture = u.imageUrl ?? undefined;
           token.role =
             u.role === ROLES.ADMIN || u.role === ROLES.VENDOR || u.role === ROLES.CUSTOMER
               ? u.role
@@ -92,6 +94,7 @@ export const authOptions: AuthOptions = {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
         session.user.name = token.name as string | null | undefined;
+        session.user.image = (token.picture as string | null | undefined) ?? null;
         session.user.role = (token.role as typeof ROLES[keyof typeof ROLES]) ?? ROLES.CUSTOMER;
         session.user.vendorStatus = toVendorStatus(token.vendorStatus as string | null | undefined);
       }

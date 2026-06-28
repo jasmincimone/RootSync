@@ -45,11 +45,11 @@ export function ShopMediaCarousel({ items, className = "" }: Props) {
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-fix-border/15 bg-fix-bg-muted/40 shadow-soft ${className}`}
+      className={`relative overflow-hidden rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 shadow-soft sm:rounded-2xl ${className}`}
       aria-roledescription="carousel"
-      aria-label="Shop highlights"
+      aria-label="Vendor highlights"
     >
-      <div className="relative aspect-[16/10] w-full sm:aspect-[16/9]">
+      <div className="relative aspect-[4/3] w-full sm:aspect-[16/9]">
         {current.type === "video" ? (
           <video
             key={current.id}
@@ -58,10 +58,10 @@ export function ShopMediaCarousel({ items, className = "" }: Props) {
             controls
             playsInline
             preload="metadata"
-            aria-label={current.alt || current.caption || "Shop video"}
+            aria-label={current.alt || current.caption || "Vendor video"}
           />
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded shop media
+          // eslint-disable-next-line @next/next/no-img-element -- vendor-uploaded media
           <img
             key={current.id}
             src={current.url}
@@ -72,7 +72,7 @@ export function ShopMediaCarousel({ items, className = "" }: Props) {
       </div>
 
       {current.caption ? (
-        <p className="border-t border-fix-border/10 bg-fix-surface/90 px-4 py-3 text-sm text-fix-text-muted">
+        <p className="border-t border-fix-border/10 bg-fix-surface/95 px-4 py-3 text-sm leading-relaxed text-fix-text sm:px-5 sm:py-3.5 sm:text-base">
           {current.caption}
         </p>
       ) : null}
@@ -82,7 +82,7 @@ export function ShopMediaCarousel({ items, className = "" }: Props) {
           <button
             type="button"
             onClick={prev}
-            className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-fix-border/20 bg-fix-surface/90 text-fix-heading shadow-soft transition hover:bg-fix-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta"
+            className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-fix-border/20 bg-fix-surface/95 text-fix-heading shadow-soft transition hover:bg-fix-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta sm:left-3 sm:h-10 sm:w-10"
             aria-label="Previous slide"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
@@ -90,19 +90,23 @@ export function ShopMediaCarousel({ items, className = "" }: Props) {
           <button
             type="button"
             onClick={next}
-            className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-fix-border/20 bg-fix-surface/90 text-fix-heading shadow-soft transition hover:bg-fix-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta"
+            className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-fix-border/20 bg-fix-surface/95 text-fix-heading shadow-soft transition hover:bg-fix-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta sm:right-3 sm:h-10 sm:w-10"
             aria-label="Next slide"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
 
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-2">
+          <div
+            className={`absolute left-1/2 flex -translate-x-1/2 gap-1.5 sm:gap-2 ${
+              current.caption ? "bottom-[4.25rem] sm:bottom-[4.75rem]" : "bottom-3"
+            }`}
+          >
             {items.map((item, i) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => goTo(i)}
-                className={`h-2.5 w-2.5 rounded-full transition ${
+                className={`h-2 w-2 rounded-full transition sm:h-2.5 sm:w-2.5 ${
                   i === index
                     ? "bg-fix-primary scale-110"
                     : "bg-fix-surface/80 ring-1 ring-fix-border/30 hover:bg-fix-surface"

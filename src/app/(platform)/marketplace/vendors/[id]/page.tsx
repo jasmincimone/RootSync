@@ -7,14 +7,17 @@ import { Container } from "@/components/Container";
 import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
 import { MessageUserLink } from "@/components/MessageUserLink";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
+import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListingCheckoutActions";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { ShopMediaCarousel } from "@/components/ShopMediaCarousel";
+import { UserAvatar } from "@/components/UserAvatar";
 import { authOptions } from "@/lib/authOptions";
 import { formatCommunityDate, formatCommunityDateTime } from "@/lib/formatCommunityDate";
 import { formatPrice } from "@/lib/format";
+import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
-import { LISTING_STATUS, VENDOR_STATUS } from "@/lib/roles";
+import { VENDOR_STATUS } from "@/lib/roles";
 import { loadVendorCarousel } from "@/lib/vendorCarousel";
 
 import type { Prisma } from "@prisma/client";
@@ -22,7 +25,10 @@ import type { MarketplaceMapVendor } from "@/components/MarketplaceMap";
 
 const publicVendorInclude = {
   listings: {
-    where: { status: LISTING_STATUS.PUBLISHED },
+    where: publicListingRelationWhere,
+    include: {
+      offering: { select: { paymentUrl: true, productUrl: true } },
+    },
     orderBy: { updatedAt: "desc" as const },
   },
 } satisfies Prisma.VendorProfileInclude;
@@ -114,19 +120,19 @@ export default async function PublicVendorProfilePage({
 
   return (
     <div>
-      <section className="border-b border-fix-border/15">
-        <Container className="py-8 sm:py-10">
-          <nav className="text-sm text-fix-text-muted">
+      <section className="border-b border-fix-border/15 bg-gradient-to-b from-fix-bg-muted/60 via-fix-bg-muted/30 to-fix-surface">
+        <Container className="px-4 py-6 sm:px-6 sm:py-10">
+          <nav className="text-xs text-fix-text-muted sm:text-sm">
             <Link href="/marketplace" className="text-fix-link hover:text-fix-link-hover">
-              Marketplace
+              Vendor Marketplace
             </Link>
-            <span className="mx-2">/</span>
+            <span className="mx-1.5 sm:mx-2">/</span>
             <span className="text-fix-heading">{vendor.displayName}</span>
           </nav>
 
           {isOwnerPreview ? (
-            <Card className="mt-5 border-amber/35 bg-fix-bg-muted/60 p-4">
-              <p className="text-sm text-fix-heading">
+            <Card className="mt-4 border-amber/35 bg-fix-bg-muted/60 p-3 sm:mt-5 sm:p-4">
+              <p className="text-sm leading-relaxed text-fix-heading">
                 <span className="font-semibold">Preview only.</span> Your vendor status is{" "}
                 <span className="font-medium">{vendor.status}</span>. The public marketplace only lists approved
                 vendors—this page is visible to you while signed in so you can check how your profile will look.
@@ -134,44 +140,65 @@ export default async function PublicVendorProfilePage({
             </Card>
           ) : null}
 
-          <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-3xl font-semibold tracking-tight text-fix-heading sm:text-4xl">
+          <div className="mt-5 flex flex-col gap-5 sm:mt-6 sm:flex-row sm:items-start sm:gap-6">
+            <UserAvatar
+              src={vendor.profileImageUrl}
+              name={vendor.displayName}
+              size="xl"
+              className="mx-auto sm:mx-0"
+            />
+            <div className="min-w-0 flex-1 text-center sm:text-left">
+              <h1 className="text-2xl font-bold tracking-tight text-fix-heading sm:text-3xl md:text-4xl">
                 {vendor.displayName}
               </h1>
               {vendor.pickupLocation ? (
-                <p className="mt-2 text-base text-fix-text-muted">{vendor.pickupLocation}</p>
+                <p className="mt-2 text-sm text-fix-text-muted sm:text-base">{vendor.pickupLocation}</p>
               ) : null}
               {vendor.contactEmail ? (
                 <p className="mt-2 text-sm text-fix-text-muted">
-                  Contact:{" "}
+                  <span className="sm:hidden">Contact: </span>
                   <a
                     href={`mailto:${vendor.contactEmail}`}
-                    className="font-medium text-fix-link hover:text-fix-link-hover"
+                    className="font-medium text-fix-link hover:text-fix-link-hover sm:inline"
                   >
                     {vendor.contactEmail}
                   </a>
                 </p>
               ) : null}
-              <div className="mt-5 flex flex-wrap items-center gap-2">
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-start">
                 {isOwnerPreview ? (
-                  <ButtonLink href="/account/vendor/profile" variant="primary" size="md">
+                  <ButtonLink
+                    href="/account/vendor/profile"
+                    variant="primary"
+                    size="md"
+                    className="w-full sm:w-auto"
+                  >
                     Edit profile
                   </ButtonLink>
                 ) : (
-                  <MessageVendorLink vendorProfileId={vendor.id} variant="primary" size="md" />
+                  <MessageVendorLink
+                    vendorProfileId={vendor.id}
+                    variant="primary"
+                    size="md"
+                    className="w-full sm:w-auto"
+                  />
                 )}
                 {vendor.website ? (
                   <a
                     href={vendor.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-11 items-center justify-center rounded-full bg-fix-surface px-5 text-sm font-medium text-fix-heading ring-1 ring-inset ring-fix-border/20 transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-clay"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-fix-surface px-5 text-sm font-medium text-fix-heading ring-1 ring-inset ring-fix-border/20 transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-amber focus:outline-none focus-visible:ring-offset-2 focus-visible:ring-offset-clay sm:w-auto"
                   >
                     Visit website
                   </a>
                 ) : null}
-                <ButtonLink href="/marketplace" variant="ghost" size="md">
+                <ButtonLink
+                  href="/marketplace"
+                  variant="ghost"
+                  size="md"
+                  className="w-full sm:w-auto"
+                >
                   ← All vendors
                 </ButtonLink>
               </div>
@@ -181,20 +208,23 @@ export default async function PublicVendorProfilePage({
       </section>
 
       {mediaCarousel.length > 0 ? (
-        <section className="border-b border-fix-border/15 bg-fix-bg-muted/30">
-          <Container className="py-8 sm:py-10">
+        <section className="border-b border-fix-border/15 bg-fix-bg-muted/25">
+          <Container className="px-4 py-6 sm:px-6 sm:py-10">
             <ShopMediaCarousel items={mediaCarousel} />
           </Container>
         </section>
       ) : null}
 
-      <Container className="py-10 sm:py-12">
+      <Container className="px-4 py-8 sm:px-6 sm:py-12">
         {vendor.bio ? (
           <section aria-labelledby="vendor-about">
-            <h2 id="vendor-about" className="text-lg font-semibold text-fix-heading">
+            <h2
+              id="vendor-about"
+              className="text-base font-semibold tracking-tight text-fix-heading sm:text-lg"
+            >
               About
             </h2>
-            <p className="mt-3 max-w-3xl whitespace-pre-wrap text-base leading-relaxed text-fix-text-muted">
+            <p className="mt-3 max-w-3xl whitespace-pre-wrap text-sm leading-relaxed text-fix-text-muted sm:text-base sm:leading-7">
               {vendor.bio}
             </p>
           </section>
@@ -202,30 +232,36 @@ export default async function PublicVendorProfilePage({
 
         {hasCoords ? (
           <section
-            className={vendor.bio ? "mt-12" : ""}
+            className={vendor.bio ? "mt-10 sm:mt-12" : ""}
             aria-labelledby="vendor-location-heading"
           >
-            <h2 id="vendor-location-heading" className="text-lg font-semibold text-fix-heading">
+            <h2
+              id="vendor-location-heading"
+              className="text-base font-semibold tracking-tight text-fix-heading sm:text-lg"
+            >
               Location
             </h2>
             <p className="mt-1 text-sm text-fix-text-muted">
               Pin shows where this vendor is based (from their profile).
             </p>
-            <div className="mt-4">
+            <div className="mt-4 overflow-hidden rounded-2xl ring-1 ring-fix-border/15">
               <MarketplaceMapDynamic vendors={mapVendors} compact />
             </div>
           </section>
         ) : null}
 
         <section
-          className={vendor.bio || hasCoords ? "mt-12" : ""}
+          className={vendor.bio || hasCoords ? "mt-10 sm:mt-12" : ""}
           aria-labelledby="vendor-listings-heading"
         >
-          <h2 id="vendor-listings-heading" className="text-lg font-semibold text-fix-heading">
+          <h2
+            id="vendor-listings-heading"
+            className="text-base font-semibold tracking-tight text-fix-heading sm:text-lg"
+          >
             Listings
           </h2>
           <p className="mt-1 text-sm text-fix-text-muted">
-            Published products from this vendor.
+            Published listings from this vendor.
           </p>
           {vendor.listings.length === 0 ? (
             <Card className="mt-6 p-6">
@@ -267,31 +303,12 @@ export default async function PublicVendorProfilePage({
                       <p className="mt-2 line-clamp-3 text-sm text-fix-text-muted">
                         {listing.description}
                       </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {listing.paymentUrl ? (
-                          <a
-                            href={listing.paymentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex w-fit rounded-full bg-fix-cta px-4 py-2 text-sm font-medium text-fix-cta-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2 focus-visible:ring-offset-clay"
-                          >
-                            Pay / checkout
-                          </a>
-                        ) : null}
-                        {listing.productUrl ? (
-                          <a
-                            href={listing.productUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={
-                              listing.paymentUrl
-                                ? "inline-flex w-fit items-center rounded-full border border-fix-border/25 bg-fix-surface px-4 py-2 text-sm font-medium text-fix-link ring-1 ring-inset ring-fix-border/15 hover:bg-fix-bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2"
-                                : "inline-flex w-fit rounded-full bg-fix-cta px-4 py-2 text-sm font-medium text-fix-cta-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2 focus-visible:ring-offset-clay"
-                            }
-                          >
-                            {listing.paymentUrl ? "Product page" : "View product"}
-                          </a>
-                        ) : null}
+                      <div className="mt-3">
+                        <MarketplaceListingCheckoutActions
+                          listingId={listing.id}
+                          listingType={listing.listingType}
+                          compact
+                        />
                       </div>
                     </div>
                   </Card>
@@ -301,10 +318,13 @@ export default async function PublicVendorProfilePage({
           )}
         </section>
 
-        <section className="mt-12" aria-labelledby="vendor-community-heading">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <section className="mt-10 sm:mt-12" aria-labelledby="vendor-community-heading">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 id="vendor-community-heading" className="text-lg font-semibold text-fix-heading">
+              <h2
+                id="vendor-community-heading"
+                className="text-base font-semibold tracking-tight text-fix-heading sm:text-lg"
+              >
                 Community posts
               </h2>
               <p className="mt-1 text-sm text-fix-text-muted">

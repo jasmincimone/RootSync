@@ -1,30 +1,25 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { VendorListingImageField } from "@/components/VendorListingImageField";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { FormFeedback } from "@/components/ui/FormFeedback";
-import { LISTING_STATUS } from "@/lib/roles";
+import { VendorOfferingForm } from "@/components/VendorOfferingForm";
+import type { SerializedOfferingDetails } from "@/lib/offeringDetails";
+import { LISTING_TYPE, OFFERING_STATUS } from "@/lib/roles";
+
+const emptyDetails: SerializedOfferingDetails = {
+  product: null,
+  service: null,
+  resource: null,
+  event: null,
+};
 
 export default function EditVendorListingPage() {
   const params = useParams();
   const id = typeof params?.id === "string" ? params.id : "";
-  const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [priceDollars, setPriceDollars] = useState("");
-  const [category, setCategory] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [paymentUrl, setPaymentUrl] = useState("");
-  const [productUrl, setProductUrl] = useState("");
-  const [status, setStatus] = useState<string>(LISTING_STATUS.DRAFT);
+  const [initial, setInitial] = useState<Parameters<typeof VendorOfferingForm>[0]["initial"]>();
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -35,14 +30,22 @@ export default function EditVendorListingPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
       const l = data.listing;
-      setTitle(l.title);
-      setDescription(l.description);
-      setPriceDollars((l.priceCents / 100).toFixed(2));
-      setCategory(l.category ?? "");
-      setImageUrl(l.imageUrl ?? "");
-      setPaymentUrl(l.paymentUrl ?? "");
-      setProductUrl(l.productUrl ?? "");
-      setStatus(l.status);
+      setInitial({
+        title: l.title,
+        description: l.description,
+        priceCents: l.priceCents,
+        category: l.category ?? "",
+        imageUrl: l.imageUrl ?? "",
+        paymentUrl: l.paymentUrl ?? "",
+        productUrl: l.productUrl ?? "",
+        listingType: l.listingType ?? LISTING_TYPE.PRODUCT,
+        vendorNotes: l.vendorNotes ?? "",
+        status: l.status ?? OFFERING_STATUS.DRAFT,
+        scheduledPublishAt: l.scheduledPublishAt ?? null,
+        details: l.details ?? emptyDetails,
+        booking: l.booking ?? { availabilityRules: [], intakeQuestions: [] },
+        variants: l.variants ?? [],
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -54,155 +57,18 @@ export default function EditVendorListingPage() {
     load();
   }, [load]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const cents = Math.round(parseFloat(priceDollars || "0") * 100);
-    if (!title.trim() || !description.trim() || cents < 0 || Number.isNaN(cents)) {
-      setError("Check title, description, and price.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/vendor/listings/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          description,
-          priceCents: cents,
-          category: category || null,
-          imageUrl: imageUrl || null,
-          paymentUrl: paymentUrl.trim() || null,
-          productUrl: productUrl.trim() || null,
-          status,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(typeof data.error === "string" ? data.error : "Failed to save listing.");
-        setSaving(false);
-        return;
-      }
-      setSuccess("Saved.");
-      setSaving(false);
-      window.setTimeout(() => {
-        router.push("/account/vendor/listings");
-        router.refresh();
-      }, 700);
-    } catch {
-      setError("Something went wrong. Check your connection and try again.");
-      setSaving(false);
-    }
-  }
-
   if (loading) {
     return <p className="text-sm text-fix-text-muted">Loading…</p>;
   }
 
+  if (error || !initial) {
+    return <p className="text-sm text-bark">{error ?? "Offering not found."}</p>;
+  }
+
   return (
     <div className="max-w-2xl space-y-6">
-      <h2 className="text-lg font-semibold text-fix-heading">Edit listing</h2>
-      <Card className="p-6">
-        <form onSubmit={submit} className="space-y-4">
-          <FormFeedback success={success} error={error} />
-          <div>
-            <label className="block text-sm font-medium text-fix-text">Title *</label>
-            <input
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-fix-text">Description *</label>
-            <textarea
-              required
-              rows={5}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-fix-text">Price (USD) *</label>
-            <input
-              required
-              type="number"
-              min={0}
-              step="0.01"
-              value={priceDollars}
-              onChange={(e) => setPriceDollars(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-fix-text">Category</label>
-            <input
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
-            />
-          </div>
-          <VendorListingImageField
-            imageUrl={imageUrl}
-            onImageUrlChange={setImageUrl}
-            disabled={saving}
-          />
-          <div>
-            <label className="block text-sm font-medium text-fix-text">
-              Payment link (optional)
-            </label>
-            <input
-              type="text"
-              inputMode="url"
-              autoComplete="off"
-              placeholder="https://buy.stripe.com/… or other checkout URL"
-              value={paymentUrl}
-              onChange={(e) => setPaymentUrl(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
-            />
-            <p className="mt-1 text-xs text-fix-text-muted">
-              Shown on the public marketplace when set. Use a Stripe Payment Link or any secure
-              https checkout URL.
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-fix-text">
-              Product link (optional)
-            </label>
-            <input
-              type="text"
-              inputMode="url"
-              autoComplete="off"
-              placeholder="https://… your shop, catalog, or product page"
-              value={productUrl}
-              onChange={(e) => setProductUrl(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
-            />
-            <p className="mt-1 text-xs text-fix-text-muted">
-              Use when you don&apos;t use a payment link, or add both: customers see checkout first,
-              then your product page.
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-fix-text">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
-            >
-              <option value={LISTING_STATUS.DRAFT}>Draft</option>
-              <option value={LISTING_STATUS.PUBLISHED}>Published</option>
-              <option value={LISTING_STATUS.ARCHIVED}>Archived</option>
-            </select>
-          </div>
-          <Button type="submit" disabled={saving || !!success} variant="cta" size="sm">
-            {saving ? "Saving…" : "Save changes"}
-          </Button>
-        </form>
-      </Card>
+      <h2 className="text-lg font-semibold text-fix-heading">Edit offering</h2>
+      <VendorOfferingForm mode="edit" listingId={id} initial={initial} />
     </div>
   );
 }

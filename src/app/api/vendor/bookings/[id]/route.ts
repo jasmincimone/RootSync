@@ -1,0 +1,81 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+
+import { authOptions } from "@/lib/authOptions";
+import { cancelServiceBooking } from "@/lib/confirmBooking";
+import { requireApprovedVendorForBookings, vendorOwnsBooking } from "@/lib/bookingAccess";
+import { prisma } from "@/lib/prisma";
+import { BOOKING_STATUS } from "@/lib/roles";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
+
+  const gate = await requireApprovedVendorForBookings(session.user.id);
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
+  const { id: bookingId } = await context.params;
+  const owns = await vendorOwnsBooking(bookingId, gate.vendorProfileId);
+  if (!owns) {
+    return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+
+  if (body.action === "cancel") {
+    const reason = typeof body.reason === "string" ? body.reason : undefined;
+    try {
+      const result = await cancelServiceBooking({
+        bookingId,
+        reason: reason || "Cancelled by vendor",
+        cancelledBy: "vendor",
+        cancelCalendar: true,
+      });
+      if (!result.ok) {
+        const status = result.error === "Booking not found." ? 404 : 400;
+        return NextResponse.json({ error: result.error }, { status });
+      }
+      return NextResponse.json({
+        ok: true,
+        status: BOOKING_STATUS.CANCELLED,
+        refunded: result.refunded,
+        refundAmountCents: result.refundAmountCents,
+      });
+    } catch (e) {
+      console.error("[vendor/bookings/cancel]", bookingId, e);
+      const message =
+        e instanceof Error && e.message.includes("stripeRefundId")
+          ? "Server needs a restart after the latest database update. Run npx prisma generate and restart npm run dev:3001."
+          : "Could not cancel booking.";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
+  if (body.action === "notes") {
+    const vendorNotes = typeof body.vendorNotes === "string" ? body.vendorNotes.trim() : "";
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { vendorNotes: vendorNotes || null },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "complete") {
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: BOOKING_STATUS.COMPLETED },
+    });
+    return NextResponse.json({ ok: true, status: BOOKING_STATUS.COMPLETED });
+  }
+
+  return NextResponse.json({ error: "Unsupported action." }, { status: 400 });
+}

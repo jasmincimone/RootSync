@@ -43,6 +43,7 @@ export default async function VendorProfilePage() {
         <VendorProfileForm
           initial={{
             displayName: profile.displayName,
+            profileImageUrl: profile.profileImageUrl,
             bio: profile.bio,
             contactEmail: profile.contactEmail,
             pickupLocation: profile.pickupLocation,

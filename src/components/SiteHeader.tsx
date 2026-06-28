@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CircleUser, Menu, ShoppingBag } from "lucide-react";
+import { Menu, ShoppingBag } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useContext, useState } from "react";
+
+import { UserAvatar } from "@/components/UserAvatar";
 
 import { CartContext } from "@/context/CartContext";
 import {
@@ -150,11 +152,15 @@ export function SiteHeader() {
             href={accountHref}
             aria-label={accountAria}
             className={cn(
-              "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-fix-text hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2",
-              pathname.startsWith("/account") && "bg-fix-bg-muted text-fix-heading",
+              "inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2",
+              pathname.startsWith("/account") && "ring-2 ring-fix-cta/30 ring-offset-2",
             )}
           >
-            <CircleUser className="h-5 w-5" aria-hidden />
+            <UserAvatar
+              src={session?.user?.image}
+              name={session?.user?.name ?? session?.user?.email}
+              size="md"
+            />
           </Link>
           <Link
             href="/cart"

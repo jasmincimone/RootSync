@@ -32,3 +32,8 @@ public/uploads/
 
 .vercel
 .env*.local
+
+# keys
+# Google Service Account
+keys/
+

@@ -119,6 +119,11 @@ export async function POST(request: NextRequest) {
       cancel_url: `${baseUrl}/cart`,
     });
 
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { stripeSessionId: session.id },
+    });
+
     return NextResponse.json({ url: session.url, orderId: order.id });
   } catch (err) {
     console.error("Checkout session error:", err);

@@ -6,17 +6,35 @@ import { Container } from "@/components/Container";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
+import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurchase";
+import { listingDisplayPrice, listingTypeLabel } from "@/lib/listingDisplay";
 import { authOptions } from "@/lib/authOptions";
-import { formatPrice } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { LISTING_STATUS, VENDOR_STATUS } from "@/lib/roles";
+import { LISTING_VISIBILITY, OFFERING_STATUS, VENDOR_STATUS } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 async function loadListingForPage(listingId: string, viewerUserId: string | undefined) {
-  const listing = await prisma.marketplaceListing.findUnique({
+  const listing = await prisma.listing.findUnique({
     where: { id: listingId },
     include: {
+      offering: {
+        select: {
+          status: true,
+          paymentUrl: true,
+          productUrl: true,
+          variants: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              id: true,
+              title: true,
+              priceCents: true,
+              durationMinutes: true,
+              sku: true,
+            },
+          },
+        },
+      },
       vendorProfile: {
         select: {
           id: true,
@@ -31,11 +49,13 @@ async function loadListingForPage(listingId: string, viewerUserId: string | unde
   });
   if (!listing) return null;
 
-  const published = listing.status === LISTING_STATUS.PUBLISHED;
+  const isPublic =
+    listing.visibility === LISTING_VISIBILITY.PUBLIC &&
+    listing.offering.status === OFFERING_STATUS.ACTIVE;
   const vendorOk = listing.vendorProfile.status === VENDOR_STATUS.APPROVED;
   const isOwner = !!viewerUserId && listing.vendorProfile.userId === viewerUserId;
 
-  if (published && vendorOk) {
+  if (isPublic && vendorOk) {
     return { listing, isOwnerPreview: false as const };
   }
   if (isOwner) {
@@ -74,6 +94,8 @@ export default async function MarketplaceListingPage({
 
   const { listing, isOwnerPreview } = loaded;
   const v = listing.vendorProfile;
+  const offering = listing.offering;
+  const variants = offering.variants ?? [];
 
   return (
     <div>
@@ -98,10 +120,11 @@ export default async function MarketplaceListingPage({
             <Card className="mt-5 border-amber/35 bg-fix-bg-muted/60 p-4">
               <p className="text-sm text-fix-heading">
                 <span className="font-semibold">Preview only.</span>{" "}
-                {listing.status !== LISTING_STATUS.PUBLISHED ? (
+                {listing.visibility !== LISTING_VISIBILITY.PUBLIC ||
+                offering.status !== OFFERING_STATUS.ACTIVE ? (
                   <>
-                    This listing is <span className="font-medium">{listing.status}</span> and is not
-                    shown on the public marketplace until it is published.
+                    This offering is <span className="font-medium">{offering.status}</span> and is
+                    not shown on the public marketplace until it is active.
                   </>
                 ) : v.status !== VENDOR_STATUS.APPROVED ? (
                   <>
@@ -139,14 +162,14 @@ export default async function MarketplaceListingPage({
                   </span>
                 ) : null}
                 <span className="rounded-full bg-fix-bg-muted px-2.5 py-1 text-xs text-fix-text-muted">
-                  Marketplace listing
+                  {listingTypeLabel(listing.listingType)}
                 </span>
               </div>
               <h1 className="mt-4 text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">
                 {listing.title}
               </h1>
               <p className="mt-2 text-xl font-semibold text-fix-heading">
-                {formatPrice(listing.priceCents)}
+                {listingDisplayPrice(listing.priceCents, variants.length)}
               </p>
 
               <section className="mt-6" aria-labelledby="listing-description">
@@ -160,7 +183,7 @@ export default async function MarketplaceListingPage({
 
               <section className="mt-8 border-t border-fix-border/15 pt-6" aria-labelledby="listing-vendor">
                 <h2 id="listing-vendor" className="text-sm font-semibold text-fix-heading">
-                  Seller
+                  Vendor
                 </h2>
                 <p className="mt-2">
                   <Link
@@ -188,37 +211,20 @@ export default async function MarketplaceListingPage({
                       rel="noopener noreferrer"
                       className="inline-flex h-11 items-center justify-center rounded-full bg-fix-surface px-5 text-sm font-medium text-fix-heading ring-1 ring-inset ring-fix-border/20 transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-clay"
                     >
-                      Seller website
+                      Vendor website
                     </a>
                   ) : null}
                 </div>
               </section>
 
-              <div className="mt-8 flex flex-wrap gap-3">
-                {listing.paymentUrl ? (
-                  <a
-                    href={listing.paymentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-11 items-center justify-center rounded-full bg-fix-cta px-6 text-sm font-medium text-fix-cta-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2 focus-visible:ring-offset-clay"
-                  >
-                    Pay / checkout
-                  </a>
-                ) : null}
-                {listing.productUrl ? (
-                  <a
-                    href={listing.productUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={
-                      listing.paymentUrl
-                        ? "inline-flex h-11 items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface px-6 text-sm font-medium text-fix-link ring-1 ring-inset ring-fix-border/15 hover:bg-fix-bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2"
-                        : "inline-flex h-11 items-center justify-center rounded-full bg-fix-cta px-6 text-sm font-medium text-fix-cta-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2 focus-visible:ring-offset-clay"
-                    }
-                  >
-                    {listing.paymentUrl ? "External product page" : "View product (external)"}
-                  </a>
-                ) : null}
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <MarketplaceListingPurchase
+                  listingId={listing.id}
+                  listingType={listing.listingType}
+                  variants={variants}
+                  paymentUrl={offering.paymentUrl}
+                  productUrl={offering.productUrl}
+                />
                 <ButtonLink href="/marketplace" variant="secondary" size="md">
                   ← All listings
                 </ButtonLink>

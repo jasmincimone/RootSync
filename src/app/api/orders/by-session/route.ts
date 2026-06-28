@@ -9,7 +9,21 @@ export async function GET(request: NextRequest) {
 
   const order = await prisma.order.findUnique({
     where: { stripeSessionId: sessionId },
-    include: { items: true },
+    include: {
+      items: true,
+      booking: {
+        select: {
+          id: true,
+          status: true,
+          scheduledStartAt: true,
+          scheduledEndAt: true,
+          timeZone: true,
+          meetLink: true,
+          calendarHtmlLink: true,
+          listing: { select: { title: true } },
+        },
+      },
+    },
   });
 
   if (!order) {
@@ -43,5 +57,17 @@ export async function GET(request: NextRequest) {
       type: i.type,
       format: i.format,
     })),
+    booking: order.booking
+      ? {
+          id: order.booking.id,
+          status: order.booking.status,
+          scheduledStartAt: order.booking.scheduledStartAt.toISOString(),
+          scheduledEndAt: order.booking.scheduledEndAt.toISOString(),
+          timeZone: order.booking.timeZone,
+          meetLink: order.booking.meetLink,
+          calendarHtmlLink: order.booking.calendarHtmlLink,
+          serviceTitle: order.booking.listing.title,
+        }
+      : null,
   });
 }

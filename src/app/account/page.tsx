@@ -34,6 +34,18 @@ export default async function AccountPage() {
         </Card>
 
         <Card className="p-5">
+          <div className="text-sm font-semibold text-fix-heading">My bookings</div>
+          <p className="mt-2 text-sm text-fix-text-muted">
+            Services you booked with vendors — times, Meet links, and cancellations.
+          </p>
+          <div className="mt-4">
+            <ButtonLink href="/account/bookings" variant="secondary" size="sm">
+              View my bookings
+            </ButtonLink>
+          </div>
+        </Card>
+
+        <Card className="p-5">
           <div className="text-sm font-semibold text-fix-heading">Messages</div>
           <p className="mt-2 text-sm text-fix-text-muted">
             Chat with marketplace vendors or reply to customers from your inbox.
@@ -81,6 +93,23 @@ export default async function AccountPage() {
             <div className="mt-4">
               <ButtonLink href="/account/vendor/apply" variant="cta" size="sm">
                 Become a vendor
+              </ButtonLink>
+            </div>
+          </Card>
+        )}
+
+        {vs === VENDOR_STATUS.APPROVED && (
+          <Card className="p-5 sm:col-span-2">
+            <div className="text-sm font-semibold text-fix-heading">Vendor services</div>
+            <p className="mt-2 text-sm text-fix-text-muted">
+              Manage listings, orders from customers, and incoming service appointments.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <ButtonLink href="/account/vendor" variant="secondary" size="sm">
+                Vendor dashboard
+              </ButtonLink>
+              <ButtonLink href="/account/vendor/bookings" variant="secondary" size="sm">
+                Incoming appointments
               </ButtonLink>
             </div>
           </Card>

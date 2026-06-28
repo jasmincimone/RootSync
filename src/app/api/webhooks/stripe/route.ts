@@ -70,6 +70,9 @@ export async function POST(request: NextRequest) {
 async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
   const session = event.data.object as Stripe.Checkout.Session;
   const orderId = session.metadata?.orderId;
+  const bookingId = session.metadata?.bookingId;
+  const checkoutType = session.metadata?.type;
+
   if (!orderId) return;
 
   await prisma.order.update({
@@ -81,6 +84,11 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
         typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
     },
   });
+
+  if (checkoutType === "service_booking" && bookingId) {
+    const { confirmPaidServiceBookingFromStripeSession } = await import("@/lib/confirmBooking");
+    await confirmPaidServiceBookingFromStripeSession(session.id);
+  }
 }
 
 async function handleSubscriptionAndBillingEvent(event: Stripe.Event) {

@@ -9,6 +9,7 @@ import { authOptions } from "@/lib/authOptions";
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending payment",
   paid: "Paid",
+  refunded: "Refunded",
   processing: "Processing",
   shipped: "Shipped",
   delivered: "Delivered",

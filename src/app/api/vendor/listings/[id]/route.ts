@@ -3,12 +3,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
+import { parseOfferingDetailsFromBody } from "@/lib/offeringDetails";
+import {
+  isListingType,
+  isOfferingStatus,
+  legacyListingStatusToOfferingStatus,
+  resolveOfferingScheduleOnSave,
+  serializeVendorOffering,
+  updateOfferingAndSyncListing,
+  vendorOfferingInclude,
+} from "@/lib/offeringListing";
+import { parseServiceBookingConfigFromBody } from "@/lib/serviceBookingConfig";
+import { parseOfferingVariantsFromBody } from "@/lib/offeringVariants";
+import { publishOfferingIfDue } from "@/lib/publishScheduledOfferings";
 import { normalizePaymentUrlPatch, normalizeProductUrlPatch } from "@/lib/paymentUrl";
 import { prisma } from "@/lib/prisma";
+import { OFFERING_STATUS, type ListingType } from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
-import { LISTING_STATUS } from "@/lib/roles";
 
-async function getVendorListing(userId: string, listingId: string) {
+async function getVendorOfferingByListingId(userId: string, listingId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { vendorProfile: true },
@@ -16,10 +29,16 @@ async function getVendorListing(userId: string, listingId: string) {
   if (!user?.vendorProfile || !canManageVendorListings(user.role, user.vendorProfile.status)) {
     return null;
   }
-  const listing = await prisma.marketplaceListing.findFirst({
+  const listing = await prisma.listing.findFirst({
     where: { id: listingId, vendorProfileId: user.vendorProfile.id },
+    include: {
+      offering: {
+        include: vendorOfferingInclude,
+      },
+    },
   });
-  return listing;
+  if (!listing) return null;
+  return { offering: listing.offering, listing };
 }
 
 export async function GET(
@@ -31,11 +50,13 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const listing = await getVendorListing(session.user.id, id);
-  if (!listing) {
+  const row = await getVendorOfferingByListingId(session.user.id, id);
+  if (!row) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  return NextResponse.json({ listing });
+  return NextResponse.json({
+    listing: serializeVendorOffering(row.offering),
+  });
 }
 
 export async function PATCH(
@@ -47,15 +68,22 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const existing = await getVendorListing(session.user.id, id);
+  const existing = await getVendorOfferingByListingId(session.user.id, id);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const body = (await request.json()) as Record<string, unknown>;
-  const { title, description, priceCents, category, imageUrl, status } = body;
+  const { title, description, priceCents, category, imageUrl, status, listingType, vendorNotes } =
+    body;
 
-  const data: Prisma.MarketplaceListingUpdateInput = {};
+  const previousListingType = existing.offering.listingType as ListingType;
+  const nextListingType =
+    typeof listingType === "string" && isListingType(listingType)
+      ? listingType
+      : previousListingType;
+
+  const data: Prisma.OfferingUpdateInput = {};
   if (typeof title === "string") data.title = title.trim();
   if (typeof description === "string") data.description = description.trim();
   if (typeof priceCents === "number" && priceCents >= 0 && !Number.isNaN(priceCents)) {
@@ -69,12 +97,61 @@ export async function PATCH(
     if (imageUrl === null || imageUrl === "") data.imageUrl = null;
     else if (typeof imageUrl === "string") data.imageUrl = imageUrl.trim() || null;
   }
-  if (
-    status === LISTING_STATUS.DRAFT ||
-    status === LISTING_STATUS.PUBLISHED ||
-    status === LISTING_STATUS.ARCHIVED
-  ) {
-    data.status = status;
+  if (typeof listingType === "string" && isListingType(listingType)) {
+    data.listingType = listingType;
+  }
+  if ("vendorNotes" in body) {
+    if (vendorNotes === null || vendorNotes === "") data.vendorNotes = null;
+    else if (typeof vendorNotes === "string") data.vendorNotes = vendorNotes.trim() || null;
+  }
+
+  let scheduledAt: Date | null | undefined;
+  if ("scheduledPublishAt" in body) {
+    const raw = body.scheduledPublishAt;
+    if (raw === null || raw === "") scheduledAt = null;
+    else if (typeof raw === "string") {
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json({ error: "Invalid scheduled publish date" }, { status: 400 });
+      }
+      scheduledAt = parsed;
+    }
+  }
+
+  const nextStatus =
+    typeof status === "string"
+      ? legacyListingStatusToOfferingStatus(status)
+      : (existing.offering.status as typeof OFFERING_STATUS[keyof typeof OFFERING_STATUS]);
+
+  if (typeof status === "string" && isOfferingStatus(nextStatus)) {
+    try {
+      const resolved = resolveOfferingScheduleOnSave({
+        status: nextStatus,
+        scheduledPublishAt:
+          scheduledAt !== undefined ? scheduledAt : existing.offering.scheduledPublishAt,
+      });
+      data.status = resolved.status;
+      data.scheduledPublishAt = resolved.scheduledPublishAt;
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Invalid schedule" },
+        { status: 400 },
+      );
+    }
+  } else if (scheduledAt !== undefined) {
+    try {
+      const resolved = resolveOfferingScheduleOnSave({
+        status: existing.offering.status as typeof OFFERING_STATUS[keyof typeof OFFERING_STATUS],
+        scheduledPublishAt: scheduledAt,
+      });
+      data.status = resolved.status;
+      data.scheduledPublishAt = resolved.scheduledPublishAt;
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Invalid schedule" },
+        { status: 400 },
+      );
+    }
   }
 
   try {
@@ -91,15 +168,86 @@ export async function PATCH(
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
-  if (Object.keys(data).length === 0) {
+  let details;
+  try {
+    details = parseOfferingDetailsFromBody(body, nextListingType);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Invalid type-specific fields" },
+      { status: 400 },
+    );
+  }
+
+  let bookingConfig;
+  try {
+    bookingConfig = parseServiceBookingConfigFromBody(
+      body,
+      details.service?.defaultTimeZone ??
+        existing.offering.serviceDetails?.defaultTimeZone ??
+        "America/New_York",
+    );
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Invalid booking configuration" },
+      { status: 400 },
+    );
+  }
+
+  let variants;
+  try {
+    variants = parseOfferingVariantsFromBody(body, nextListingType);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Invalid offering options" },
+      { status: 400 },
+    );
+  }
+
+  const hasDetails =
+    body.details !== undefined ||
+    body.product !== undefined ||
+    body.service !== undefined ||
+    body.resource !== undefined ||
+    body.event !== undefined;
+
+  const hasBookingConfig =
+    body.booking !== undefined ||
+    body.availabilityRules !== undefined ||
+    body.intakeQuestions !== undefined;
+
+  const hasVariants = "variants" in body;
+
+  if (
+    Object.keys(data).length === 0 &&
+    !hasDetails &&
+    !hasBookingConfig &&
+    !hasVariants &&
+    previousListingType === nextListingType
+  ) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
-  const listing = await prisma.marketplaceListing.update({
-    where: { id: existing.id },
-    data,
-  });
-  return NextResponse.json({ listing });
+  try {
+    const { offering } = await prisma.$transaction(async (tx) => {
+      const result = await updateOfferingAndSyncListing(tx, existing.offering.id, data, {
+        previousListingType,
+        details: hasDetails ? details : undefined,
+        bookingConfig: hasBookingConfig ? bookingConfig : undefined,
+        variants: hasVariants ? variants : undefined,
+      });
+      await publishOfferingIfDue(tx, existing.offering.id);
+      const refreshed = await tx.offering.findUniqueOrThrow({
+        where: { id: existing.offering.id },
+        include: vendorOfferingInclude,
+      });
+      return { offering: refreshed, listing: result.listing };
+    });
+
+    return NextResponse.json({ listing: serializeVendorOffering(offering) });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Failed to update offering";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
 
 export async function DELETE(
@@ -111,11 +259,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const existing = await getVendorListing(session.user.id, id);
+  const existing = await getVendorOfferingByListingId(session.user.id, id);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  await prisma.marketplaceListing.delete({ where: { id: existing.id } });
+  await prisma.offering.delete({ where: { id: existing.offering.id } });
   return NextResponse.json({ ok: true });
 }

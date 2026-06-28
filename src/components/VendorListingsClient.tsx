@@ -7,10 +7,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { formatPrice } from "@/lib/format";
+import { listingTypeLabel, offeringStatusLabel } from "@/lib/listingDisplay";
 
 type Listing = {
   id: string;
   title: string;
+  listingType: string;
   status: string;
   priceCents: number;
   updatedAt: string;
@@ -46,9 +48,14 @@ export function VendorListingsClient() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-fix-heading">My listings</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-fix-heading">My offerings</h2>
+          <p className="mt-1 text-sm text-fix-text-muted">
+            Manage offerings and their public listings.
+          </p>
+        </div>
         <ButtonLink href="/account/vendor/listings/new" variant="cta" size="sm">
-          New listing
+          New offering
         </ButtonLink>
       </div>
 
@@ -57,7 +64,7 @@ export function VendorListingsClient() {
         <p className="text-sm text-fix-text-muted">Loading…</p>
       ) : listings.length === 0 ? (
         <Card className="p-6">
-          <p className="text-sm text-fix-text-muted">No listings yet.</p>
+          <p className="text-sm text-fix-text-muted">No offerings yet.</p>
         </Card>
       ) : (
         <ul className="space-y-3">
@@ -84,7 +91,8 @@ export function VendorListingsClient() {
                   <div className="min-w-0">
                     <div className="font-medium text-fix-heading">{l.title}</div>
                     <div className="text-xs text-fix-text-muted">
-                      {l.status} • {formatPrice(l.priceCents)}
+                      {listingTypeLabel(l.listingType)} • {offeringStatusLabel(l.status)} •{" "}
+                      {formatPrice(l.priceCents)}
                       {l.paymentUrl ? " • Payment link set" : ""}
                       {l.productUrl ? " • Product link set" : ""}
                     </div>

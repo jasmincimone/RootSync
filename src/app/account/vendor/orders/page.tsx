@@ -31,11 +31,11 @@ export default async function VendorOrdersPage() {
   const items = await prisma.orderItem.findMany({
     where: {
       listingId: { not: null },
-      marketplaceListing: { vendorProfileId },
+      listing: { vendorProfileId },
     },
     include: {
       order: true,
-      marketplaceListing: true,
+      listing: true,
     },
     orderBy: { order: { createdAt: "desc" } },
     take: 100,
@@ -70,7 +70,7 @@ export default async function VendorOrdersPage() {
                 <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
                   <div>
                     <div className="font-medium text-fix-heading">
-                      {line.marketplaceListing?.title ?? line.name}
+                      {line.listing?.title ?? line.name}
                     </div>
                     <div className="text-xs text-fix-text-muted">
                       Order {line.order.id.slice(0, 8)}… • {line.order.status} •{" "}

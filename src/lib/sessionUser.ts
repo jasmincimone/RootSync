@@ -14,6 +14,7 @@ export function toNextAuthUser(
     id: user.id,
     email: user.email ?? undefined,
     name: user.name ?? undefined,
+    image: user.imageUrl ?? undefined,
     role,
     vendorStatus: toVendorStatus(user.vendorProfile?.status),
   };
