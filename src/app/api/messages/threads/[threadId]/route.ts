@@ -3,40 +3,15 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
-import { ROLES, VENDOR_STATUS } from "@/lib/roles";
+import {
+  messengerPeerSelect,
+  peerSubtitle,
+  publicProfileHref,
+  resolveUserAvatarUrl,
+  resolveUserDisplayName,
+} from "@/lib/userProfileDisplay";
 
 const MAX_BODY = 8000;
-
-const peerSelect = {
-  id: true,
-  name: true,
-  email: true,
-  role: true,
-  vendorProfile: { select: { displayName: true, status: true } },
-} as const;
-
-function peerDisplayName(peer: {
-  name: string | null;
-  email: string | null;
-  vendorProfile: { displayName: string } | null;
-}): string {
-  return (
-    peer.vendorProfile?.displayName ??
-    peer.name ??
-    peer.email?.split("@")[0] ??
-    "Member"
-  );
-}
-
-function peerSubtitle(peer: {
-  role: string;
-  vendorProfile: { status: string } | null;
-}): string {
-  if (peer.role === ROLES.ADMIN) return "Admin";
-  const st = peer.vendorProfile?.status;
-  if (st === VENDOR_STATUS.APPROVED) return "Marketplace vendor";
-  return "Community member";
-}
 
 export async function GET(
   _req: Request,
@@ -65,10 +40,11 @@ export async function GET(
             senderId: true,
             body: true,
             createdAt: true,
+            sender: { select: messengerPeerSelect },
           },
         },
-        participantLow: { select: peerSelect },
-        participantHigh: { select: peerSelect },
+        participantLow: { select: messengerPeerSelect },
+        participantHigh: { select: messengerPeerSelect },
       },
     });
   } catch (e) {
@@ -100,8 +76,10 @@ export async function GET(
         id: thread.id,
         participantLowId: thread.participantLowId,
         participantHighId: thread.participantHighId,
-        peerDisplayName: peerDisplayName(peer),
+        peerDisplayName: resolveUserDisplayName(peer),
         peerSubtitle: peerSubtitle(peer),
+        peerAvatarUrl: resolveUserAvatarUrl(peer),
+        peerProfileHref: publicProfileHref(peer),
         viewerIsParticipantLow: isViewerLow,
       },
       messages: thread.messages.map((m) => ({
@@ -109,9 +87,11 @@ export async function GET(
         senderId: m.senderId,
         body: m.body,
         createdAt: m.createdAt.toISOString(),
+        senderDisplayName: resolveUserDisplayName(m.sender),
+        senderAvatarUrl: resolveUserAvatarUrl(m.sender),
       })),
     },
-    { headers: { "Cache-Control": "no-store, must-revalidate" } }
+    { headers: { "Cache-Control": "no-store, must-revalidate" } },
   );
 }
 
@@ -140,7 +120,7 @@ export async function POST(
   if (text.length > MAX_BODY) {
     return NextResponse.json(
       { error: `Message too long (max ${MAX_BODY} characters)` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -170,6 +150,9 @@ export async function POST(
         senderId: uid,
         body: text,
       },
+      include: {
+        sender: { select: messengerPeerSelect },
+      },
     });
 
     const isSenderLow = uid === thread.participantLowId;
@@ -193,6 +176,8 @@ export async function POST(
       senderId: msg.senderId,
       body: msg.body,
       createdAt: msg.createdAt.toISOString(),
+      senderDisplayName: resolveUserDisplayName(msg.sender),
+      senderAvatarUrl: resolveUserAvatarUrl(msg.sender),
     },
   });
 }

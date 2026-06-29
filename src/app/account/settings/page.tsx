@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 
 import { Card } from "@/components/ui/Card";
+import { AccountProfileImageField } from "@/components/AccountProfileImageField";
 import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
 import { normalizeOtpSixDigits } from "@/lib/auth-tokens";
@@ -13,6 +14,8 @@ import { TWO_FACTOR_METHOD } from "@/lib/twoFactor";
 type SettingsState = {
   email: string;
   name: string | null;
+  imageUrl: string | null;
+  shopNeighborhoods: string | null;
   createdAt: string;
   twoFactorMethod: string;
   phone: string | null;
@@ -58,6 +61,8 @@ export default function AccountSettingsPage() {
   const [loadError, setLoadError] = useState("");
 
   const [nameInput, setNameInput] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [neighborhoodsInput, setNeighborhoodsInput] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -84,6 +89,7 @@ export default function AccountSettingsPage() {
   const [removingPhone, setRemovingPhone] = useState(false);
 
   const [profileLoading, setProfileLoading] = useState(false);
+  const [neighborhoodsLoading, setNeighborhoodsLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
@@ -106,6 +112,8 @@ export default function AccountSettingsPage() {
     const j = (await res.json()) as SettingsState;
     setData(j);
     setNameInput(j.name || "");
+    setImageUrl(j.imageUrl || "");
+    setNeighborhoodsInput(j.shopNeighborhoods || "");
     setPhoneInput(j.phone || "");
     setMarketingOptIn(Boolean(j.marketingOptIn));
     setAgreeEmailTwoFactor(Boolean(j.consentEmailTwoFactorAt));
@@ -117,6 +125,31 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const onSaveNeighborhoods = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileErr("");
+    setProfileMsg("");
+    setNeighborhoodsLoading(true);
+    try {
+      const res = await fetch("/api/account/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopNeighborhoods: neighborhoodsInput }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setProfileErr(typeof j.error === "string" ? j.error : "Could not save neighborhoods.");
+        setNeighborhoodsLoading(false);
+        return;
+      }
+      setProfileMsg("Saved.");
+      await load();
+    } catch {
+      setProfileErr("Something went wrong. Check your connection and try again.");
+    }
+    setNeighborhoodsLoading(false);
+  };
 
   const onSaveName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -405,7 +438,16 @@ export default function AccountSettingsPage() {
         description="Your display name and email used for sign-in and receipts."
       >
         <Card className="p-5">
-          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <AccountProfileImageField
+            imageUrl={imageUrl}
+            displayName={nameInput || data.email}
+            onImageUrlChange={(url) => {
+              setImageUrl(url);
+              void load();
+            }}
+          />
+
+          <dl className="mt-6 grid gap-3 border-t border-fix-border/15 pt-6 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-fix-text-muted">Member since</dt>
               <dd className="mt-0.5 font-medium text-fix-text">{memberSince}</dd>
@@ -438,6 +480,32 @@ export default function AccountSettingsPage() {
             <FormFeedback success={profileMsg || null} error={profileErr || null} />
             <Button type="submit" size="sm" variant="primary" disabled={profileLoading}>
               {profileLoading ? "Saving…" : "Save name"}
+            </Button>
+          </form>
+
+          <form onSubmit={onSaveNeighborhoods} className="mt-6 space-y-3 border-t border-fix-border/15 pt-6">
+            <div>
+              <label htmlFor="profile-neighborhoods" className="block text-sm font-medium text-fix-text">
+                Local neighborhoods
+              </label>
+              <p className="mt-0.5 text-xs text-fix-text-muted">
+                Areas where you shop or want to shop locally — shown on your member profile.
+              </p>
+              <textarea
+                id="profile-neighborhoods"
+                rows={3}
+                value={neighborhoodsInput}
+                onChange={(e) => {
+                  setNeighborhoodsInput(e.target.value);
+                  setProfileMsg("");
+                  setProfileErr("");
+                }}
+                className={`${inputClass} max-w-lg`}
+                placeholder="e.g. East Austin, Mueller, Downtown"
+              />
+            </div>
+            <Button type="submit" size="sm" variant="secondary" disabled={neighborhoodsLoading}>
+              {neighborhoodsLoading ? "Saving…" : "Save neighborhoods"}
             </Button>
           </form>
 

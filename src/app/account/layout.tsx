@@ -30,7 +30,7 @@ export default async function AccountLayout({
       ? "Admin"
       : session.user.role === ROLES.VENDOR
         ? "Vendor"
-        : "Customer";
+        : "Member";
 
   return (
     <Container className="py-8 sm:py-12">

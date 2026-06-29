@@ -19,6 +19,8 @@ export async function GET() {
     select: {
       email: true,
       name: true,
+      imageUrl: true,
+      shopNeighborhoods: true,
       createdAt: true,
       twoFactorMethod: true,
       phone: true,
@@ -36,6 +38,8 @@ export async function GET() {
   return NextResponse.json({
     email: user.email,
     name: user.name,
+    imageUrl: user.imageUrl,
+    shopNeighborhoods: user.shopNeighborhoods,
     createdAt: user.createdAt.toISOString(),
     twoFactorMethod: user.twoFactorMethod || TWO_FACTOR_METHOD.NONE,
     phone: user.phone,

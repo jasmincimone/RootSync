@@ -5,37 +5,26 @@ import { authOptions } from "@/lib/authOptions";
 import { isThreadUnreadForViewer } from "@/lib/directMessageUnread";
 import { orderedParticipantIds } from "@/lib/participantPair";
 import { prisma } from "@/lib/prisma";
-import { ROLES, VENDOR_STATUS } from "@/lib/roles";
+import { VENDOR_STATUS } from "@/lib/roles";
+import {
+  messengerPeerSelect,
+  peerSubtitle,
+  publicProfileHref,
+  resolveUserAvatarUrl,
+  resolveUserDisplayName,
+  type UserProfilePeer,
+} from "@/lib/userProfileDisplay";
 
-const peerSelect = {
-  id: true,
-  name: true,
-  email: true,
-  role: true,
-  vendorProfile: { select: { displayName: true, status: true } },
-} as const;
+const messageSenderSelect = messengerPeerSelect;
 
-function peerDisplayName(peer: {
-  name: string | null;
-  email: string | null;
-  vendorProfile: { displayName: string } | null;
-}): string {
-  return (
-    peer.vendorProfile?.displayName ??
-    peer.name ??
-    peer.email?.split("@")[0] ??
-    "Member"
-  );
-}
-
-function peerSubtitle(peer: {
-  role: string;
-  vendorProfile: { status: string } | null;
-}): string {
-  if (peer.role === ROLES.ADMIN) return "Admin";
-  const st = peer.vendorProfile?.status;
-  if (st === VENDOR_STATUS.APPROVED) return "Marketplace vendor";
-  return "Community member";
+function serializePeer(peer: UserProfilePeer) {
+  return {
+    id: peer.id,
+    displayName: resolveUserDisplayName(peer),
+    subtitle: peerSubtitle(peer),
+    avatarUrl: resolveUserAvatarUrl(peer),
+    profileHref: publicProfileHref(peer),
+  };
 }
 
 export async function GET() {
@@ -45,6 +34,11 @@ export async function GET() {
   }
   const uid = session.user.id;
 
+  const viewer = await prisma.user.findUnique({
+    where: { id: uid },
+    select: messengerPeerSelect,
+  });
+
   let threads;
   try {
     threads = await prisma.directThread.findMany({
@@ -52,12 +46,17 @@ export async function GET() {
         OR: [{ participantLowId: uid }, { participantHighId: uid }],
       },
       include: {
-        participantLow: { select: peerSelect },
-        participantHigh: { select: peerSelect },
+        participantLow: { select: messengerPeerSelect },
+        participantHigh: { select: messengerPeerSelect },
         messages: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: { body: true, createdAt: true, senderId: true },
+          select: {
+            body: true,
+            createdAt: true,
+            senderId: true,
+            sender: { select: messageSenderSelect },
+          },
         },
       },
     });
@@ -68,7 +67,7 @@ export async function GET() {
         error:
           "Could not load messages. If you just pulled this repo, run `npx prisma migrate dev` and restart the dev server.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -86,24 +85,35 @@ export async function GET() {
       participantLowId: t.participantLowId,
       participantLowLastReadAt: t.participantLowLastReadAt,
       participantHighLastReadAt: t.participantHighLastReadAt,
-      messages: t.messages,
+      messages: last ? [{ senderId: last.senderId, createdAt: last.createdAt }] : [],
     });
+
+    const lastSender =
+      last?.senderId === uid && viewer
+        ? viewer
+        : last?.sender ?? (last?.senderId === peer.id ? peer : peer);
+
     return {
       id: t.id,
-      peerDisplayName: peerDisplayName(peer),
+      peerDisplayName: resolveUserDisplayName(peer),
       peerSubtitle: peerSubtitle(peer),
+      peerAvatarUrl: resolveUserAvatarUrl(peer),
+      peerProfileHref: publicProfileHref(peer),
       lastMessagePreview: last?.body.slice(0, 120) ?? "",
       lastMessageAt:
         last?.createdAt?.toISOString() ??
         t.lastMessageAt?.toISOString() ??
         t.createdAt.toISOString(),
+      lastMessageSenderId: last?.senderId ?? null,
+      lastMessageSenderAvatarUrl: last ? resolveUserAvatarUrl(lastSender) : null,
+      lastMessageSenderIsViewer: last?.senderId === uid,
       unread,
     };
   });
 
   return NextResponse.json(
     { threads: items },
-    { headers: { "Cache-Control": "no-store, must-revalidate" } }
+    { headers: { "Cache-Control": "no-store, must-revalidate" } },
   );
 }
 
@@ -128,7 +138,7 @@ export async function POST(req: Request) {
   if (hasVendor === hasUser) {
     return NextResponse.json(
       { error: "Send exactly one of: vendorProfileId, userId" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -178,7 +188,7 @@ export async function POST(req: Request) {
         error:
           "Could not create conversation. Run `npx prisma migrate dev` if the database is out of date.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 

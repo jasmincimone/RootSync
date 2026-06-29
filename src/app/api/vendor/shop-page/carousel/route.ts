@@ -33,7 +33,7 @@ export async function GET() {
       canEdit,
       vendorProfileId: profile.id,
       shopName: profile.displayName,
-      publicUrl: `/marketplace/vendors/${profile.id}`,
+      publicUrl: `/discover/vendors/${profile.id}`,
       mediaCarousel,
     });
   } catch (e) {

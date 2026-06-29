@@ -63,9 +63,14 @@ export function MobileMenuPanel({ onClose, closeHref }: Props) {
                   <Link
                     href={item.href}
                     onClick={onClose}
-                    className="block rounded-xl px-3 py-2 text-sm font-medium text-fix-link hover:bg-fix-bg-muted hover:text-fix-link-hover active:bg-fix-bg-muted active:text-fix-link-hover"
+                    className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm font-medium text-fix-link hover:bg-fix-bg-muted hover:text-fix-link-hover active:bg-fix-bg-muted active:text-fix-link-hover"
                   >
-                    {item.label}
+                    <span>{item.label}</span>
+                    {item.comingSoon ? (
+                      <span className="rounded-full bg-amber/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-espresso">
+                        Soon
+                      </span>
+                    ) : null}
                   </Link>
                 </li>
               ))}

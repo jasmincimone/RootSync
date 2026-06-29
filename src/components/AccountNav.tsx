@@ -8,7 +8,7 @@ import { ROLES, VENDOR_STATUS } from "@/lib/roles";
 import { cn } from "@/lib/cn";
 
 const linkClass =
-  "block rounded-lg px-3 py-2 text-sm font-medium text-fix-text hover:bg-fix-bg-muted hover:text-fix-heading";
+  "block rounded-lg px-3 py-2 text-sm font-medium text-fix-text hover:bg-fix-bg-muted hover:text-fix-heading focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2";
 const activeClass = "bg-fix-bg-muted text-fix-heading";
 const sectionClass =
   "mt-5 px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-fix-text-muted first:mt-0";
@@ -43,7 +43,12 @@ function NavSection({
         {items.map(({ href, label }) => {
           const active = activeHref === href;
           return (
-            <Link key={href} href={href} className={cn(linkClass, active && activeClass)}>
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={cn(linkClass, active && activeClass)}
+            >
               {label}
             </Link>
           );
@@ -66,6 +71,7 @@ export function AccountNav() {
 
   const memberItems: NavItem[] = [
     { href: "/account", label: "Overview" },
+    { href: "/account/activity", label: "Activity" },
     { href: "/account/settings", label: "Account settings" },
     { href: "/account/orders", label: "Order history" },
     { href: "/account/bookings", label: "My bookings" },
@@ -83,6 +89,7 @@ export function AccountNav() {
   const vendorItems: NavItem[] = isVendorApproved
     ? [
         { href: "/account/vendor", label: "Vendor dashboard" },
+        { href: "/account/vendor/payments", label: "Payment setup" },
         { href: "/account/vendor/profile", label: "Vendor profile" },
         { href: "/account/vendor/listings", label: "My listings" },
         { href: "/account/vendor/orders", label: "Orders received" },
@@ -103,7 +110,7 @@ export function AccountNav() {
 
   return (
     <nav className="flex flex-col" aria-label="Account">
-      <NavSection items={memberItems} activeHref={activeHref} />
+      <NavSection title="Member" items={memberItems} activeHref={activeHref} />
       <NavSection title="Vendor services" items={vendorItems} activeHref={activeHref} />
       <NavSection title="Admin" items={adminItems} activeHref={activeHref} />
     </nav>

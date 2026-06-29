@@ -34,7 +34,7 @@ export default async function VendorProfilePage() {
           Marketplace profile and carousel for your public vendor page.
         </p>
         <div className="mt-3 flex flex-wrap gap-3">
-          <ButtonLink href={`/marketplace/vendors/${profile.id}`} variant="secondary" size="sm">
+          <ButtonLink href={`/discover/vendors/${profile.id}`} variant="secondary" size="sm">
             View my vendor page
           </ButtonLink>
         </div>
@@ -60,7 +60,7 @@ export default async function VendorProfilePage() {
             canEdit: canEditCarousel,
             vendorProfileId: profile.id,
             shopName: profile.displayName,
-            publicUrl: `/marketplace/vendors/${profile.id}`,
+            publicUrl: `/discover/vendors/${profile.id}`,
             mediaCarousel,
           }}
         />

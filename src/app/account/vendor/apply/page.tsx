@@ -51,7 +51,8 @@ export default function VendorApplyPage() {
       <div>
         <h2 className="text-lg font-semibold text-fix-heading">Become a vendor</h2>
         <p className="mt-1 text-sm text-fix-text-muted">
-          Tell us about your farm or shop. An admin will review your application.
+          Tell us about your business. After admin approval, you&apos;ll connect Stripe (or use
+          payment links on listings) and publish offerings on Discover.
         </p>
       </div>
 

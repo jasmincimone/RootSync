@@ -17,6 +17,8 @@ model User {
   name         String?
   /// Profile photo URL (header avatar; synced from vendor profile when set)
   imageUrl     String?
+  /// Local neighborhoods the member shops or wants to shop (free text)
+  shopNeighborhoods String?
   role         String   @default("CUSTOMER") // ADMIN | VENDOR | CUSTOMER
   /// E.164 when set (e.g. +15551234567); unique when not null
   phone              String?   @unique

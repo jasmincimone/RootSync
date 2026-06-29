@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { CardListSkeleton } from "@/components/ui/LoadingSkeleton";
 
 type Row = {
   id: string;
@@ -56,17 +59,18 @@ export default function AdminVendorsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-fix-heading">Vendor requests</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">Pending marketplace vendor applications.</p>
+        <p className="mt-1 text-sm text-fix-text-muted">Pending Discover vendor applications.</p>
       </div>
 
-      {error && <p className="text-sm text-bark">{error}</p>}
+      {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
       {loading ? (
-        <p className="text-sm text-fix-text-muted">Loading…</p>
+        <CardListSkeleton count={3} />
       ) : rows.length === 0 ? (
-        <Card className="p-6">
-          <p className="text-sm text-fix-text-muted">No pending vendor applications.</p>
-        </Card>
+        <EmptyState
+          title="No pending applications"
+          description="New vendor applications will appear here for review."
+        />
       ) : (
         <ul className="space-y-4">
           {rows.map((v) => (
@@ -80,15 +84,15 @@ export default function AdminVendorsPage() {
                       <div className="text-sm text-fix-text-muted">{v.user.name}</div>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <Button type="button" size="sm" variant="cta" onClick={() => act(v.user.id, "approve")}>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="cta" size="sm" onClick={() => act(v.userId, "approve")}>
                       Approve
                     </Button>
                     <Button
                       type="button"
-                      size="sm"
                       variant="secondary"
-                      onClick={() => act(v.user.id, "reject")}
+                      size="sm"
+                      onClick={() => act(v.userId, "reject")}
                     >
                       Reject
                     </Button>

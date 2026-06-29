@@ -74,7 +74,7 @@ export function VendorProfileImageField({
     <div className="space-y-3">
       <div className="text-sm font-medium text-fix-heading">Profile photo</div>
       <p className="text-xs text-fix-text-muted">
-        Shown on your marketplace vendor page and in the site header when you are signed in.
+        Shown on your vendor page, community posts, messages, and in the site header when signed in.
         JPEG, PNG, WebP, or GIF · max 5 MB.
       </p>
       <FormFeedback success={success} error={error} />

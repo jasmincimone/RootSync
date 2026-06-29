@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { ShoppingBag } from "lucide-react";
 
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/format";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductImage } from "@/components/ProductImage";
 
 const SHIPPING_CENTS = 599;
@@ -45,15 +47,14 @@ export function CartContent() {
   if (itemCount === 0) {
     return (
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="p-8 lg:col-span-2">
-          <h2 className="text-lg font-semibold text-fix-heading">Your cart</h2>
-          <p className="mt-2 text-fix-text-muted">Your cart is empty.</p>
-          <div className="mt-6">
-            <ButtonLink href="/marketplace" variant="primary" size="md">
-              Continue shopping
-            </ButtonLink>
-          </div>
-        </Card>
+        <div className="lg:col-span-2">
+          <EmptyState
+            icon={ShoppingBag}
+            title="Your cart is empty"
+            description="Browse the marketplace for products from local vendors, or add catalog items from featured listings."
+            action={{ href: "/marketplace", label: "Browse marketplace", variant: "cta" }}
+          />
+        </div>
         <Card className="p-6">
           <h2 className="text-sm font-semibold text-fix-heading">Summary</h2>
           <p className="mt-2 text-sm text-fix-text-muted">Add items to see totals.</p>

@@ -1,16 +1,17 @@
 import type { Prisma } from "@prisma/client";
-import { CommunityPostRoleBadge } from "@/components/CommunityPostRoleBadge";
 import { Container } from "@/components/Container";
 import { CommunityPostForm } from "@/components/CommunityPostForm";
-import { MessageUserLink } from "@/components/MessageUserLink";
+import { CommunityPostHeader } from "@/components/CommunityPostHeader";
 import { PlatformIllustrationBanner } from "@/components/PlatformIllustrationBanner";
 import { Card } from "@/components/ui/Card";
-import { formatCommunityDate, formatCommunityDateTime } from "@/lib/formatCommunityDate";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { communityAuthorSelect } from "@/lib/userProfileDisplay";
 import { prisma } from "@/lib/prisma";
 
 type CommunityPostWithAuthor = Prisma.CommunityPostGetPayload<{
   include: {
-    author: { select: { id: true; name: true; email: true; role: true } };
+    author: { select: typeof communityAuthorSelect };
   };
 }>;
 
@@ -26,7 +27,7 @@ export default async function CommunityPage() {
   try {
     posts = await prisma.communityPost.findMany({
       include: {
-        author: { select: { id: true, name: true, email: true, role: true } },
+        author: { select: communityAuthorSelect },
       },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -45,7 +46,8 @@ export default async function CommunityPage() {
           Community
         </h1>
         <p className="mt-3 text-base text-fix-text-muted">
-          Discussions, events, and updates from The Fix Collective. Vendors show a badge when approved.
+          Discussions, events, and updates from the RootSync Community. Members and vendors can post
+          here — approved vendors show a badge on their posts.
         </p>
       </div>
 
@@ -60,48 +62,28 @@ export default async function CommunityPage() {
       <div className="mx-auto mt-10 max-w-3xl space-y-8">
         <CommunityPostForm />
 
-        {dbError ? (
-          <Card className="border-bark/30 bg-fix-bg-muted p-5">
-            <p className="text-sm font-medium text-bark">{dbError}</p>
-            <p className="mt-2 text-xs text-fix-text-muted">
-              Ensure <code className="rounded bg-fix-surface px-1 py-0.5">DATABASE_URL</code> in{" "}
-              <code className="rounded bg-fix-surface px-1 py-0.5">.env.local</code> points at your SQLite file
-              (see <code className="rounded bg-fix-surface px-1 py-0.5">.env.example</code>).
-            </p>
-          </Card>
-        ) : null}
+        {dbError ? <ErrorBanner message={dbError} /> : null}
 
         <div className="space-y-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-fix-text-muted">Feed</h2>
           {posts.length === 0 ? (
-            <Card className="p-6">
-              <p className="text-sm text-fix-text-muted">No posts yet. Be the first to share!</p>
-            </Card>
+            <EmptyState
+              bordered={false}
+              title="No posts yet"
+              description="Be the first to share — members and vendors are welcome to post."
+            />
           ) : (
             <ul className="space-y-4">
               {posts.map((p) => (
                 <li key={p.id}>
                   <Card className="p-5">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <CommunityPostRoleBadge
-                        roleAtPost={p.roleAtPost}
-                        showVendorBadge={p.showVendorBadge}
-                        authorRole={p.author.role}
-                      />
-                      <span className="text-sm font-medium text-fix-heading">
-                        {p.author.name || p.author.email || "Member"}
-                      </span>
-                      <MessageUserLink targetUserId={p.author.id} />
-                      <span className="text-xs text-fix-text-muted">
-                        <span>{formatCommunityDate(p.createdAt.toISOString())}</span>
-                        {p.editedAt ? (
-                          <>
-                            <span className="mx-1.5">·</span>
-                            <span>Edited {formatCommunityDateTime(p.editedAt.toISOString())}</span>
-                          </>
-                        ) : null}
-                      </span>
-                    </div>
+                    <CommunityPostHeader
+                      author={p.author}
+                      roleAtPost={p.roleAtPost}
+                      showVendorBadge={p.showVendorBadge}
+                      createdAt={p.createdAt.toISOString()}
+                      editedAt={p.editedAt?.toISOString() ?? null}
+                    />
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-fix-text">
                       {p.content}
                     </p>

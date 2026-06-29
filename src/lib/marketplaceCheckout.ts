@@ -165,7 +165,7 @@ export async function createMarketplaceListingCheckout(args: {
       },
     ],
     success_url: `${baseUrl}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/marketplace/listings/${listing.id}`,
+    cancel_url: `${baseUrl}/discover/listings/${listing.id}`,
     metadata: {
       orderId: order.id,
       listingId: listing.id,

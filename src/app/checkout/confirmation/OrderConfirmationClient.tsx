@@ -8,6 +8,8 @@ import { Container } from "@/components/Container";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { BookingMeetLink } from "@/components/BookingMeetLink";
+import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
+import { OrderStatusBadge } from "@/components/ui/StatusBadge";
 import { formatPrice } from "@/lib/format";
 
 type OrderFromApi = {
@@ -99,7 +101,10 @@ export function OrderConfirmationClient() {
   if (loading) {
     return (
       <Container className="py-12 sm:py-16">
-        <p className="text-fix-text-muted">Loading your order…</p>
+        <div className="mx-auto max-w-2xl space-y-6">
+          <CardSkeleton className="min-h-[200px]" />
+          <CardSkeleton />
+        </div>
       </Container>
     );
   }
@@ -114,8 +119,8 @@ export function OrderConfirmationClient() {
           We couldn&apos;t find that order. It may have expired or the link is invalid.
         </p>
         <div className="mt-6">
-          <ButtonLink href="/marketplace" size="lg" variant="primary">
-            Continue shopping
+          <ButtonLink href="/discover" size="lg" variant="primary">
+            Continue on Discover
           </ButtonLink>
         </div>
       </Container>
@@ -163,6 +168,9 @@ export function OrderConfirmationClient() {
           <p className="mt-2 text-fix-text-muted">
             Order <strong className="text-fix-heading">{order.id}</strong> placed on {date}.
           </p>
+          <div className="mt-3 flex justify-center">
+            <OrderStatusBadge status={order.status} />
+          </div>
           <p className="mt-1 text-sm text-fix-text-muted">
             A confirmation has been sent to <strong className="text-fix-heading">{order.email}</strong>.
           </p>
@@ -283,8 +291,8 @@ export function OrderConfirmationClient() {
             <ButtonLink href="/account/orders" size="md" variant="primary">
               View order history
             </ButtonLink>
-            <ButtonLink href="/marketplace" size="md" variant="secondary">
-              Continue shopping
+            <ButtonLink href="/discover" size="md" variant="secondary">
+              Browse Discover
             </ButtonLink>
             <Link
               href="/"

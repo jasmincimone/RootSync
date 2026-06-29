@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { CalendarCheck } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -8,7 +9,10 @@ import { BookingMeetLink } from "@/components/BookingMeetLink";
 import { BookingReference } from "@/components/BookingReference";
 import { BookingStatusHint } from "@/components/BookingStatusHint";
 import { CancelBookingButton, isBookingCancellable } from "@/components/CancelBookingButton";
-import { bookingStatusLabel } from "@/lib/bookingAccess";
+import { BookingStatusBadge } from "@/components/ui/StatusBadge";
+import { CardListSkeleton } from "@/components/ui/LoadingSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { formatPrice } from "@/lib/format";
 import type { BookingStatus } from "@/lib/roles";
 import { BOOKING_STATUS } from "@/lib/roles";
@@ -61,21 +65,29 @@ export function VendorBookingsClient() {
   const [error, setError] = useState<string | null>(null);
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    fetch("/api/vendor/bookings")
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Could not load bookings.");
-        setBookings(data.bookings ?? []);
-        const drafts: Record<string, string> = {};
-        for (const b of data.bookings ?? []) {
-          drafts[b.id] = b.vendorNotes ?? "";
-        }
-        setNotesDraft(drafts);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load."))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/vendor/bookings");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not load bookings.");
+      setBookings(data.bookings ?? []);
+      const drafts: Record<string, string> = {};
+      for (const b of data.bookings ?? []) {
+        drafts[b.id] = b.vendorNotes ?? "";
+      }
+      setNotesDraft(drafts);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function patchBooking(id: string, body: Record<string, unknown>) {
     const res = await fetch(`/api/vendor/bookings/${id}`, {
@@ -86,11 +98,23 @@ export function VendorBookingsClient() {
     return res.ok;
   }
 
-  if (loading) return <p className="text-sm text-fix-text-muted">Loading bookings…</p>;
-  if (error) return <p className="text-sm text-bark">{error}</p>;
+  if (loading) return <CardListSkeleton count={3} />;
+  if (error) return <ErrorBanner message={error} onRetry={() => void load()} />;
 
   if (bookings.length === 0) {
-    return <p className="text-sm text-fix-text-muted">No bookings received yet.</p>;
+    return (
+      <EmptyState
+        icon={CalendarCheck}
+        title="No appointments yet"
+        description="When members book your services, appointments appear here with intake notes and Meet links."
+        action={{ href: "/account/vendor/listings", label: "Manage listings", variant: "cta" }}
+        secondaryAction={{
+          href: "/account/vendor/listings/new",
+          label: "Create a service",
+          variant: "secondary",
+        }}
+      />
+    );
   }
 
   return (
@@ -108,10 +132,13 @@ export function VendorBookingsClient() {
           <p className="mt-2 text-sm text-fix-heading">
             {formatWhen(b.scheduledStartAt, b.scheduledEndAt, b.timeZone)}
           </p>
-          <p className="mt-1 text-sm text-fix-text-muted">
-            {bookingStatusLabel(b.status as BookingStatus)} · {formatPrice(b.priceCents)} ·{" "}
-            {bookingDurationMinutes(b.scheduledStartAt, b.scheduledEndAt)} min
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <BookingStatusBadge status={b.status} />
+            <span className="text-sm text-fix-text-muted">
+              {formatPrice(b.priceCents)} ·{" "}
+              {bookingDurationMinutes(b.scheduledStartAt, b.scheduledEndAt)} min
+            </span>
+          </div>
           <BookingMeetLink
             className="mt-3"
             meetLink={b.meetLink}

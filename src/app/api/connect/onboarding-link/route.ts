@@ -29,6 +29,16 @@ export async function POST(request: NextRequest) {
   }
 
   const baseUrl = appBaseUrl(request.nextUrl.origin);
+  let returnPath = "/account/vendor/payments";
+  try {
+    const body = await request.json().catch(() => ({}));
+    if (typeof body?.returnPath === "string" && body.returnPath.startsWith("/account")) {
+      returnPath = body.returnPath;
+    }
+  } catch {
+    /* use default */
+  }
+
   const stripeClient = getConnectStripeClient();
   try {
     const accountLink = await stripeClient.v2.core.accountLinks.create({
@@ -37,8 +47,8 @@ export async function POST(request: NextRequest) {
         type: "account_onboarding",
         account_onboarding: {
           configurations: ["merchant", "customer"],
-          refresh_url: `${baseUrl}/account/connect-demo`,
-          return_url: `${baseUrl}/account/connect-demo?accountId=${encodeURIComponent(accountId)}`,
+          refresh_url: `${baseUrl}${returnPath}`,
+          return_url: `${baseUrl}${returnPath}?stripe=return&accountId=${encodeURIComponent(accountId)}`,
         },
       },
     });

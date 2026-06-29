@@ -75,7 +75,7 @@ export function MarketplaceMap({ vendors, compact }: Props) {
         map
       );
       const name = escapeHtml(vendor.displayName);
-      const href = `/marketplace/vendors/${vendor.id}`;
+      const href = `/discover/vendors/${vendor.id}`;
       marker.bindPopup(
         `<a href="${href}" class="block min-w-[160px] text-fix-text hover:opacity-90" style="color:inherit;text-decoration:none">
           <span style="font-weight:600;color:#2c2416">${name}</span>

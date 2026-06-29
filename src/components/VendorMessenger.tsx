@@ -8,14 +8,20 @@ import { useSession } from "next-auth/react";
 
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
+import { UserAvatar } from "@/components/UserAvatar";
 import { cn } from "@/lib/cn";
 
 type ThreadSummary = {
   id: string;
   peerDisplayName: string;
   peerSubtitle: string;
+  peerAvatarUrl: string | null;
+  peerProfileHref: string;
   lastMessagePreview: string;
   lastMessageAt: string;
+  lastMessageSenderId: string | null;
+  lastMessageSenderAvatarUrl: string | null;
+  lastMessageSenderIsViewer: boolean;
   unread?: boolean;
 };
 
@@ -25,6 +31,8 @@ type ThreadDetail = {
   participantHighId: string;
   peerDisplayName: string;
   peerSubtitle: string;
+  peerAvatarUrl: string | null;
+  peerProfileHref: string;
   viewerIsParticipantLow: boolean;
 };
 
@@ -33,6 +41,8 @@ type ChatMessage = {
   senderId: string;
   body: string;
   createdAt: string;
+  senderDisplayName: string;
+  senderAvatarUrl: string | null;
 };
 
 function useNarrowLayout() {
@@ -328,10 +338,23 @@ export function VendorMessenger({
           <ArrowLeft className="h-5 w-5" />
         </button>
       ) : null}
+      <Link
+        href={threadMeta.peerProfileHref}
+        className="shrink-0 rounded-full outline-none ring-fix-cta focus-visible:ring-2 focus-visible:ring-offset-2"
+      >
+        <UserAvatar
+          src={threadMeta.peerAvatarUrl}
+          name={threadMeta.peerDisplayName}
+          size="sm"
+        />
+      </Link>
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-sm font-semibold text-fix-heading">
+        <Link
+          href={threadMeta.peerProfileHref}
+          className="truncate text-sm font-semibold text-fix-heading hover:text-fix-link hover:underline"
+        >
           {threadMeta.peerDisplayName}
-        </h2>
+        </Link>
         <p className="text-xs text-fix-text-muted">{threadMeta.peerSubtitle}</p>
       </div>
     </div>
@@ -365,7 +388,7 @@ export function VendorMessenger({
               />
             ) : null}
           </h2>
-          <p className="mt-0.5 text-xs text-clay/55">Chats with The Fix Collective Community</p>
+          <p className="mt-0.5 text-xs text-clay/55">Chats with The RootSync Community</p>
         </div>
         <nav
           className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pb-4"
@@ -375,9 +398,9 @@ export function VendorMessenger({
             <p className="px-2 py-3 text-sm text-clay/55">Loading…</p>
           ) : sortedThreads.length === 0 ? (
             <p className="px-2 py-3 text-sm leading-relaxed text-clay/55">
-              No conversations yet. Browse the{" "}
-              <Link href="/marketplace" className="underline underline-offset-2 hover:text-clay">
-                marketplace
+              Browse the{" "}
+              <Link href="/discover" className="underline underline-offset-2 hover:text-clay">
+                Discover
               </Link>{" "}
               or{" "}
               <Link href="/community" className="underline underline-offset-2 hover:text-clay">
@@ -395,33 +418,46 @@ export function VendorMessenger({
                       type="button"
                       onClick={() => selectThread(t.id)}
                       className={cn(
-                        "w-full rounded-lg px-3 py-2.5 text-left transition-colors",
+                        "flex w-full gap-3 rounded-lg px-2 py-2.5 text-left transition-colors",
                         active ? "bg-clay/15" : "hover:bg-clay/10"
                       )}
                     >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-clay">
-                          {t.peerDisplayName}
+                      <UserAvatar
+                        src={t.lastMessageSenderAvatarUrl ?? t.peerAvatarUrl}
+                        name={
+                          t.lastMessageSenderIsViewer
+                            ? "You"
+                            : t.peerDisplayName
+                        }
+                        size="sm"
+                        className="mt-0.5 shrink-0"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-clay">
+                            {t.peerDisplayName}
+                          </span>
+                          {t.unread ? (
+                            <span
+                              className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-gold shadow-[0_0_0_2px_rgba(181,137,95,0.35)]"
+                              aria-label="Unread messages"
+                              title="Unread"
+                            />
+                          ) : null}
                         </span>
-                        {t.unread ? (
-                          <span
-                            className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-gold shadow-[0_0_0_2px_rgba(181,137,95,0.35)]"
-                            aria-label="Unread messages"
-                            title="Unread"
-                          />
-                        ) : null}
-                      </span>
-                      {t.lastMessagePreview ? (
-                        <span className="mt-0.5 line-clamp-2 block text-xs text-clay/50">
-                          {t.lastMessagePreview}
+                        {t.lastMessagePreview ? (
+                          <span className="mt-0.5 line-clamp-2 block text-xs text-clay/50">
+                            {t.lastMessageSenderIsViewer ? "You: " : ""}
+                            {t.lastMessagePreview}
+                          </span>
+                        ) : (
+                          <span className="mt-0.5 block text-xs italic text-clay/40">
+                            No messages yet
+                          </span>
+                        )}
+                        <span className="mt-1 block text-[11px] text-clay/40">
+                          {formatRelative(t.lastMessageAt)}
                         </span>
-                      ) : (
-                        <span className="mt-0.5 block text-xs italic text-clay/40">
-                          No messages yet
-                        </span>
-                      )}
-                      <span className="mt-1 block text-[11px] text-clay/40">
-                        {formatRelative(t.lastMessageAt)}
                       </span>
                     </button>
                   </li>
@@ -457,8 +493,8 @@ export function VendorMessenger({
               <MessageCircle className="h-12 w-12 text-fix-border/40" aria-hidden />
               <p className="mt-4 max-w-sm text-sm text-fix-text-muted">
                 Choose a conversation on the left, or start one from the{" "}
-                <Link href="/marketplace" className="font-medium text-fix-link hover:text-fix-link-hover">
-                  marketplace
+                <Link href="/discover" className="font-medium text-fix-link hover:text-fix-link-hover">
+                  Discover
                 </Link>{" "}
                 or{" "}
                 <Link href="/community" className="font-medium text-fix-link hover:text-fix-link-hover">
@@ -468,36 +504,53 @@ export function VendorMessenger({
               </p>
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {messages.map((m) => {
                 const mine = m.senderId === uid;
+                const label = mine ? "You" : m.senderDisplayName;
                 return (
                   <li
                     key={m.id}
-                    className={cn("flex", mine ? "justify-end" : "justify-start")}
+                    className={cn("flex gap-2", mine ? "flex-row-reverse" : "flex-row")}
                   >
+                    <UserAvatar
+                      src={m.senderAvatarUrl}
+                      name={label}
+                      size="sm"
+                      className="mt-1 shrink-0"
+                    />
                     <div
                       className={cn(
-                        "max-w-[min(100%,22rem)] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
-                        mine
-                          ? "bg-forest/90 text-fix-primary-foreground"
-                          : "bg-fix-bg-muted text-fix-text"
+                        "flex max-w-[min(100%,20rem)] flex-col",
+                        mine ? "items-end" : "items-start",
                       )}
                     >
-                      <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                      <p
+                      <span className="mb-1 px-1 text-[11px] font-medium text-fix-text-muted">
+                        {label}
+                      </span>
+                      <div
                         className={cn(
-                          "mt-1 text-[10px]",
-                          mine ? "text-fix-primary-foreground/70" : "text-fix-text-muted"
+                          "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+                          mine
+                            ? "bg-forest/90 text-fix-primary-foreground"
+                            : "bg-fix-bg-muted text-fix-text",
                         )}
                       >
-                        {new Date(m.createdAt).toLocaleString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </p>
+                        <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                        <p
+                          className={cn(
+                            "mt-1 text-[10px]",
+                            mine ? "text-fix-primary-foreground/70" : "text-fix-text-muted",
+                          )}
+                        >
+                          {new Date(m.createdAt).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
                     </div>
                   </li>
                 );

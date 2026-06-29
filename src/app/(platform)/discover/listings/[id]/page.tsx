@@ -82,6 +82,83 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
+function PurchasePanel({
+  listing,
+  offering,
+  variants,
+  isOwnerPreview,
+  vendorId,
+  className,
+}: {
+  listing: {
+    id: string;
+    title: string;
+    listingType: string;
+    priceCents: number;
+    category: string | null;
+  };
+  offering: { paymentUrl: string | null; productUrl: string | null };
+  variants: {
+    id: string;
+    title: string;
+    priceCents: number;
+    durationMinutes: number | null;
+    sku: string | null;
+  }[];
+  isOwnerPreview: boolean;
+  vendorId: string;
+  className?: string;
+}) {
+  return (
+    <Card className={className ?? "p-6"}>
+      <div className="flex flex-wrap items-center gap-2">
+        {listing.category?.trim() ? (
+          <span className="rounded-full bg-fix-border/20 px-2.5 py-1 text-xs font-medium text-fix-heading">
+            {listing.category.trim()}
+          </span>
+        ) : null}
+        <span className="rounded-full bg-fix-bg-muted px-2.5 py-1 text-xs text-fix-text-muted">
+          {listingTypeLabel(listing.listingType)}
+        </span>
+      </div>
+      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">
+        {listing.title}
+      </h1>
+      <p className="mt-2 text-xl font-semibold text-fix-heading">
+        {listingDisplayPrice(listing.priceCents, variants.length)}
+      </p>
+
+      <div className="mt-6">
+        {isOwnerPreview ? (
+          <ButtonLink href={`/account/vendor/listings/${listing.id}/edit`} variant="cta" size="md" className="w-full justify-center">
+            Edit listing
+          </ButtonLink>
+        ) : (
+          <MarketplaceListingPurchase
+            listingId={listing.id}
+            listingType={listing.listingType}
+            variants={variants}
+            paymentUrl={offering.paymentUrl}
+            productUrl={offering.productUrl}
+          />
+        )}
+      </div>
+
+      {!isOwnerPreview ? (
+        <div className="mt-4">
+          <MessageVendorLink vendorProfileId={vendorId} variant="secondary" size="sm" className="w-full justify-center" />
+        </div>
+      ) : null}
+
+      <div className="mt-4 border-t border-fix-border/15 pt-4">
+        <ButtonLink href="/discover" variant="ghost" size="sm" className="w-full justify-center">
+          ← All listings
+        </ButtonLink>
+      </div>
+    </Card>
+  );
+}
+
 export default async function MarketplaceListingPage({
   params,
 }: {
@@ -102,12 +179,12 @@ export default async function MarketplaceListingPage({
       <section className="border-b border-fix-border/15">
         <Container className="py-8 sm:py-12">
           <nav className="text-sm text-fix-text-muted">
-            <Link href="/marketplace" className="text-fix-link hover:text-fix-link-hover">
-              Marketplace
+            <Link href="/discover" className="text-fix-link hover:text-fix-link-hover">
+              Discover Marketplace
             </Link>
             <span className="mx-2">/</span>
             <Link
-              href={`/marketplace/vendors/${v.id}`}
+              href={`/discover/vendors/${v.id}`}
               className="text-fix-link hover:text-fix-link-hover"
             >
               {v.displayName}
@@ -124,12 +201,12 @@ export default async function MarketplaceListingPage({
                 offering.status !== OFFERING_STATUS.ACTIVE ? (
                   <>
                     This offering is <span className="font-medium">{offering.status}</span> and is
-                    not shown on the public marketplace until it is active.
+                    not shown on Discover until it is active.
                   </>
                 ) : v.status !== VENDOR_STATUS.APPROVED ? (
                   <>
                     Your vendor profile is <span className="font-medium">{v.status}</span>. The
-                    public marketplace only surfaces listings from approved vendors.
+                    public Discover feed only surfaces listings from approved vendors.
                   </>
                 ) : (
                   <>Signed-in preview of your listing.</>
@@ -138,56 +215,49 @@ export default async function MarketplaceListingPage({
             </Card>
           ) : null}
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-2">
-            <div className="overflow-hidden rounded-2xl border border-fix-border/15 bg-fix-bg-muted aspect-[4/3] lg:aspect-square">
-              {listing.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- vendor uploads or external URLs
-                <img
-                  src={listing.imageUrl}
-                  alt={listing.title}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm text-fix-text-muted">
-                  No image
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                {listing.category?.trim() ? (
-                  <span className="rounded-full bg-fix-border/20 px-2.5 py-1 text-xs font-medium text-fix-heading">
-                    {listing.category.trim()}
-                  </span>
-                ) : null}
-                <span className="rounded-full bg-fix-bg-muted px-2.5 py-1 text-xs text-fix-text-muted">
-                  {listingTypeLabel(listing.listingType)}
-                </span>
+          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start">
+            <div className="min-w-0 space-y-8">
+              <div className="overflow-hidden rounded-2xl border border-fix-border/15 bg-fix-bg-muted aspect-[4/3] lg:aspect-square">
+                {listing.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- vendor uploads or external URLs
+                  <img
+                    src={listing.imageUrl}
+                    alt={listing.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm text-fix-text-muted">
+                    No image
+                  </div>
+                )}
               </div>
-              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">
-                {listing.title}
-              </h1>
-              <p className="mt-2 text-xl font-semibold text-fix-heading">
-                {listingDisplayPrice(listing.priceCents, variants.length)}
-              </p>
 
-              <section className="mt-6" aria-labelledby="listing-description">
-                <h2 id="listing-description" className="sr-only">
-                  Description
+              <div className="lg:hidden">
+                <PurchasePanel
+                  listing={listing}
+                  offering={offering}
+                  variants={variants}
+                  isOwnerPreview={isOwnerPreview}
+                  vendorId={v.id}
+                />
+              </div>
+
+              <section aria-labelledby="listing-description">
+                <h2 id="listing-description" className="text-sm font-semibold text-fix-heading">
+                  About this offering
                 </h2>
-                <p className="whitespace-pre-wrap text-base leading-relaxed text-fix-text-muted">
+                <p className="mt-3 whitespace-pre-wrap text-base leading-relaxed text-fix-text-muted">
                   {listing.description}
                 </p>
               </section>
 
-              <section className="mt-8 border-t border-fix-border/15 pt-6" aria-labelledby="listing-vendor">
+              <section aria-labelledby="listing-vendor" className="border-t border-fix-border/15 pt-6">
                 <h2 id="listing-vendor" className="text-sm font-semibold text-fix-heading">
                   Vendor
                 </h2>
                 <p className="mt-2">
                   <Link
-                    href={`/marketplace/vendors/${v.id}`}
+                    href={`/discover/vendors/${v.id}`}
                     className="font-medium text-fix-link hover:text-fix-link-hover"
                   >
                     {v.displayName}
@@ -196,38 +266,28 @@ export default async function MarketplaceListingPage({
                 {v.pickupLocation ? (
                   <p className="mt-1 text-sm text-fix-text-muted">{v.pickupLocation}</p>
                 ) : null}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {isOwnerPreview ? (
-                    <ButtonLink href={`/account/vendor/listings/${listing.id}/edit`} variant="primary" size="md">
-                      Edit listing
-                    </ButtonLink>
-                  ) : (
-                    <MessageVendorLink vendorProfileId={v.id} variant="primary" size="md" />
-                  )}
-                  {v.website ? (
-                    <a
-                      href={v.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex h-11 items-center justify-center rounded-full bg-fix-surface px-5 text-sm font-medium text-fix-heading ring-1 ring-inset ring-fix-border/20 transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-clay"
-                    >
-                      Vendor website
-                    </a>
-                  ) : null}
-                </div>
+                {v.website ? (
+                  <a
+                    href={v.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex text-sm font-medium text-fix-link hover:text-fix-link-hover"
+                  >
+                    Vendor website →
+                  </a>
+                ) : null}
               </section>
+            </div>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <MarketplaceListingPurchase
-                  listingId={listing.id}
-                  listingType={listing.listingType}
+            <div className="hidden lg:block">
+              <div className="sticky top-28">
+                <PurchasePanel
+                  listing={listing}
+                  offering={offering}
                   variants={variants}
-                  paymentUrl={offering.paymentUrl}
-                  productUrl={offering.productUrl}
+                  isOwnerPreview={isOwnerPreview}
+                  vendorId={v.id}
                 />
-                <ButtonLink href="/marketplace" variant="secondary" size="md">
-                  ← All listings
-                </ButtonLink>
               </div>
             </div>
           </div>

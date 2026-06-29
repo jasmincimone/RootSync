@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { Leaf } from "lucide-react";
+import { Globe, Leaf, Store, UserPlus } from "lucide-react";
 
 import { Container } from "@/components/Container";
-import { FeaturedListingCard } from "@/components/FeaturedListingCard";
+import { RoleCtaButton } from "@/components/RoleCtaButton";
 import { ButtonLink } from "@/components/ui/Button";
-import { AMARA_KIT_CATALOG_ID } from "@/config/featuredCatalog";
-import { getMergedProductForPublic } from "@/lib/shopCatalog";
+import { discoverVendorPath } from "@/config/discoverPaths";
 import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
 import { VENDOR_STATUS } from "@/lib/roles";
@@ -14,20 +13,17 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const [amaraKit, vendorsRaw] = await Promise.all([
-    getMergedProductForPublic(AMARA_KIT_CATALOG_ID),
-    prisma.vendorProfile.findMany({
-      where: { status: VENDOR_STATUS.APPROVED },
-      include: {
-        listings: {
-          where: publicListingRelationWhere,
-          select: { id: true },
-        },
+  const vendorsRaw = await prisma.vendorProfile.findMany({
+    where: { status: VENDOR_STATUS.APPROVED },
+    include: {
+      listings: {
+        where: publicListingRelationWhere,
+        select: { id: true },
       },
-      orderBy: { updatedAt: "desc" },
-      take: 12,
-    }),
-  ]);
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 12,
+  });
 
   const featuredVendors = [...vendorsRaw]
     .sort((a, b) => b.listings.length - a.listings.length)
@@ -42,28 +38,33 @@ export default async function HomePage() {
               Stay Synced!
             </h1>
             <div className="mt-5 max-w-xl space-y-4 text-base leading-relaxed text-fix-text">
-              <p>A Marketplace for Self-Sufficiency. A Platform for Connection.</p>
+              <p>A platform for self-sufficiency, connection, and local commerce.</p>
               <p>
-                Discover local vendors on the marketplace, connect on RootSync, and grow with a
-                network of creators and communities.
+                RootSync brings together Discover, community, and messaging — so you can find
+                vendors, book services, and grow with creators near you.
               </p>
             </div>
             <div className="mt-8 flex w-full max-w-sm flex-col gap-3">
-              <ButtonLink href="/marketplace" variant="cta" size="lg" className="uppercase tracking-wide">
-                👉 🌐 Explore the Marketplace
+              <ButtonLink href="/rootsync" variant="cta" size="lg" className="uppercase tracking-wide">
+                <Globe className="h-5 w-5" aria-hidden />
+                Enter RootSync Platform
               </ButtonLink>
-              <ButtonLink href="/rootsync" variant="secondary" size="lg" className="uppercase tracking-wide">
-                👉 Enter RootSync Platform
-              </ButtonLink>
-              <ButtonLink
-                href={`/products/${AMARA_KIT_CATALOG_ID}`}
+              <RoleCtaButton
+                role="member"
+                href="/login?callbackUrl=/account"
+                label="Become a Member"
+                icon={<UserPlus className="h-5 w-5" aria-hidden />}
                 variant="secondary"
-                size="lg"
                 className="uppercase tracking-wide"
-              >
-                👉 🌱✅ Buy The Amara Roots Sprout Check Kit
-              </ButtonLink>
-              {amaraKit ? <FeaturedListingCard product={amaraKit} /> : null}
+              />
+              <RoleCtaButton
+                role="vendor"
+                href="/account/vendor/apply"
+                label="Become a Vendor"
+                icon={<Store className="h-5 w-5" aria-hidden />}
+                variant="secondary"
+                className="uppercase tracking-wide"
+              />
             </div>
           </div>
 
@@ -94,8 +95,8 @@ export default async function HomePage() {
                   <div className="mt-1 text-lg font-medium tracking-wide text-clay/90">COLLECTIVE</div>
                 </div>
                 <p className="mx-auto mt-6 max-w-lg text-center text-sm leading-relaxed text-clay/85 sm:text-base">
-                  Meet vendors on the marketplace — from urban gardening and self-care to preparedness
-                  and handmade goods.
+                  Meet vendors on Discover — from urban gardening and self-care to preparedness and
+                  handmade goods.
                 </p>
               </div>
               <div className="border-t border-clay/10 px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-8">
@@ -106,7 +107,7 @@ export default async function HomePage() {
                   {featuredVendors.map((vendor) => (
                     <Link
                       key={vendor.id}
-                      href={`/marketplace/vendors/${vendor.id}`}
+                      href={discoverVendorPath(vendor.id)}
                       className="rounded-2xl border border-clay/25 bg-clay/10 px-4 py-4 text-center text-sm font-semibold text-clay transition-all hover:border-gold/50 hover:bg-clay/15"
                     >
                       {vendor.displayName}
@@ -114,7 +115,7 @@ export default async function HomePage() {
                   ))}
                 </div>
                 <div className="mt-6 text-center">
-                  <Link href="/marketplace" className="text-sm font-medium text-gold hover:underline">
+                  <Link href="/discover" className="text-sm font-medium text-gold hover:underline">
                     View all vendors →
                   </Link>
                 </div>
@@ -126,26 +127,19 @@ export default async function HomePage() {
 
       <section>
         <Container className="py-12 sm:py-16">
-          <div className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-2">
-            <div className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft">
+          <div className="mx-auto max-w-2xl">
+            <div className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft sm:p-8">
               <h2 className="text-lg font-semibold text-fix-heading">RootSync platform</h2>
               <p className="mt-2 text-sm leading-relaxed text-fix-text-muted">
-                Community, courses, messaging, and your AI growing assistant — all in one place.
+                Community, messaging, AI tools, and Discover Marketplace — shop local goods, book
+                services, and connect with makers in your region, all from one place.
               </p>
-              <div className="mt-4">
-                <ButtonLink href="/rootsync" variant="secondary" size="sm">
+              <div className="mt-4 flex flex-wrap gap-3">
+                <ButtonLink href="/rootsync" variant="cta" size="sm">
                   Enter RootSync
                 </ButtonLink>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft">
-              <h2 className="text-lg font-semibold text-fix-heading">Marketplace</h2>
-              <p className="mt-2 text-sm leading-relaxed text-fix-text-muted">
-                Shop with approved local vendors and support makers in your region.
-              </p>
-              <div className="mt-4">
-                <ButtonLink href="/marketplace" variant="secondary" size="sm">
-                  Browse marketplace
+                <ButtonLink href="/discover" variant="secondary" size="sm">
+                  Browse Discover
                 </ButtonLink>
               </div>
             </div>

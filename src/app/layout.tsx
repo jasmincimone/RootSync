@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { getServerSession } from "next-auth";
 
 import { Providers } from "@/components/Providers";
+import { SkipLink } from "@/components/SkipLink";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { authOptions } from "@/lib/authOptions";
@@ -17,12 +18,12 @@ export const metadata: Metadata = {
     template: "%s • The Fix Collective"
   },
   description:
-    "The Fix Collective is a modern ecommerce and community platform with four shops: Urban Roots, Self-Care, Stitch, and Survival Kits.",
+    "RootSync is a marketplace and community platform — discover local vendors, book services, and connect with creators.",
   metadataBase: new URL("https://thefixcollective.com"),
   openGraph: {
     title: "The Fix Collective",
     description:
-      "Four distinct shops under one brand: Urban Roots, Self-Care, Stitch, and Survival Kits.",
+      "Marketplace, community, and connection for local vendors and makers.",
     type: "website"
   }
 };
@@ -48,8 +49,11 @@ export default async function RootLayout({
       <body>
         <Providers session={session}>
           <div className="flex min-h-dvh flex-col bg-fix-bg text-fix-text">
+            <SkipLink />
             <SiteHeader />
-            <main className="flex min-h-0 flex-1 flex-col">{children}</main>
+            <main id="main-content" className="flex min-h-0 flex-1 flex-col">
+              {children}
+            </main>
             <SiteFooter />
           </div>
         </Providers>

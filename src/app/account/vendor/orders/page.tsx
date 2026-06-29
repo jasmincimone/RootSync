@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { Package } from "lucide-react";
 
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { authOptions } from "@/lib/authOptions";
 import { formatPrice } from "@/lib/format";
@@ -46,22 +47,17 @@ export default async function VendorOrdersPage() {
       <div>
         <h2 className="text-lg font-semibold text-fix-heading">Vendor orders</h2>
         <p className="mt-1 text-sm text-fix-text-muted">
-          Line items from marketplace checkout that reference your listings.
+          Line items from Discover checkout that reference your listings.
         </p>
       </div>
 
       {items.length === 0 ? (
-        <Card className="p-6">
-          <p className="text-sm text-fix-text-muted">
-            No marketplace orders yet. When customers buy your listings, they will appear here.
-          </p>
-          <Link
-            href="/account/vendor/listings"
-            className="mt-3 inline-block text-sm font-medium text-fix-link hover:text-fix-link-hover"
-          >
-            Manage listings →
-          </Link>
-        </Card>
+        <EmptyState
+          icon={Package}
+          title="No Discover orders yet"
+          description="When members buy your listings through checkout, order line items will appear here."
+          action={{ href: "/account/vendor/listings", label: "Manage listings", variant: "cta" }}
+        />
       ) : (
         <ul className="space-y-3">
           {items.map((line) => (

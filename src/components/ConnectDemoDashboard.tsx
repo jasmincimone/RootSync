@@ -146,7 +146,11 @@ export function ConnectDemoDashboard() {
     setError("");
     setMessage("");
     try {
-      const res = await fetch("/api/connect/onboarding-link", { method: "POST" });
+      const res = await fetch("/api/connect/onboarding-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ returnPath: "/account/connect-demo" }),
+      });
       let data: { url?: string; error?: string; hint?: string } = {};
       try {
         data = (await res.json()) as typeof data;

@@ -2,18 +2,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 
-import { CommunityPostRoleBadge } from "@/components/CommunityPostRoleBadge";
+import { CommunityPostHeader } from "@/components/CommunityPostHeader";
 import { Container } from "@/components/Container";
 import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
 import { MessageUserLink } from "@/components/MessageUserLink";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListingCheckoutActions";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
 import { ShopMediaCarousel } from "@/components/ShopMediaCarousel";
 import { UserAvatar } from "@/components/UserAvatar";
+import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
+import { discoverListingPath, DISCOVER_BASE } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
-import { formatCommunityDate, formatCommunityDateTime } from "@/lib/formatCommunityDate";
+import { communityAuthorSelect } from "@/lib/userProfileDisplay";
 import { formatPrice } from "@/lib/format";
 import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
@@ -71,10 +74,10 @@ export async function generateMetadata({
   const description =
     vendor.bio && vendor.bio.length > 160
       ? `${vendor.bio.slice(0, 157)}…`
-      : vendor.bio ?? `Shop with ${vendor.displayName} on The Fix Collective marketplace.`;
+      : vendor.bio ?? `Shop with ${vendor.displayName} on Discover Marketplace.`;
 
   return {
-    title: `${vendor.displayName} · Marketplace`,
+    title: `${vendor.displayName} · Discover`,
     description,
   };
 }
@@ -114,7 +117,7 @@ export default async function PublicVendorProfilePage({
     orderBy: { updatedAt: "desc" },
     take: 30,
     include: {
-      author: { select: { id: true, role: true } },
+      author: { select: communityAuthorSelect },
     },
   });
 
@@ -123,8 +126,8 @@ export default async function PublicVendorProfilePage({
       <section className="border-b border-fix-border/15 bg-gradient-to-b from-fix-bg-muted/60 via-fix-bg-muted/30 to-fix-surface">
         <Container className="px-4 py-6 sm:px-6 sm:py-10">
           <nav className="text-xs text-fix-text-muted sm:text-sm">
-            <Link href="/marketplace" className="text-fix-link hover:text-fix-link-hover">
-              Vendor Marketplace
+            <Link href={DISCOVER_BASE} className="text-fix-link hover:text-fix-link-hover">
+              Discover Marketplace
             </Link>
             <span className="mx-1.5 sm:mx-2">/</span>
             <span className="text-fix-heading">{vendor.displayName}</span>
@@ -134,7 +137,7 @@ export default async function PublicVendorProfilePage({
             <Card className="mt-4 border-amber/35 bg-fix-bg-muted/60 p-3 sm:mt-5 sm:p-4">
               <p className="text-sm leading-relaxed text-fix-heading">
                 <span className="font-semibold">Preview only.</span> Your vendor status is{" "}
-                <span className="font-medium">{vendor.status}</span>. The public marketplace only lists approved
+                <span className="font-medium">{vendor.status}</span>. The public Discover feed only lists approved
                 vendors—this page is visible to you while signed in so you can check how your profile will look.
               </p>
             </Card>
@@ -151,6 +154,7 @@ export default async function PublicVendorProfilePage({
               <h1 className="text-2xl font-bold tracking-tight text-fix-heading sm:text-3xl md:text-4xl">
                 {vendor.displayName}
               </h1>
+              {!isOwnerPreview ? <VerifiedVendorBadge className="mt-2 justify-center sm:justify-start" /> : null}
               {vendor.pickupLocation ? (
                 <p className="mt-2 text-sm text-fix-text-muted sm:text-base">{vendor.pickupLocation}</p>
               ) : null}
@@ -194,7 +198,7 @@ export default async function PublicVendorProfilePage({
                   </a>
                 ) : null}
                 <ButtonLink
-                  href="/marketplace"
+                  href="/discover"
                   variant="ghost"
                   size="md"
                   className="w-full sm:w-auto"
@@ -264,16 +268,18 @@ export default async function PublicVendorProfilePage({
             Published listings from this vendor.
           </p>
           {vendor.listings.length === 0 ? (
-            <Card className="mt-6 p-6">
-              <p className="text-sm text-fix-text-muted">No published listings yet.</p>
-            </Card>
+            <EmptyState
+              bordered={false}
+              title="No published listings yet"
+              description="This vendor hasn't published any offerings on Discover."
+            />
           ) : (
             <ul className="mt-6 grid gap-4 sm:grid-cols-2">
               {vendor.listings.map((listing) => (
                 <li key={listing.id}>
                   <Card className="flex h-full gap-4 overflow-hidden p-4">
                     <Link
-                      href={`/marketplace/listings/${listing.id}`}
+                      href={`/discover/listings/${listing.id}`}
                       className="relative block h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-fix-border/15 bg-fix-bg-muted outline-none ring-fix-cta transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
                       aria-label={`View ${listing.title}`}
                     >
@@ -292,7 +298,7 @@ export default async function PublicVendorProfilePage({
                     </Link>
                     <div className="min-w-0 flex-1">
                       <Link
-                        href={`/marketplace/listings/${listing.id}`}
+                        href={`/discover/listings/${listing.id}`}
                         className="font-medium text-fix-heading hover:text-fix-link hover:underline"
                       >
                         {listing.title}
@@ -346,20 +352,14 @@ export default async function PublicVendorProfilePage({
               {communityPosts.map((p) => (
                 <li key={p.id}>
                   <Card className="p-5">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fix-text-muted">
-                      <CommunityPostRoleBadge
-                        roleAtPost={p.roleAtPost}
-                        showVendorBadge={p.showVendorBadge}
-                        authorRole={p.author.role}
-                      />
-                      <span>{formatCommunityDate(p.createdAt.toISOString())}</span>
-                      {p.editedAt ? (
-                        <>
-                          <span>·</span>
-                          <span>Edited {formatCommunityDateTime(p.editedAt.toISOString())}</span>
-                        </>
-                      ) : null}
-                    </div>
+                    <CommunityPostHeader
+                      author={p.author}
+                      roleAtPost={p.roleAtPost}
+                      showVendorBadge={p.showVendorBadge}
+                      createdAt={p.createdAt.toISOString()}
+                      editedAt={p.editedAt?.toISOString() ?? null}
+                      showMessageLink={false}
+                    />
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-fix-text">
                       {p.content}
                     </p>

@@ -121,7 +121,7 @@ export function ServiceBookingWizard({
           Members and vendors can book services on RootSync.
         </p>
         <Link
-          href={`/login?callbackUrl=${encodeURIComponent(`/marketplace/listings/${listingId}/book`)}`}
+          href={`/login?callbackUrl=${encodeURIComponent(`/discover/listings/${listingId}/book`)}`}
           className="mt-4 inline-flex text-sm font-medium text-fix-link hover:text-fix-link-hover"
         >
           Sign in to continue →

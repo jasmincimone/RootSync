@@ -4,9 +4,11 @@ import { getServerSession } from "next-auth";
 
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
+import { VendorOnboardingChecklist } from "@/components/VendorOnboardingChecklist";
+import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
-import { ROLES, VENDOR_STATUS } from "@/lib/roles";
+import { LISTING_TYPE, ROLES, VENDOR_STATUS } from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
 
 export default async function VendorDashboardPage() {
@@ -31,12 +33,39 @@ export default async function VendorDashboardPage() {
     );
   }
 
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { stripeConnectAccountId: true },
+  });
+  const hasStripe = Boolean(user?.stripeConnectAccountId);
+
+  const [listingCount, serviceWithAvailability] = await Promise.all([
+    prisma.listing.count({ where: { vendorProfileId: profile.id } }),
+    prisma.serviceAvailabilityRule.findFirst({
+      where: { offering: { vendorProfileId: profile.id } },
+      select: { id: true },
+    }),
+  ]);
+
+  const hasProfile = Boolean(profile.bio?.trim() && profile.pickupLocation?.trim());
+  const hasListing = listingCount > 0;
+  const hasAvailability = Boolean(serviceWithAvailability);
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-fix-heading">Vendor dashboard</h2>
         <p className="mt-1 text-sm text-fix-text-muted">{profile.displayName}</p>
       </div>
+
+      {profile.status === VENDOR_STATUS.APPROVED ? (
+        <VendorOnboardingChecklist
+          hasProfile={hasProfile}
+          hasStripe={hasStripe}
+          hasListing={hasListing}
+          hasAvailability={hasAvailability}
+        />
+      ) : null}
 
       <Card className="p-5">
         <div className="text-sm font-semibold text-fix-heading">Status</div>
@@ -45,7 +74,7 @@ export default async function VendorDashboardPage() {
           {profile.status === VENDOR_STATUS.PENDING &&
             " — your application is waiting for admin review."}
           {profile.status === VENDOR_STATUS.APPROVED &&
-            " — you can manage listings, your shop landing page, and view orders."}
+            " — manage listings, payments, and incoming appointments."}
           {profile.status === VENDOR_STATUS.REJECTED && " — contact support if you have questions."}
         </p>
         {session.user.role === ROLES.CUSTOMER && profile.status === VENDOR_STATUS.PENDING && (
@@ -55,23 +84,41 @@ export default async function VendorDashboardPage() {
         )}
       </Card>
 
+      {profile.status === VENDOR_STATUS.APPROVED && !hasStripe ? (
+        <Card className="border-amber/35 bg-fix-bg-muted/50 p-5">
+          <div className="text-sm font-semibold text-fix-heading">Set up payments</div>
+          <p className="mt-2 text-sm text-fix-text-muted">
+            Connect Stripe so members can check out on Discover and book your services. You
+            can also add payment links on individual listings.
+          </p>
+          <div className="mt-4">
+            <ButtonLink href="/account/vendor/payments" variant="cta" size="sm">
+              Connect Stripe
+            </ButtonLink>
+          </div>
+        </Card>
+      ) : null}
+
       {canManageVendorListings(session.user.role ?? "CUSTOMER", profile.status) && (
         <div className="flex flex-wrap gap-3">
+          <ButtonLink href="/account/vendor/payments" variant="secondary" size="sm">
+            Payment setup
+          </ButtonLink>
           <ButtonLink href="/account/vendor/listings" variant="secondary" size="sm">
             My listings
+          </ButtonLink>
+          <ButtonLink href="/account/vendor/bookings" variant="secondary" size="sm">
+            Incoming appointments
           </ButtonLink>
           <ButtonLink href="/account/vendor/orders" variant="secondary" size="sm">
             Vendor orders
           </ButtonLink>
           <ButtonLink href="/account/vendor/profile" variant="secondary" size="sm">
-            Edit profile &amp; shop page
+            Edit profile
           </ButtonLink>
-          <ButtonLink href={`/marketplace/vendors/${profile.id}`} variant="secondary" size="sm">
-            View my vendor page
+          <ButtonLink href={discoverVendorPath(profile.id)} variant="secondary" size="sm">
+            View public page
           </ButtonLink>
-          <Link href="/marketplace" className="text-sm font-medium text-fix-link hover:text-fix-link-hover">
-            Marketplace (public)
-          </Link>
         </div>
       )}
     </div>

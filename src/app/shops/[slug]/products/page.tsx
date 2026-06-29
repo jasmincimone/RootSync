@@ -8,7 +8,7 @@ export default async function LegacyShopProductsRedirect({ params }: PageParams)
   const { slug } = await params;
   const vendorId = await resolveVendorIdForShopSlug(slug);
   if (!vendorId) {
-    redirect("/marketplace");
+    redirect("/discover");
   }
-  redirect(`/marketplace/vendors/${vendorId}#vendor-listings-heading`);
+  redirect(`/discover/vendors/${vendorId}#vendor-listings-heading`);
 }

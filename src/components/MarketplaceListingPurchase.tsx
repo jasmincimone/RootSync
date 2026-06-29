@@ -33,8 +33,8 @@ export function MarketplaceListingPurchase({
   const needsVariant = variants.length > 0;
   const bookHref =
     selectedVariantId && needsVariant
-      ? `/marketplace/listings/${listingId}/book?variant=${encodeURIComponent(selectedVariantId)}`
-      : `/marketplace/listings/${listingId}/book`;
+      ? `/discover/listings/${listingId}/book?variant=${encodeURIComponent(selectedVariantId)}`
+      : `/discover/listings/${listingId}/book`;
 
   return (
     <div className={compact ? "flex flex-col gap-3" : "flex flex-col gap-4"}>

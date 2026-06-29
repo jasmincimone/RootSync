@@ -2,9 +2,18 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // Do not bundle @vercel/blob: it pulls in undici with private fields (#target) that
-  // webpack cannot parse, which breaks /api/vendor/listings/upload in dev and build.
   serverExternalPackages: ["@vercel/blob"],
+  async redirects() {
+    return [
+      { source: "/marketplace", destination: "/discover", permanent: true },
+      { source: "/marketplace/:path*", destination: "/discover/:path*", permanent: true },
+      { source: "/cart", destination: "/discover", permanent: false },
+      { source: "/products/:path*", destination: "/discover", permanent: false },
+      { source: "/checkout", destination: "/discover", permanent: false },
+      { source: "/shops", destination: "/discover", permanent: true },
+      { source: "/shops/:path*", destination: "/discover", permanent: true },
+    ];
+  },
 };
 
 module.exports = nextConfig;

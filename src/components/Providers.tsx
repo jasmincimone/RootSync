@@ -2,7 +2,6 @@
 
 import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
-import { CartProvider } from "@/context/CartContext";
 
 type Props = {
   children: React.ReactNode;
@@ -13,7 +12,7 @@ type Props = {
 export function Providers({ children, session }: Props) {
   return (
     <SessionProvider session={session} refetchOnWindowFocus={false}>
-      <CartProvider>{children}</CartProvider>
+      {children}
     </SessionProvider>
   );
 }

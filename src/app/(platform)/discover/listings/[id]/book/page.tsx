@@ -25,8 +25,8 @@ export default async function BookServicePage({
 
   const session = await getServerSession(authOptions);
   const bookPath = variantParam
-    ? `/marketplace/listings/${id}/book?variant=${encodeURIComponent(variantParam)}`
-    : `/marketplace/listings/${id}/book`;
+    ? `/discover/listings/${id}/book?variant=${encodeURIComponent(variantParam)}`
+    : `/discover/listings/${id}/book`;
   if (!session?.user) {
     redirect(`/login?callbackUrl=${encodeURIComponent(bookPath)}`);
   }
@@ -43,12 +43,12 @@ export default async function BookServicePage({
       <section className="border-b border-fix-border/15">
         <Container className="py-8 sm:py-12">
           <nav className="text-sm text-fix-text-muted">
-            <Link href="/marketplace" className="text-fix-link hover:text-fix-link-hover">
+            <Link href="/discover" className="text-fix-link hover:text-fix-link-hover">
               Marketplace
             </Link>
             <span className="mx-2">/</span>
             <Link
-              href={`/marketplace/listings/${listing.id}`}
+              href={`/discover/listings/${listing.id}`}
               className="text-fix-link hover:text-fix-link-hover"
             >
               {listing.title}

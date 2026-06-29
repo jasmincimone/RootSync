@@ -6,8 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { CardListSkeleton } from "@/components/ui/LoadingSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { OfferingStatusBadge } from "@/components/ui/StatusBadge";
 import { formatPrice } from "@/lib/format";
-import { listingTypeLabel, offeringStatusLabel } from "@/lib/listingDisplay";
+import { listingTypeLabel } from "@/lib/listingDisplay";
 
 type Listing = {
   id: string;
@@ -59,13 +63,20 @@ export function VendorListingsClient() {
         </ButtonLink>
       </div>
 
-      {error && <p className="text-sm text-bark">{error}</p>}
+      {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
       {loading ? (
-        <p className="text-sm text-fix-text-muted">Loading…</p>
+        <CardListSkeleton count={3} />
       ) : listings.length === 0 ? (
-        <Card className="p-6">
-          <p className="text-sm text-fix-text-muted">No offerings yet.</p>
-        </Card>
+        <EmptyState
+          icon={ImageIcon}
+          title="No offerings yet"
+          description="Create your first listing to appear on the marketplace — products, services, resources, or events."
+          action={{
+            href: "/account/vendor/listings/new",
+            label: "Create offering",
+            variant: "cta",
+          }}
+        />
       ) : (
         <ul className="space-y-3">
           {listings.map((l) => (
@@ -90,12 +101,18 @@ export function VendorListingsClient() {
                   </div>
                   <div className="min-w-0">
                     <div className="font-medium text-fix-heading">{l.title}</div>
-                    <div className="text-xs text-fix-text-muted">
-                      {listingTypeLabel(l.listingType)} • {offeringStatusLabel(l.status)} •{" "}
-                      {formatPrice(l.priceCents)}
-                      {l.paymentUrl ? " • Payment link set" : ""}
-                      {l.productUrl ? " • Product link set" : ""}
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-fix-text-muted">{listingTypeLabel(l.listingType)}</span>
+                      <OfferingStatusBadge status={l.status} />
+                      <span className="text-xs text-fix-text-muted">{formatPrice(l.priceCents)}</span>
                     </div>
+                    {(l.paymentUrl || l.productUrl) && (
+                      <div className="mt-0.5 text-xs text-fix-text-muted">
+                        {l.paymentUrl ? "Payment link set" : ""}
+                        {l.paymentUrl && l.productUrl ? " · " : ""}
+                        {l.productUrl ? "Product link set" : ""}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <Link

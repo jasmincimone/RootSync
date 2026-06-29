@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { MenuBackdropClose, MenuCloseButton } from "@/components/MenuCloseButton";
 import { MenuAccountLink } from "@/components/MenuAccountLink";
 import { MenuFeaturedVendors } from "@/components/MenuFeaturedVendors";
-import { PLATFORM_NAV_LINKS } from "@/config/platformNav";
+import { PlatformMenuLinks } from "@/components/PlatformMenuLinks";
 
 export const metadata = {
   title: "Menu",
@@ -63,18 +63,7 @@ export default function MenuPage() {
             </section>
 
             <section className="mb-6">
-              <ul className="grid gap-0.5">
-                {PLATFORM_NAV_LINKS.filter((item) => item.href !== "/rootsync").map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className="block rounded-xl px-3 py-2 text-sm font-medium text-fix-link hover:bg-fix-bg-muted hover:text-fix-link-hover active:bg-fix-bg-muted active:text-fix-link-hover"
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <PlatformMenuLinks />
             </section>
 
             <Suspense fallback={<FeaturedVendorsFallback />}>

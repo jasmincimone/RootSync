@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { Button } from "@/components/ui/Button";
 import { isChunkLoadError } from "@/lib/chunkLoadError";
 
 export default function AppError({
@@ -30,25 +31,13 @@ export default function AppError({
       </p>
       <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
         {chunkFailed ? (
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="inline-flex justify-center rounded-full bg-fix-primary px-5 py-2.5 text-sm font-medium text-fix-primary-foreground hover:opacity-90"
-          >
+          <Button type="button" variant="primary" onClick={() => window.location.reload()}>
             Reload page
-          </button>
+          </Button>
         ) : null}
-        <button
-          type="button"
-          onClick={() => reset()}
-          className={
-            chunkFailed
-              ? "inline-flex justify-center rounded-full border border-fix-border/30 bg-transparent px-5 py-2.5 text-sm font-medium text-fix-heading hover:bg-fix-surface/80"
-              : "inline-flex justify-center rounded-full bg-fix-primary px-5 py-2.5 text-sm font-medium text-fix-primary-foreground hover:opacity-90"
-          }
-        >
+        <Button type="button" variant={chunkFailed ? "secondary" : "primary"} onClick={() => reset()}>
           Try again
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -2,19 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, ShoppingBag } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useContext, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { UserAvatar } from "@/components/UserAvatar";
 
-import { CartContext } from "@/context/CartContext";
 import {
   isPlatformHeaderRootsyncSectionActive,
   PLATFORM_HEADER_ROOTSYNC_MENU_LINKS,
 } from "@/config/platformNav";
 import { cn } from "@/lib/cn";
-import { rememberPathBeforeCart } from "@/lib/cartReturn";
 import { leaveMenu, rememberPathBeforeMenu } from "@/lib/menuReturn";
 
 import { Container } from "./Container";
@@ -24,13 +22,63 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function NavMenuLink({
+  href,
+  label,
+  comingSoon,
+  pathname,
+  onNavigate,
+  tabIndex,
+  onKeyDown,
+  innerRef,
+}: {
+  href: string;
+  label: string;
+  comingSoon?: boolean;
+  pathname: string;
+  onNavigate?: () => void;
+  tabIndex?: number;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+  innerRef?: React.Ref<HTMLAnchorElement>;
+}) {
+  const active = isActive(pathname, href);
+  return (
+    <Link
+      ref={innerRef}
+      href={href}
+      role="menuitem"
+      tabIndex={tabIndex}
+      aria-current={active ? "page" : undefined}
+      onClick={onNavigate}
+      onKeyDown={onKeyDown}
+      className={cn(
+        "flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-fix-link hover:bg-fix-bg-muted hover:text-fix-link-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2",
+        active && "bg-fix-bg-muted font-medium text-fix-heading",
+      )}
+    >
+      <span>{label}</span>
+      {comingSoon ? (
+        <span className="rounded-full bg-amber/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-espresso">
+          Soon
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
 export function SiteHeader() {
   const pathname = usePathname() || "/";
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
   const [rootsyncOpen, setRootsyncOpen] = useState(false);
-  const cart = useContext(CartContext);
-  const cartCount = cart?.itemCount ?? 0;
+  const [menuFocusIndex, setMenuFocusIndex] = useState(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuItemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+
+  const menuLinks = [
+    { href: "/rootsync", label: "View RootSync platform", isHub: true },
+    ...PLATFORM_HEADER_ROOTSYNC_MENU_LINKS.map((item) => ({ ...item, isHub: false })),
+  ];
 
   const accountHref =
     sessionStatus === "loading" || session
@@ -42,6 +90,67 @@ export function SiteHeader() {
       : session?.user?.email
         ? `Account (${session.user.email})`
         : "Sign in to account";
+
+  const closeMenu = useCallback(() => {
+    setRootsyncOpen(false);
+    setMenuFocusIndex(-1);
+  }, []);
+
+  useEffect(() => {
+    if (!rootsyncOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        closeMenu();
+        document.getElementById("rootsync-menu-button")?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [rootsyncOpen, closeMenu]);
+
+  useEffect(() => {
+    closeMenu();
+  }, [pathname, closeMenu]);
+
+  useEffect(() => {
+    if (rootsyncOpen && menuFocusIndex >= 0) {
+      menuItemRefs.current[menuFocusIndex]?.focus();
+    }
+  }, [rootsyncOpen, menuFocusIndex]);
+
+  function handleMenuKeyDown(e: React.KeyboardEvent) {
+    const count = menuLinks.length;
+    if (count === 0) return;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setMenuFocusIndex((i) => (i + 1) % count);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setMenuFocusIndex((i) => (i <= 0 ? count - 1 : i - 1));
+        break;
+      case "Home":
+        e.preventDefault();
+        setMenuFocusIndex(0);
+        break;
+      case "End":
+        e.preventDefault();
+        setMenuFocusIndex(count - 1);
+        break;
+      case "Tab":
+        closeMenu();
+        break;
+      default:
+        break;
+    }
+  }
+
+  function openMenu() {
+    setRootsyncOpen(true);
+    setMenuFocusIndex(0);
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-fix-border/15 bg-fix-surface">
@@ -83,23 +192,31 @@ export function SiteHeader() {
           </Link>
         </div>
 
-        <nav className="relative hidden flex-wrap items-center gap-1 lg:flex">
-          <div className="relative" onMouseLeave={() => setRootsyncOpen(false)}>
+        <nav className="relative hidden flex-wrap items-center gap-1 lg:flex" aria-label="Main">
+          <div className="relative" ref={dropdownRef} onMouseLeave={() => closeMenu()}>
             <button
               type="button"
+              id="rootsync-menu-button"
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm text-fix-text hover:bg-fix-bg-muted hover:text-fix-heading focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2",
-                isPlatformHeaderRootsyncSectionActive(pathname) && "bg-fix-bg-muted text-fix-heading",
+                "inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-fix-heading hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2",
+                isPlatformHeaderRootsyncSectionActive(pathname) && "bg-fix-bg-muted",
               )}
               aria-haspopup="menu"
               aria-expanded={rootsyncOpen}
-              onClick={() => setRootsyncOpen((v) => !v)}
-              onMouseEnter={() => setRootsyncOpen(true)}
+              aria-controls="rootsync-menu"
+              onClick={() => (rootsyncOpen ? closeMenu() : openMenu())}
+              onMouseEnter={() => openMenu()}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openMenu();
+                }
+              }}
             >
-              RootSync
+              RootSync Platform
               <span
                 className={cn(
-                  "text-[10px] transition-transform",
+                  "text-[10px] transition-transform motion-reduce:transition-none",
                   rootsyncOpen && "rotate-180",
                 )}
               >
@@ -108,32 +225,48 @@ export function SiteHeader() {
             </button>
             {rootsyncOpen ? (
               <div
+                id="rootsync-menu"
                 className="absolute left-0 top-full z-40 w-72 pt-2"
                 role="menu"
+                aria-labelledby="rootsync-menu-button"
                 onMouseEnter={() => setRootsyncOpen(true)}
+                onKeyDown={handleMenuKeyDown}
               >
                 <div className="rounded-2xl border border-fix-border/15 bg-fix-surface p-2 shadow-soft">
-                  <Link
-                    href="/rootsync"
-                    className="block rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-wide text-fix-text-muted hover:bg-fix-bg-muted"
-                    onClick={() => setRootsyncOpen(false)}
-                  >
-                    View RootSync platform
-                  </Link>
-                  <div className="mt-1 grid gap-1">
-                    {PLATFORM_HEADER_ROOTSYNC_MENU_LINKS.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setRootsyncOpen(false)}
-                        className={cn(
-                          "block rounded-xl px-3 py-2 text-sm text-fix-link hover:bg-fix-bg-muted hover:text-fix-link-hover",
-                          isActive(pathname, item.href) && "bg-fix-bg-muted font-medium text-fix-heading",
-                        )}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
+                  <div className="grid gap-1">
+                    {menuLinks.map((item, index) =>
+                      item.isHub ? (
+                        <Link
+                          key={item.href}
+                          ref={(el) => {
+                            menuItemRefs.current[index] = el;
+                          }}
+                          href={item.href}
+                          role="menuitem"
+                          tabIndex={menuFocusIndex === index ? 0 : -1}
+                          aria-current={pathname === "/rootsync" ? "page" : undefined}
+                          onClick={closeMenu}
+                          onKeyDown={handleMenuKeyDown}
+                          className="block rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-wide text-fix-text-muted hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2"
+                        >
+                          {item.label}
+                        </Link>
+                      ) : (
+                        <NavMenuLink
+                          key={item.href}
+                          href={item.href}
+                          label={item.label}
+                          comingSoon={item.comingSoon}
+                          pathname={pathname}
+                          onNavigate={closeMenu}
+                          tabIndex={menuFocusIndex === index ? 0 : -1}
+                          onKeyDown={handleMenuKeyDown}
+                          innerRef={(el) => {
+                            menuItemRefs.current[index] = el;
+                          }}
+                        />
+                      ),
+                    )}
                   </div>
                 </div>
               </div>
@@ -142,12 +275,6 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/marketplace"
-            className="hidden shrink-0 rounded-full border border-fix-border/20 bg-fix-surface px-4 py-2 text-sm font-medium text-fix-heading hover:bg-fix-bg-muted sm:inline-flex"
-          >
-            Marketplace
-          </Link>
           <Link
             href={accountHref}
             aria-label={accountAria}
@@ -161,21 +288,6 @@ export function SiteHeader() {
               name={session?.user?.name ?? session?.user?.email}
               size="md"
             />
-          </Link>
-          <Link
-            href="/cart"
-            onClick={() => {
-              if (pathname !== "/cart") rememberPathBeforeCart(pathname);
-            }}
-            aria-label={cartCount > 0 ? `Cart (${cartCount} items)` : "Cart"}
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-fix-text hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2"
-          >
-            <ShoppingBag className="h-5 w-5" />
-            {cartCount > 0 ? (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-forest px-1.5 text-xs font-semibold text-fix-primary-foreground">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            ) : null}
           </Link>
         </div>
       </Container>

@@ -34,7 +34,7 @@ export async function MenuFeaturedVendors() {
         {featured.map((vendor) => (
           <li key={vendor.id}>
             <Link
-              href={`/marketplace/vendors/${vendor.id}`}
+              href={`/discover/vendors/${vendor.id}`}
               className="block rounded-xl px-3 py-2 text-sm font-medium text-fix-link hover:bg-fix-bg-muted hover:text-fix-link-hover"
             >
               {vendor.displayName}
@@ -43,7 +43,7 @@ export async function MenuFeaturedVendors() {
         ))}
       </ul>
       <Link
-        href="/marketplace"
+        href="/discover"
         className="mt-2 block rounded-xl px-3 py-2 text-sm font-medium text-fix-text-muted hover:bg-fix-bg-muted hover:text-fix-heading"
       >
         View all vendors →

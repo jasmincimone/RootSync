@@ -18,7 +18,7 @@ const FEATURES = [
   {
     id: "shop",
     title: "Shop-aware recommendations",
-    body: "Suggests products, downloads, and courses across the four shops.",
+    body: "Suggests marketplace listings, resources, and services from RootSync vendors.",
   },
 ] as const;
 

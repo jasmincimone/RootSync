@@ -168,8 +168,8 @@ export async function createServiceBookingCheckout(
     ],
     success_url: `${baseUrl}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}&booking=1`,
     cancel_url: variantId
-      ? `${baseUrl}/marketplace/listings/${listing.id}/book?variant=${encodeURIComponent(variantId)}`
-      : `${baseUrl}/marketplace/listings/${listing.id}/book`,
+      ? `${baseUrl}/discover/listings/${listing.id}/book?variant=${encodeURIComponent(variantId)}`
+      : `${baseUrl}/discover/listings/${listing.id}/book`,
     metadata: {
       orderId: booking.order.id,
       bookingId: booking.booking.id,

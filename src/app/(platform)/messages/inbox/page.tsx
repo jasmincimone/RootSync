@@ -27,9 +27,8 @@ export default function MessagesInboxPage({
           Messages
         </h1>
         <p className="mt-2 text-base text-fix-text-muted">
-          Message marketplace vendors, or anyone you connect with through the community. Only people
-          who post or reply publicly there can be messaged from the feed—other accounts stay
-          private unless you already have a thread.
+          Message other members and vendors on RootSync — start a chat from Discover, the community
+          feed, or a member or vendor profile.
         </p>
       </div>
 

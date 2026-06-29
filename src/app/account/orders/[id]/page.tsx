@@ -4,19 +4,10 @@ import { getServerSession } from "next-auth";
 
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
+import { OrderStatusBadge } from "@/components/ui/StatusBadge";
 import { formatPrice } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/authOptions";
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Pending payment",
-  paid: "Paid",
-  refunded: "Refunded",
-  processing: "Processing",
-  shipped: "Shipped",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-};
 
 export default async function AccountOrderDetailPage({
   params,
@@ -66,17 +57,7 @@ export default async function AccountOrderDetailPage({
 
       <Card className="p-6">
         <div className="flex flex-wrap items-center gap-2 border-b border-fix-border/15 pb-4">
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              order.status === "paid" || order.status === "shipped" || order.status === "delivered"
-                ? "bg-forest/15 text-forest"
-                : order.status === "pending"
-                  ? "bg-amber/15 text-espresso"
-                  : "bg-fix-bg-muted text-fix-text-muted"
-            }`}
-          >
-            {STATUS_LABELS[order.status] || order.status}
-          </span>
+          <OrderStatusBadge status={order.status} />
           {order.trackingNumber && (
             <span className="text-sm text-fix-text-muted">
               {order.trackingCarrier && `${order.trackingCarrier}: `}

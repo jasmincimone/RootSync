@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { VendorListingImageField } from "@/components/VendorListingImageField";
+import { FormSection } from "@/components/FormSection";
 import { ServiceBookingConfigFields } from "@/components/ServiceBookingConfigFields";
 import {
   OfferingVariantEditor,
@@ -14,6 +15,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormFeedback } from "@/components/ui/FormFeedback";
+import { cn } from "@/lib/cn";
 import type { SerializedOfferingDetails } from "@/lib/offeringDetails";
 import type { SerializedOfferingVariant } from "@/lib/offeringVariants";
 import { formatPrice } from "@/lib/format";
@@ -71,6 +73,23 @@ function fromDatetimeLocalValue(value: string): string | null {
 const inputClass =
   "mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text";
 
+type WizardStepKey = "basics" | "details" | "options" | "checkout" | "publish";
+
+const WIZARD_STEP_LABELS: Record<WizardStepKey, string> = {
+  basics: "Basics",
+  details: "Details",
+  options: "Options",
+  checkout: "Checkout",
+  publish: "Publish",
+};
+
+function visibleWizardSteps(listingType: string): WizardStepKey[] {
+  const steps: WizardStepKey[] = ["basics", "details"];
+  if (listingType !== LISTING_TYPE.EVENT) steps.push("options");
+  steps.push("checkout", "publish");
+  return steps;
+}
+
 export function VendorOfferingForm({ mode, listingId, initial }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -88,6 +107,15 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
   const [scheduledPublishAt, setScheduledPublishAt] = useState(
     toDatetimeLocalValue(initial?.scheduledPublishAt),
   );
+  const [step, setStep] = useState(0);
+
+  const wizardSteps = visibleWizardSteps(listingType);
+  const currentStepKey = wizardSteps[step] ?? "basics";
+  const lastStepIndex = wizardSteps.length - 1;
+
+  useEffect(() => {
+    setStep((s) => Math.min(s, visibleWizardSteps(listingType).length - 1));
+  }, [listingType]);
 
   const [requiresShipping, setRequiresShipping] = useState(
     initial?.details.product?.requiresShipping ?? true,
@@ -311,14 +339,60 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
 
   return (
     <Card className="p-6">
+      <div className="mb-6">
+        <div className="flex items-center justify-between gap-2 text-xs font-medium text-fix-text-muted">
+          <span>
+            Step {step + 1} of {wizardSteps.length}
+          </span>
+          <span>{WIZARD_STEP_LABELS[currentStepKey]}</span>
+        </div>
+        <div className="mt-2 flex gap-1">
+          {wizardSteps.map((key, index) => (
+            <div
+              key={key}
+              className={cn(
+                "h-1.5 flex-1 rounded-full transition-colors",
+                index <= step ? "bg-forest" : "bg-fix-bg-muted",
+              )}
+              aria-hidden
+            />
+          ))}
+        </div>
+        <ol className="mt-3 hidden flex-wrap gap-2 sm:flex">
+          {wizardSteps.map((key, index) => (
+            <li key={key}>
+              <button
+                type="button"
+                onClick={() => setStep(index)}
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+                  index === step
+                    ? "bg-forest text-fix-primary-foreground"
+                    : index < step
+                      ? "bg-forest/15 text-forest"
+                      : "bg-fix-bg-muted text-fix-text-muted",
+                )}
+              >
+                {WIZARD_STEP_LABELS[key]}
+              </button>
+            </li>
+          ))}
+        </ol>
+      </div>
+
       <form onSubmit={submit} className="space-y-4">
         <FormFeedback success={success} error={error} />
 
+        {currentStepKey === "basics" ? (
+        <FormSection title="Basics" description="Type, title, pricing, and image">
         <div>
           <label className="block text-sm font-medium text-fix-text">Listing type</label>
           <select
             value={listingType}
-            onChange={(e) => setListingType(e.target.value)}
+            onChange={(e) => {
+              setListingType(e.target.value);
+              setStep(0);
+            }}
             className={inputClass}
           >
             <option value={LISTING_TYPE.PRODUCT}>Product — physical goods</option>
@@ -386,10 +460,12 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
           onImageUrlChange={setImageUrl}
           disabled={saving}
         />
+        </FormSection>
+        ) : null}
 
-        {listingType === LISTING_TYPE.PRODUCT ? (
-          <fieldset className="space-y-3 rounded-xl border border-fix-border/15 p-4">
-            <legend className="px-1 text-sm font-semibold text-fix-heading">Product details</legend>
+        {currentStepKey === "details" && listingType === LISTING_TYPE.PRODUCT ? (
+          <FormSection title="Product details" description="Shipping and SKU">
+          <fieldset className="space-y-3">
             <label className="flex items-center gap-2 text-sm text-fix-text">
               <input
                 type="checkbox"
@@ -403,11 +479,12 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
               <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputClass} />
             </div>
           </fieldset>
+          </FormSection>
         ) : null}
 
-        {listingType === LISTING_TYPE.SERVICE ? (
-          <fieldset className="space-y-3 rounded-xl border border-fix-border/15 p-4">
-            <legend className="px-1 text-sm font-semibold text-fix-heading">Service details</legend>
+        {currentStepKey === "details" && listingType === LISTING_TYPE.SERVICE ? (
+          <FormSection title="Service details" description="Duration, fulfillment, and RootSync booking">
+          <fieldset className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-fix-text">Service type</label>
               <select
@@ -491,11 +568,12 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
               />
             </div>
           </fieldset>
+          </FormSection>
         ) : null}
 
-        {listingType === LISTING_TYPE.RESOURCE ? (
-          <fieldset className="space-y-3 rounded-xl border border-fix-border/15 p-4">
-            <legend className="px-1 text-sm font-semibold text-fix-heading">Resource details</legend>
+        {currentStepKey === "details" && listingType === LISTING_TYPE.RESOURCE ? (
+          <FormSection title="Resource details" description="Format and delivery">
+          <fieldset className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-fix-text">Format</label>
               <input
@@ -516,11 +594,12 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
               />
             </div>
           </fieldset>
+          </FormSection>
         ) : null}
 
-        {listingType === LISTING_TYPE.EVENT ? (
-          <fieldset className="space-y-3 rounded-xl border border-fix-border/15 p-4">
-            <legend className="px-1 text-sm font-semibold text-fix-heading">Event details</legend>
+        {currentStepKey === "details" && listingType === LISTING_TYPE.EVENT ? (
+          <FormSection title="Event details" description="Schedule and venue">
+          <fieldset className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-fix-text">Starts</label>
               <input
@@ -562,12 +641,19 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
               />
             </div>
           </fieldset>
+          </FormSection>
         ) : null}
 
-        {listingType === LISTING_TYPE.PRODUCT ||
+        {currentStepKey === "options" &&
+        (listingType === LISTING_TYPE.PRODUCT ||
         listingType === LISTING_TYPE.SERVICE ||
-        listingType === LISTING_TYPE.RESOURCE ? (
-          <fieldset className="space-y-3 rounded-xl border border-fix-border/15 p-4">
+        listingType === LISTING_TYPE.RESOURCE) ? (
+          <FormSection
+            title="Options & pricing"
+            description="Variations members can choose at checkout"
+            defaultOpen={variantDrafts.length > 0}
+          >
+          <fieldset className="space-y-3">
             <OfferingVariantEditor
               listingType={listingType}
               variants={variantDrafts}
@@ -575,8 +661,11 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
               disabled={saving}
             />
           </fieldset>
+          </FormSection>
         ) : null}
 
+        {currentStepKey === "checkout" ? (
+        <FormSection title="Checkout links" description="Optional alternate payment URLs" defaultOpen>
         <div>
           <label className="block text-sm font-medium text-fix-text">Payment link (optional)</label>
           <input
@@ -605,7 +694,11 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
             className={inputClass}
           />
         </div>
+        </FormSection>
+        ) : null}
 
+        {currentStepKey === "publish" ? (
+        <FormSection title="Publish" description="Status, scheduling, and internal notes" defaultOpen>
         <div>
           <label className="block text-sm font-medium text-fix-text">Internal notes (optional)</label>
           <textarea
@@ -647,10 +740,37 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
             </p>
           </div>
         ) : null}
+        </FormSection>
+        ) : null}
 
-        <Button type="submit" disabled={saving || !!success} variant="cta" size="sm">
-          {saving ? "Saving…" : mode === "create" ? "Create offering" : "Save changes"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 border-t border-fix-border/15 pt-4">
+          {step > 0 ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={saving}
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+            >
+              Back
+            </Button>
+          ) : null}
+          {step < lastStepIndex ? (
+            <Button
+              type="button"
+              variant="cta"
+              size="sm"
+              disabled={saving}
+              onClick={() => setStep((s) => Math.min(lastStepIndex, s + 1))}
+            >
+              Next
+            </Button>
+          ) : (
+            <Button type="submit" disabled={saving || !!success} variant="cta" size="sm">
+              {saving ? "Saving…" : mode === "create" ? "Create offering" : "Save changes"}
+            </Button>
+          )}
+        </div>
       </form>
     </Card>
   );

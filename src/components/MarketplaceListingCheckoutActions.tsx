@@ -9,7 +9,7 @@ type Props = {
 
 /**
  * Browse-card CTA — always goes to the listing detail page.
- * Option selection and checkout happen there, not on vendor/marketplace cards.
+ * Option selection and checkout happen there, not on vendor/discover cards.
  */
 export function MarketplaceListingCheckoutActions({
   listingId,
@@ -20,7 +20,7 @@ export function MarketplaceListingCheckoutActions({
 
   return (
     <ButtonLink
-      href={`/marketplace/listings/${listingId}`}
+      href={`/discover/listings/${listingId}`}
       variant="cta"
       size={compact ? "sm" : "md"}
       className={compact ? "w-full justify-center" : undefined}
