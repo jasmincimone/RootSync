@@ -86,7 +86,7 @@ export function resolveOfferingScheduleOnSave(args: {
   scheduledPublishAt: Date | null | undefined;
 }): { status: OfferingStatus; scheduledPublishAt: Date | null } {
   const { status } = args;
-  let scheduledPublishAt = args.scheduledPublishAt ?? null;
+  const scheduledPublishAt = args.scheduledPublishAt ?? null;
 
   if (status === OFFERING_STATUS.SCHEDULED) {
     if (!scheduledPublishAt) {

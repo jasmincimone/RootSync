@@ -6,6 +6,8 @@ import { MenuAccountLink } from "@/components/MenuAccountLink";
 import { MenuFeaturedVendors } from "@/components/MenuFeaturedVendors";
 import { PlatformMenuLinks } from "@/components/PlatformMenuLinks";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Menu",
   description: "Navigation menu for The Fix Collective",
