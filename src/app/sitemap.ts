@@ -4,11 +4,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
 
   return [
-    { url: "https://thefixcollective.com", lastModified: now },
-    { url: "https://thefixcollective.com/rootsync", lastModified: now },
-    { url: "https://thefixcollective.com/discover", lastModified: now },
-    { url: "https://thefixcollective.com/community", lastModified: now },
-    { url: "https://thefixcollective.com/messages/inbox", lastModified: now },
-    { url: "https://thefixcollective.com/rootsyncai", lastModified: now },
+    { url: "https://rootsync.io", lastModified: now },
+    { url: "https://rootsync.io/rootsync", lastModified: now },
+    { url: "https://rootsync.io/discover", lastModified: now },
+    { url: "https://rootsync.io/community", lastModified: now },
+    { url: "https://rootsync.io/messages/inbox", lastModified: now },
+    { url: "https://rootsync.io/rootsyncai", lastModified: now },
   ];
 }

@@ -42,7 +42,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-10 flex flex-col gap-2 border-t border-fix-border/15 pt-6 text-xs text-fix-text-muted sm:flex-row sm:items-center sm:justify-between">
-          <div>© 2026 The Fix Collective, LLC. powered by RootSync.io</div>
+          <div>© 2026 RootSync, Inc.</div>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
             <Link href="/about" className="hover:text-fix-heading focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:rounded-sm">
               About us

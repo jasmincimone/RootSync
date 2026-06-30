@@ -21,9 +21,9 @@ export default function VendorAgreementPage() {
           RootSync Vendor Agreement
         </h1>
         <p className="mt-3 text-sm text-fix-text-muted">Effective date: 4/22/2026</p>
-        <p className="mt-1 text-sm text-fix-text-muted">Platform: The Fix Collective / RootSync</p>
+        <p className="mt-1 text-sm text-fix-text-muted">Platform: RootSync</p>
         <p className="mt-3 text-sm leading-relaxed text-fix-text-muted">
-          This Vendor Agreement (&ldquo;Agreement&rdquo;) is entered into between The Fix Collective /
+          This Vendor Agreement (&ldquo;Agreement&rdquo;) is entered into between RootSync, Inc. /
           RootSync (&ldquo;Platform,&rdquo; &ldquo;we,&rdquo; &ldquo;us&rdquo;) and the individual or
           entity registering as a vendor (&ldquo;Vendor,&rdquo; &ldquo;you&rdquo;). By creating a vendor
           account or listing products/services, you agree to these terms.
@@ -158,7 +158,7 @@ export default function VendorAgreementPage() {
 
         <Section title="11. Indemnification">
           <p>
-            You agree to indemnify and hold harmless The Fix Collective / RootSync from legal claims,
+            You agree to indemnify and hold harmless RootSync, Inc. from legal claims,
             damages, and losses arising from your products, services, or business practices.
           </p>
         </Section>

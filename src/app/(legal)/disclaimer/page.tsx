@@ -21,11 +21,11 @@ export default function DisclaimerPage() {
           Disclaimer
         </h1>
         <p className="mt-3 text-sm text-fix-text-muted">Effective date: 4/22/2026</p>
-        <p className="mt-1 text-sm text-fix-text-muted">Website: thefixcollective.org / RootSync</p>
+        <p className="mt-1 text-sm text-fix-text-muted">Website: RootSync.io </p>
 
         <Section title="1. General Information Disclaimer">
           <p>
-            The information provided by The Fix Collective and RootSync (&ldquo;we,&rdquo;
+            The information provided by RootSync, Inc. (&ldquo;we,&rdquo;
             &ldquo;our,&rdquo; &ldquo;us&rdquo;) is for educational and informational purposes only.
           </p>
           <p>Nothing on this website, platform, or associated content should be considered:</p>
@@ -127,7 +127,7 @@ export default function DisclaimerPage() {
 
         <Section title="8. Limitation of Liability">
           <p>To the fullest extent permitted by law:</p>
-          <p>The Fix Collective and RootSync are not liable for:</p>
+          <p>RootSync, Inc. is not liable for:</p>
           <ul className="list-disc space-y-1 pl-5">
             <li>Any losses or damages arising from use of the platform</li>
             <li>Reliance on information provided</li>

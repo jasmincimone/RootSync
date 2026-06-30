@@ -309,7 +309,7 @@ export function VendorMessenger({
         <MessageCircle className="mx-auto h-10 w-10 text-fix-accent" aria-hidden />
         <h2 className="mt-4 text-lg font-semibold text-fix-heading">Sign in to Messages</h2>
         <p className="mt-2 text-sm text-fix-text-muted">
-          Chat with vendors, community members, and others you connect with on The Fix Collective.
+          Chat with vendors, community members, and others you connect with on RootSync.
         </p>
         <ButtonLink href="/login?callbackUrl=%2Fmessages%2Finbox" variant="cta" size="md" className="mt-6">
           Sign in

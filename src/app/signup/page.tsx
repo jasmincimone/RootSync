@@ -159,7 +159,7 @@ export default function SignupPage() {
                     required
                   />
                   <span>
-                    I agree to receive text messages from The Fix Collective for <strong>account security</strong> and{" "}
+                    I agree to receive text messages from RootSync for <strong>account security</strong> and{" "}
                     <strong>two-factor authentication</strong> when I enable those features (including verification and
                     sign-in codes). Message and data rates may apply.{" "}
                     <span className="text-bark">(Required)</span>
@@ -177,7 +177,7 @@ export default function SignupPage() {
                   />
                   <span>
                     I want to receive <strong>optional marketing, promotional, and educational</strong> emails and texts
-                    from The Fix Collective. I can unsubscribe or change this anytime in Account Settings.{" "}
+                    from RootSync. I can unsubscribe or change this anytime in Account Settings.{" "}
                     <span className="text-fix-text-muted">(Optional)</span>
                   </span>
                 </label>

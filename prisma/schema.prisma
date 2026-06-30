@@ -31,7 +31,7 @@ model User {
   consentEmailTwoFactorAt DateTime?
   /// Acknowledged SMS/2FA terms at sign-up (before adding a phone).
   smsTwoFactorSignupConsentAt DateTime?
-  /// Opt-in for marketing/promotional email and SMS from The Fix Collective.
+  /// Opt-in for marketing/promotional email and SMS from RootSync.
   marketingOptIn     Boolean   @default(false)
   marketingOptInAt     DateTime?
   /// Stripe Connect v2 account ID (`acct_...`) used for onboarding and direct charges.

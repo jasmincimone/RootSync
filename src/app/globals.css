@@ -8,7 +8,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── The Fix Collective design tokens (raw) ─── */
+/* ─── RootSyncdesign tokens (raw) ─── */
 :root {
   --clay: #e1cec3;
   --espresso: #342a0f;

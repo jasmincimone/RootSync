@@ -1,79 +1,85 @@
-# Image folders for The Fix Collective
+# Static images (`public/images/`)
 
-Images in `public/` are served from the site root. Use paths like `/images/site/logo.png` in your code or markup.
+Files here are served from the site root. Reference them with paths like `/images/home/hero-product-lineup.png`.
 
-## Structure
+**Vendor and listing photos are not stored in this folder.** Approved vendors upload profile photos, listing images, and carousel media through the app. Those URLs are saved in the database (and on Vercel Blob in production). See Discover at `/discover` and vendor pages at `/discover/vendors/[id]`.
+
+---
+
+## Folder structure
+
+### `home/`
+
+Marketing imagery for the public homepage.
+
+| File | Used on |
+|------|---------|
+| `hero-product-lineup.png` | Homepage hero (`src/app/page.tsx`) |
+
+---
+
+### `platform/`
+
+Illustrations and icons for RootSync platform pages and marketing UI.
+
+#### `platform/features/`
+
+Icons for the RootSync platform feature explorer (Discover, RootSync AI, Messages, Community).
+
+| File | Feature |
+|------|---------|
+| `marketplace.png` | Discover |
+| `rootsync-ai.png` | RootSync AI |
+| `messages.png` | Messages |
+| `community.png` | Community |
+| `courses.png` | Reserved (coming soon) |
+| `downloads.png` | Reserved (coming soon) |
+| `grid-preview.png` | Layout / preview asset |
+
+#### `platform/rootsync/`
+
+| File | Used on |
+|------|---------|
+| `logo.png` | RootSync landing, RootSync AI, About |
+| `hero-mark.png` | RootSync AI page |
+
+#### `platform/community/`
+
+| File | Used on |
+|------|---------|
+| `farm-illustration.png` | Community page banner |
+
+#### `platform/messages/`
+
+| File | Used on |
+|------|---------|
+| `community-connect.png` | Messages inbox illustration |
+
+#### Other `platform/*/` folders
+
+`courses/`, `downloads/`, `maps/`, and `marketplace/` hold placeholders (`.gitkeep`) for future page art.
+
+---
 
 ### `site/`
-General site-wide images: logo, favicon, homepage hero, shared graphics, etc.
 
-**Example:** `/images/site/logo.png`, `/images/site/hero.jpg`
-
----
-
-### `shops/{shop-slug}/`
-One folder per shop for that shop’s imagery.
-
-| Shop slug       | Shop name          |
-|----------------|--------------------|
-| `urban-roots`   | The Fix Urban Roots |
-| `self-care`     | The Fix Self-Care   |
-| `stitch`        | Stitch              |
-| `survival-kits` | Survival Kits      |
-
-#### Shop logo (homepage cards)
-Place each shop’s logo in that shop’s folder as **`logo.png`** (or **`logo.svg`**).  
-The homepage shows these in the brown “The Fix Collective” box.
-
-| File path | Shop |
-|-----------|------|
-| `shops/urban-roots/logo.png` | The Fix Urban Roots |
-| `shops/self-care/logo.png` | The Fix Self-Care |
-| `shops/stitch/logo.png` | Stitch |
-| `shops/survival-kits/logo.png` | Survival Kits |
-
-If the file is missing, the site shows the shop’s first letter as a fallback.
-
-#### `shops/{shop-slug}/landing/`
-Images for that shop’s **landing page** (e.g. hero, banners, section images).
-
-**Examples:**
-- `/images/shops/urban-roots/landing/hero.jpg`
-- `/images/shops/self-care/landing/banner.png`
-
-#### `shops/{shop-slug}/products/`
-Images for **products** in that shop. The site looks for `{productId}.jpg`, then `.png`, then `.webp`.
-
-- **One image per product:** `ur-starter-bed-kit.jpg`, `sc-evening-ritual-kit.png`, etc.
-- Product IDs match the ids in your product data (e.g. `ur-ebook-compost`, `sc-evening-ritual-kit`).
-
-**Examples:**
-- `/images/shops/urban-roots/products/ur-starter-bed-kit.jpg`
-- `/images/shops/self-care/products/sc-evening-ritual-kit.png`
+Reserved for site-wide assets (favicon sources, shared marks, etc.). Currently empty aside from `.gitkeep`.
 
 ---
 
-### `platform/{platform-slug}/`
-Images for each **platform** landing page (Community, Marketplace, Courses, etc.).
+## Conventions
 
-| Folder        | Page       |
-|---------------|------------|
-| `community`   | Community  |
-| `marketplace` | Marketplace|
-| `courses`     | Courses    |
-| `downloads`   | Downloads  |
-| `maps`        | Maps       |
-| `messages`    | Messages   |
-| `rootsync`    | RootSync   |
+- Use lowercase filenames with hyphens: `farm-illustration.png`
+- Prefer `.png` or `.webp` for UI art; `.jpg` for photos
+- In Next.js, use `/images/...` in `<img>` tags or `next/image` `src` props
+- After adding or renaming files, grep the repo for the old path to update references
 
-**Example:** `/images/platform/community/farm-illustration.png` (Community page); `/images/platform/messages/community-connect.png` (Messages inbox)
+## What lives outside this folder
 
----
-
-## Using images in the app
-
-- **Next.js:** Put files under `public/images/...` and reference them with paths starting with `/images/...` (e.g. `<img src="/images/shops/urban-roots/landing/hero.jpg" />`).
-- **CSS/backgrounds:** Use `url('/images/...')`.
-- **Image component:** Next.js `Image` also uses `/images/...` when the file is in `public/`.
-
-Recommended: keep filenames lowercase, use hyphens, and common web formats (e.g. `.jpg`, `.png`, `.webp`).
+| Asset type | Where it is stored |
+|------------|-------------------|
+| Vendor profile photo | `VendorProfile.imageUrl` (upload via Account → Vendor profile) |
+| Member avatar | `User.imageUrl` (upload via Account settings) |
+| Listing image | `Offering.imageUrl` (upload via vendor offering form) |
+| Vendor page carousel | `ShopPage` carousel JSON + Blob uploads |
+| Local dev listing uploads | `public/uploads/` (gitignored; production uses Vercel Blob) |

@@ -24,12 +24,12 @@ export default function TermsPage() {
         </h1>
         <p className="mt-3 text-sm text-fix-text-muted">Effective date: 4/22/2026</p>
         <p className="mt-1 text-sm text-fix-text-muted">
-          Website: thefixcollective.org / rootsync.io (including RootSync platform)
+          Website: rootsync.io
         </p>
 
         <Section title="1. Overview">
           <p>
-            Welcome to The Fix Collective and RootSync (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or
+            Welcome to RootSync (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or
             &ldquo;us&rdquo;). These Terms and Conditions govern your use of our website, products,
             services, and digital platform.
           </p>
@@ -38,7 +38,7 @@ export default function TermsPage() {
         </Section>
 
         <Section title="2. What We Offer">
-          <p>The Fix Collective provides:</p>
+          <p>RootSync provides:</p>
           <ul className="list-disc space-y-1 pl-5">
             <li>Physical products (seed kits, books, self-care items, etc.)</li>
             <li>Educational content (guides, workshops, digital resources)</li>
@@ -100,7 +100,7 @@ export default function TermsPage() {
             <li>Graphics</li>
             <li>Software</li>
           </ul>
-          <p>is owned by The Fix Collective or licensed to us.</p>
+          <p>is owned by RootSync, Inc. or licensed to us.</p>
           <p>You may not:</p>
           <ul className="list-disc space-y-1 pl-5">
             <li>Copy</li>
@@ -140,7 +140,7 @@ export default function TermsPage() {
 
         <Section title="9. Limitation of Liability">
           <p>To the fullest extent permitted by law:</p>
-          <p>The Fix Collective and RootSync are not liable for:</p>
+          <p>RootSync is not liable for:</p>
           <ul className="list-disc space-y-1 pl-5">
             <li>Indirect or incidental damages</li>
             <li>Loss of profits or data</li>

@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/"
     },
-    sitemap: "https://thefixcollective.com/sitemap.xml"
+    sitemap: "https://rootsync.io/sitemap.xml"
   };
 }
 

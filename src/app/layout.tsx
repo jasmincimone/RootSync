@@ -14,16 +14,16 @@ const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: {
-    default: "The Fix Collective",
-    template: "%s • The Fix Collective"
+    default: "RootSync",
+    template: "%s • RootSync"
   },
   description:
     "RootSync is a marketplace and community platform — discover local vendors, book services, and connect with creators.",
-  metadataBase: new URL("https://thefixcollective.com"),
+  metadataBase: new URL("https://rootsync.io"),
   openGraph: {
-    title: "The Fix Collective",
+    title: "RootSync, Inc.",
     description:
-      "Marketplace, community, and connection for local vendors and makers.",
+      "Marketplace, community, & connection for local vendors and makers.",
     type: "website"
   }
 };

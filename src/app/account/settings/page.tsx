@@ -771,7 +771,7 @@ export default function AccountSettingsPage() {
               />
               <span>
                 I want to receive <strong>optional marketing, promotional, and educational</strong> emails and texts from
-                The Fix Collective. I can change this anytime here.
+                RootSync. I can change this anytime here.
               </span>
             </label>
             <div className="flex flex-wrap items-center gap-2 border-t border-amber/20 pt-3">

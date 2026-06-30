@@ -1,4 +1,4 @@
-# The Fix Collective
+# RootSync
 
 Modern, scalable ecommerce + community platform with four shops under one brand:
 

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Menu",
-  description: "Navigation menu for The Fix Collective",
+  description: "Navigation menu for RootSync",
 };
 
 function AccountLinkFallback() {

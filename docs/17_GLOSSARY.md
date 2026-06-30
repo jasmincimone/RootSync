@@ -30,7 +30,7 @@ A local-living platform that helps people discover, support, and participate in 
 
 ---
 
-## The Fix Collective
+## RootSync, Inc.
 
 The parent company and umbrella brand that owns and operates RootSync and other initiatives.
 
