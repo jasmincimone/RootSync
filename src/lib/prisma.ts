@@ -15,8 +15,30 @@ function createPrisma() {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrisma();
-
-if (!globalForPrisma.prisma) {
-  globalForPrisma.prisma = prisma;
+function prismaHasExpectedModels(client: PrismaClient): boolean {
+  return typeof (client as PrismaClient & { directoryListing?: unknown }).directoryListing !==
+    "undefined";
 }
+
+function getPrismaClient(): PrismaClient {
+  const cached = globalForPrisma.prisma;
+
+  if (process.env.NODE_ENV === "development") {
+    if (!cached || !prismaHasExpectedModels(cached)) {
+      if (cached) {
+        void cached.$disconnect().catch(() => undefined);
+      }
+      const fresh = createPrisma();
+      globalForPrisma.prisma = fresh;
+      return fresh;
+    }
+    return cached;
+  }
+
+  if (!cached) {
+    globalForPrisma.prisma = createPrisma();
+  }
+  return globalForPrisma.prisma!;
+}
+
+export const prisma = getPrismaClient();

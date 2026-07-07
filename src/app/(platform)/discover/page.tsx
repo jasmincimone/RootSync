@@ -2,17 +2,12 @@ import { Suspense } from "react";
 import { Store } from "lucide-react";
 
 import { Container } from "@/components/Container";
-import { DiscoverBrowse } from "@/components/DiscoverBrowse";
+import { DiscoverMarketplace } from "@/components/DiscoverMarketplace";
 import { RoleCtaButton } from "@/components/RoleCtaButton";
-import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
-import { publicDirectoryWhere } from "@/lib/directory/syncUsdaDirectory";
-import { directoryToMapPins, vendorsToMapPins } from "@/lib/discoverMap";
 import { publishDueScheduledOfferings } from "@/lib/publishScheduledOfferings";
 import { publicListingRelationWhere, publicListingWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
 import { VENDOR_STATUS } from "@/lib/roles";
-
-import type { DiscoverMapPin } from "@/lib/discoverMap";
 
 export const metadata = {
   title: "Discover Marketplace",
@@ -23,7 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function DiscoverPage() {
   await publishDueScheduledOfferings(prisma);
 
-  const [vendorsRaw, listings, directoryRows] = await Promise.all([
+  const [vendorsRaw, listings] = await Promise.all([
     prisma.vendorProfile.findMany({
       where: { status: VENDOR_STATUS.APPROVED },
       include: {
@@ -48,48 +43,9 @@ export default async function DiscoverPage() {
       },
       orderBy: { updatedAt: "desc" },
     }),
-    prisma.directoryListing.findMany({
-      where: publicDirectoryWhere,
-      orderBy: { name: "asc" },
-    }),
   ]);
 
   const featuredVendors = [...vendorsRaw].sort((a, b) => b.listings.length - a.listings.length);
-
-  const mapPins: DiscoverMapPin[] = [
-    ...vendorsToMapPins(
-      featuredVendors
-        .filter(
-          (v) =>
-            v.latitude != null &&
-            v.longitude != null &&
-            Number.isFinite(v.latitude) &&
-            Number.isFinite(v.longitude),
-        )
-        .map((v) => ({
-          id: v.id,
-          displayName: v.displayName,
-          latitude: v.latitude as number,
-          longitude: v.longitude as number,
-        })),
-    ),
-    ...directoryToMapPins(
-      directoryRows
-        .filter(
-          (d) =>
-            d.latitude != null &&
-            d.longitude != null &&
-            Number.isFinite(d.latitude) &&
-            Number.isFinite(d.longitude),
-        )
-        .map((d) => ({
-          id: d.id,
-          name: d.name,
-          latitude: d.latitude as number,
-          longitude: d.longitude as number,
-        })),
-    ),
-  ];
 
   return (
     <Container className="px-4 py-10 sm:px-6 sm:py-16">
@@ -111,24 +67,8 @@ export default async function DiscoverPage() {
         </p>
       </div>
 
-      <div className="mt-8">
-        <h2 className="sr-only">Discover map</h2>
-        <MarketplaceMapDynamic pins={mapPins} />
-        {mapPins.length === 0 ? (
-          <p className="mt-3 text-sm text-fix-text-muted">
-            Map pins appear for vendors with coordinates and imported directory listings.
-          </p>
-        ) : (
-          <p className="mt-3 text-xs text-fix-text-muted">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-forest align-middle" /> Vendor
-            <span className="ml-4 inline-block h-2.5 w-2.5 rounded-full border-2 border-amber bg-fix-surface align-middle" />{" "}
-            Directory
-          </p>
-        )}
-      </div>
-
       <Suspense fallback={<p className="mt-8 text-sm text-fix-text-muted">Loading browse…</p>}>
-        <DiscoverBrowse
+        <DiscoverMarketplace
           vendors={featuredVendors.map((v) => ({
             id: v.id,
             displayName: v.displayName,
@@ -137,6 +77,8 @@ export default async function DiscoverPage() {
             website: v.website,
             profileImageUrl: v.profileImageUrl,
             listingsCount: v.listings.length,
+            latitude: v.latitude,
+            longitude: v.longitude,
           }))}
           listings={listings.map((l) => ({
             id: l.id,
@@ -152,17 +94,6 @@ export default async function DiscoverPage() {
               productUrl: l.offering.productUrl,
               resourceSubtype: l.offering.resourceDetails?.resourceSubtype ?? null,
             },
-          }))}
-          directory={directoryRows.map((d) => ({
-            id: d.id,
-            name: d.name,
-            description: d.description,
-            directoryType: d.directoryType,
-            city: d.city,
-            state: d.state,
-            zip: d.zip,
-            website: d.website,
-            addressLine1: d.addressLine1,
           }))}
         />
       </Suspense>

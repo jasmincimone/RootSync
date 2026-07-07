@@ -54,6 +54,8 @@ export function usdaRadiusMiles(requested: number): 10 | 30 | 100 | 250 {
 }
 
 export type UsdaSearchParams = {
+  /** ZIP, state name, or state abbreviation — passed to USDA `mydata[location]`. */
+  location?: string;
   zip?: string;
   latitude?: number;
   longitude?: number;

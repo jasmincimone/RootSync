@@ -3,11 +3,14 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { DIRECTORY_CLAIM_STATUS, DIRECTORY_LISTING_STATUS, DIRECTORY_SOURCE } from "@/lib/roles";
 
-import { fetchUsdaListingsNearZip } from "./usdaClient";
+import { fetchUsdaListings, usdaSearchLocationFromState } from "./usdaClient";
 import type { NormalizedDirectoryListing } from "./types";
+import { normalizeUsState } from "@/lib/usStates";
 
 export type SyncUsdaOptions = {
-  zip: string;
+  /** Search by state (abbrev or name). Mutually exclusive with zip. */
+  state?: string;
+  zip?: string;
   radiusMiles: number;
   apiKey?: string | null;
   dryRun?: boolean;
@@ -48,11 +51,19 @@ function toPrismaData(
 export async function syncUsdaDirectoryListings(
   options: SyncUsdaOptions,
 ): Promise<SyncUsdaResult> {
-  const rows = await fetchUsdaListingsNearZip(
-    options.zip,
-    options.radiusMiles,
-    options.apiKey,
-  );
+  const stateAbbrev = options.state ? normalizeUsState(options.state) : null;
+  const zip = options.zip?.trim() ?? "";
+
+  let location: string;
+  if (stateAbbrev) {
+    location = usdaSearchLocationFromState(stateAbbrev) ?? stateAbbrev;
+  } else if (/^\d{5}$/.test(zip)) {
+    location = zip;
+  } else {
+    throw new Error("Provide --state=GA or both --zip=31216 and --radius=20.");
+  }
+
+  const rows = await fetchUsdaListings(location, options.radiusMiles, options.apiKey);
 
   if (options.dryRun) {
     return { fetched: rows.length, upserted: 0, skipped: 0 };

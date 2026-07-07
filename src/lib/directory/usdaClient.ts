@@ -2,6 +2,7 @@ import {
   DIRECTORY_TYPE,
   type DirectoryType,
 } from "@/lib/roles";
+import { normalizeUsState, usdaLocationForState } from "@/lib/usStates";
 
 import {
   directoryTypeToUsdaSlug,
@@ -14,7 +15,15 @@ import {
   usdaRadiusMiles,
 } from "./types";
 
-const USER_AGENT = "RootSync/1.0 (directory-sync; contact@rootsync.io)";
+const USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+const USDA_HEADERS: Record<string, string> = {
+  "User-Agent": USER_AGENT,
+  Accept: "application/json, text/plain, */*",
+  Referer: "https://www.usdalocalfoodportal.com/",
+};
+
 const SEARCH_BASE = "https://www.usdalocalfoodportal.com/api/get_searchresult_list/";
 const DATA_API_BASE = "https://www.usdalocalfoodportal.com/api";
 
@@ -40,15 +49,7 @@ function normalizeWebsite(raw: string | null): string | null {
 
 function stateAbbrev(raw: string | null): string | null {
   if (!raw) return null;
-  const s = raw.trim();
-  if (s.length === 2) return s.toUpperCase();
-  const map: Record<string, string> = {
-    georgia: "GA",
-    michigan: "MI",
-    california: "CA",
-    "new york": "NY",
-  };
-  return map[s.toLowerCase()] ?? s.slice(0, 2).toUpperCase();
+  return normalizeUsState(raw) ?? raw.trim().slice(0, 2).toUpperCase();
 }
 
 export function normalizeUsdaListing(raw: UsdaRawListing): NormalizedDirectoryListing | null {
@@ -90,8 +91,9 @@ function buildSearchUrl(params: UsdaSearchParams): string {
   q.set("mydata[directory]", dirs.join("|"));
   q.set("mydata[radius]", String(radius));
 
-  if (params.zip) {
-    q.set("mydata[location]", params.zip);
+  const location = params.location ?? params.zip;
+  if (location) {
+    q.set("mydata[location]", location);
   } else if (params.latitude != null && params.longitude != null) {
     q.set("mydata[x]", String(params.longitude));
     q.set("mydata[y]", String(params.latitude));
@@ -102,15 +104,15 @@ function buildSearchUrl(params: UsdaSearchParams): string {
 
 async function fetchJson(url: string): Promise<unknown> {
   const res = await fetch(url, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      Accept: "application/json, text/plain, */*",
-    },
+    headers: USDA_HEADERS,
     next: { revalidate: 0 },
   });
   const text = await res.text();
   if (!res.ok) {
     throw new Error(`USDA request failed (${res.status}): ${text.slice(0, 200)}`);
+  }
+  if (text.trim() === "apikey error") {
+    throw new Error("USDA datasharing API key rejected (use search API instead).");
   }
   try {
     return JSON.parse(text) as unknown;
@@ -150,35 +152,22 @@ export async function fetchUsdaDirectoryListings(
   }));
 }
 
-export async function fetchUsdaListingsNearZip(
-  zip: string,
+export async function fetchUsdaListings(
+  location: string,
   radiusMiles: number,
-  apiKey?: string | null,
+  _apiKey?: string | null,
 ): Promise<NormalizedDirectoryListing[]> {
   let raw: UsdaRawListing[] = [];
-  let searchError: Error | null = null;
 
   try {
-    raw = await fetchUsdaSearchListings({ zip, radiusMiles });
-  } catch (e) {
-    searchError = e instanceof Error ? e : new Error(String(e));
+    raw = await fetchUsdaSearchListings({ location, radiusMiles });
+  } catch (searchErr) {
+    const message = searchErr instanceof Error ? searchErr.message : String(searchErr);
+    throw new Error(`USDA search failed: ${message}`);
   }
 
-  if (raw.length === 0 && apiKey) {
-    const batches = await Promise.all(
-      USDA_DIRECTORY_SLUG_LIST.map((slug) =>
-        fetchUsdaDirectoryListings(slug, { zip, radiusMiles, apiKey }).catch(() => [] as UsdaRawListing[]),
-      ),
-    );
-    raw = batches.flat();
-  }
-
-  if (raw.length === 0 && searchError && !apiKey) {
-    throw searchError;
-  }
-
-  if (raw.length === 0 && searchError) {
-    console.warn("USDA search API failed; datasharing fallback returned no rows.", searchError.message);
+  if (raw.length === 0) {
+    console.warn("USDA search returned zero listings for this area.");
   }
 
   const byId = new Map<string, NormalizedDirectoryListing>();
@@ -188,6 +177,22 @@ export async function fetchUsdaListingsNearZip(
     byId.set(`${normalized.directoryType}:${normalized.externalId}`, normalized);
   }
   return [...byId.values()];
+}
+
+/** @deprecated Use fetchUsdaListings */
+export async function fetchUsdaListingsNearZip(
+  zip: string,
+  radiusMiles: number,
+  apiKey?: string | null,
+): Promise<NormalizedDirectoryListing[]> {
+  return fetchUsdaListings(zip, radiusMiles, apiKey);
+}
+
+/** Resolve state input to the label USDA expects in `mydata[location]`. */
+export function usdaSearchLocationFromState(stateInput: string): string | null {
+  const abbrev = normalizeUsState(stateInput);
+  if (!abbrev) return null;
+  return usdaLocationForState(abbrev);
 }
 
 export function formatDirectoryAddress(parts: {
