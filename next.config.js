@@ -12,6 +12,10 @@ const nextConfig = {
       { source: "/checkout", destination: "/discover", permanent: false },
       { source: "/shops", destination: "/discover", permanent: true },
       { source: "/shops/:path*", destination: "/discover", permanent: true },
+      { source: "/downloads", destination: "/discover?type=RESOURCE", permanent: true },
+      { source: "/downloads/:path*", destination: "/discover?type=RESOURCE", permanent: true },
+      { source: "/courses", destination: "/discover?type=EVENT", permanent: true },
+      { source: "/courses/:path*", destination: "/discover?type=EVENT", permanent: true },
     ];
   },
 };

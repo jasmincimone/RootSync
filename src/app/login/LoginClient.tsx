@@ -124,7 +124,7 @@ export function LoginClient() {
       <div className="mx-auto max-w-sm">
         <h1 className="text-2xl font-semibold tracking-tight text-fix-heading">Sign in</h1>
         <p className="mt-1 text-sm text-fix-text-muted">
-          Access your order history and downloads.
+          Access your order history and purchased resources.
         </p>
         <Card className="mt-6 p-6">
           <FormFeedback success={successMsg || null} />

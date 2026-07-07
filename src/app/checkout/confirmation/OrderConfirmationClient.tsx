@@ -11,6 +11,7 @@ import { BookingMeetLink } from "@/components/BookingMeetLink";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { OrderStatusBadge } from "@/components/ui/StatusBadge";
 import { formatPrice } from "@/lib/format";
+import { isResourceOrderItem, orderItemTypeLabel } from "@/lib/roles";
 
 type OrderFromApi = {
   id: string;
@@ -217,7 +218,7 @@ export function OrderConfirmationClient() {
                 <span className="text-fix-text">
                   {item.name} × {item.quantity}
                   <span className="ml-1.5 text-xs text-fix-text-muted">
-                    ({item.type === "digital" ? "Digital" : "Physical"})
+                    ({orderItemTypeLabel(item.type)})
                   </span>
                 </span>
                 <span className="font-medium text-fix-heading shrink-0">
@@ -243,11 +244,11 @@ export function OrderConfirmationClient() {
             </div>
           </dl>
 
-          {order.items.some((i) => i.type === "digital") && (
+          {order.items.some((i) => isResourceOrderItem(i.type)) && (
             <div className="mt-6 rounded-xl border border-forest/20 bg-forest/5 p-4">
-              <h3 className="text-sm font-semibold text-forest">Digital items</h3>
+              <h3 className="text-sm font-semibold text-forest">Resources</h3>
               <p className="mt-1 text-sm text-fix-text-muted">
-                Download links are in your account. Go to{" "}
+                Access your files from order history. Go to{" "}
                 <Link href="/account/orders" className="text-fix-link hover:text-fix-link-hover underline">
                   Order history
                 </Link>{" "}

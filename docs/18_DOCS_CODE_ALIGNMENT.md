@@ -58,9 +58,9 @@ Use it when:
 | Discover | Unified discovery (vendors, listings, directory, map, search) | `/marketplace` + map; no `/discover`; no directory | **Partial** |
 | Directory listings | View-only imported businesses; claim later | Not modeled | **Deferred** |
 | Commerce | Stripe Connect + Checkout + Booking | Marketplace Buy Now + service booking engine | **Partial** — refunds on cancel live |
-| Resources (digital) | Listing type Resource | `ShopCatalogListing.type = digital`; nav says "Downloads" | **Partial** |
+| Resources (digital) | Listing type Resource | `/discover?type=RESOURCE`, order items `resource` | **Partial** — listings + download gate; Blob signed URLs pending |
 | Services / Consultations | Service type + booking | Full flow: slots, Checkout, Meet, cancel, refund | **Aligned** (MVP) |
-| Events | Listing type Event | Placeholder `/courses`; no Event model | **Deferred** |
+| Events | Listing type Event (classes/workshops) | `/discover?type=EVENT`; vendor form + details | **Partial** — RSVP/tickets not built |
 | Community | Member discussions | `CommunityPost` live | **Aligned** |
 | Messaging | Member ↔ Member / Vendor | `DirectThread` / `DirectMessage` live | **Aligned** |
 | AI | RootSync AI assistant | `/rootsync`, `/rootsyncai` live | **Aligned** |
@@ -139,7 +139,7 @@ Per [17_GLOSSARY.md](./17_GLOSSARY.md) deprecated terms:
 |----------------------------|-----------|------------------|----------|
 | User | Member | Prisma `User`, APIs ("User not found"), legal "User Accounts" | P1 — UI + API messages first; schema later (ADR) |
 | Seller | Vendor | `/seller-terms`, listing detail "Seller", footer | P1 — copy + routes redirect |
-| Download(s) | Resource | Nav `/downloads`, "Digital downloads" page | P2 — after Resource listing type |
+| Download(s) | Resource | Legacy order type `digital`; redirects from `/downloads` | **Partial** — prefer "resource" in new orders |
 | Marketplace Item | Listing | Mostly already "listing" in marketplace UI | **Aligned** |
 | Consultation (feature) | Service → Consultation | PRD title only | P2 — when booking ships |
 | Farmer marketplace | Vendor Marketplace | Fixed in marketplace title | **Aligned** |
@@ -174,12 +174,11 @@ Per [17_GLOSSARY.md](./17_GLOSSARY.md) deprecated terms:
 |---------|-----|------|--------|
 | Directory Listings | [PRD-Directory-Listings.md](./PRDs/PRD-Directory-Listings.md) | — | **Deferred** |
 | Marketing Funnel | [PRD-Marketing-Funnel.md](./PRDs/PRD-Marketing-Funnel.md) | — | **Deferred** |
-| Consultations | [PRD-Consultation-Booking.md](./PRDs/PRD-Consultation-Booking.md) | — | **Deferred** |
-| Digital Storefront | [PRD-Digital-Storefront.md](./PRDs/PRD-Digital-Storefront.md) | Placeholder `/downloads`; catalog digital via legacy shop | **Partial** |
+| Consultations | [PRD-Consultation-Booking.md](./PRDs/PRD-Consultation-Booking.md) | Service booking engine | **Aligned** (as Service subtype) |
 
 ### Phase 3 (roadmap)
 
-Reviews, Events, Courses, Analytics, Referrals, Native Apps — all **Deferred** (courses page is placeholder only).
+Reviews, Analytics, Referrals, Native Apps — **Deferred**. Events and Resources ship as Discover listing types (no separate `/courses` or `/downloads` hubs).
 
 ---
 
@@ -192,7 +191,7 @@ Reviews, Events, Courses, Analytics, Referrals, Native Apps — all **Deferred**
 | Listings | Browse all listing types | `/marketplace` listing grid, `/marketplace/listings/[id]` | **Partial** — products only in practice |
 | Directory Listings | Map + search, view-only | — | **Gap** |
 | Storefront | Vendor-managed public page | `/marketplace/vendors/[id]` | **Aligned** |
-| Resources | Digital library | `/downloads` placeholder | **Gap** |
+| Resources | Discover filter + order access | `/discover?type=RESOURCE`, `/api/download` | **Partial** — secure Blob delivery pending |
 | Booking | Service scheduling | — | **Gap** |
 | Connect onboarding | Vendor payouts | `/account/connect-demo` | **Partial** — should move into vendor account |
 
@@ -238,7 +237,7 @@ Work in this order unless a release forces otherwise. Each item should update do
 |---|------|---------|---------|
 | 9 | **Listing types** | Schema, vendor forms, discover filters | Product / Service / Resource / Event |
 | 10 | **Directory Listings** | New model, map, PRD | View-only pins; vendor filter |
-| 11 | **Resources** | Replace `/downloads` stub; unify digital fulfillment | Resource listings + secure download |
+| 11 | **Resources** | Secure Blob upload + signed download URLs | Instant fulfillment after `checkout.session.completed` |
 | 12 | **Consultation as Service** | Booking PRD, Stripe, calendar | Not a standalone "Consultation" feature |
 | 13 | **Discover experience** | Nav, `/discover` or marketplace evolution | Unified search + filters per glossary |
 

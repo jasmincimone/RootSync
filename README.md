@@ -54,7 +54,7 @@ The app uses **Stripe** for payments and **NextAuth** for accounts.
 
 3. **Email (Resend)** — required for **forgot password** and **email two-factor** to actually send mail. See [Email with Resend](#email-with-resend) below. Without `RESEND_API_KEY` + `EMAIL_FROM`, dev still works but reset links are only logged in the terminal.
 
-4. Create an account at `/signup`, then sign in at `/login`. Order history and digital downloads are under **Account** (header) → **Order history**.
+4. Create an account at `/signup`, then sign in at `/login`. Order history and purchased resources are under **Account** (header) → **Order history**.
 
 5. **Roles (admin / vendor / customer)**  
    - New signups are **customers** by default.  
@@ -64,7 +64,7 @@ The app uses **Stripe** for payments and **NextAuth** for accounts.
    - **Vendors:** customers can apply at **Account → Become a vendor**. An admin approves under **Account → Admin → Vendor requests**. Approved vendors get marketplace listing tools and a **Vendor** badge in **Community** (when posting).  
    - Admins can change roles under **Account → Admin → Users & roles**.
 
-6. Digital downloads: add files to `public/downloads/{productId}.pdf` (or other format). The download API serves them to customers who have paid for that item.
+6. **Resources:** vendors upload delivery files on the listing form. Files up to 4 MB use server upload; larger files (to 100 MB) upload directly to Vercel Blob from the browser. Requires `BLOB_READ_WRITE_TOKEN`. After payment, buyers access files from **Order history** via the secure download API.
 
 ## Stripe Payment Links (simple checkout)
 

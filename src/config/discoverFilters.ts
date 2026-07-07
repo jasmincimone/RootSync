@@ -1,5 +1,15 @@
 import { LISTING_TYPE, type ListingType } from "@/lib/roles";
 
+/** Filter Discover by entity source */
+export const DISCOVER_SOURCE_FILTERS = [
+  { value: "", label: "All" },
+  { value: "vendors", label: "Vendors" },
+  { value: "directory", label: "Directory" },
+  { value: "listings", label: "Listings" },
+] as const;
+
+export type DiscoverSourceFilter = (typeof DISCOVER_SOURCE_FILTERS)[number]["value"];
+
 /** Listing type filter options per docs/17_GLOSSARY.md */
 export const DISCOVER_TYPE_FILTERS: { value: "" | ListingType; label: string }[] = [
   { value: "", label: "All types" },
@@ -16,6 +26,5 @@ export const DISCOVER_CATEGORY_SUGGESTIONS = [
   "Preparedness",
   "Handmade goods",
   "Consulting",
-  "Digital resources",
   "Workshops & events",
 ] as const;

@@ -3,38 +3,61 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { Container } from "@/components/Container";
+import {
+  ListingDetailHighlights,
+  ListingTypeDetailCard,
+  ListingVendorLocationHint,
+} from "@/components/ListingTypeDetailPanels";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurchase";
-import { listingDisplayPrice, listingTypeLabel } from "@/lib/listingDisplay";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { LISTING_VISIBILITY, OFFERING_STATUS, VENDOR_STATUS } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
+const offeringDetailSelect = {
+  status: true,
+  paymentUrl: true,
+  productUrl: true,
+  productDetails: { select: { requiresShipping: true, sku: true } },
+  serviceDetails: {
+    select: {
+      serviceKind: true,
+      durationMinutes: true,
+      serviceRadius: true,
+      fulfillmentMethod: true,
+    },
+  },
+  resourceDetails: { select: { resourceSubtype: true, format: true } },
+  eventDetails: {
+    select: {
+      startsAt: true,
+      endsAt: true,
+      location: true,
+      venue: true,
+      capacity: true,
+    },
+  },
+  variants: {
+    orderBy: { sortOrder: "asc" as const },
+    select: {
+      id: true,
+      title: true,
+      priceCents: true,
+      durationMinutes: true,
+      sku: true,
+    },
+  },
+};
+
 async function loadListingForPage(listingId: string, viewerUserId: string | undefined) {
   const listing = await prisma.listing.findUnique({
     where: { id: listingId },
     include: {
-      offering: {
-        select: {
-          status: true,
-          paymentUrl: true,
-          productUrl: true,
-          variants: {
-            orderBy: { sortOrder: "asc" },
-            select: {
-              id: true,
-              title: true,
-              priceCents: true,
-              durationMinutes: true,
-              sku: true,
-            },
-          },
-        },
-      },
+      offering: { select: offeringDetailSelect },
       vendorProfile: {
         select: {
           id: true,
@@ -77,7 +100,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       : listing.description;
 
   return {
-    title: `${listing.title} · Marketplace`,
+    title: listing.title,
     description: desc,
   };
 }
@@ -88,6 +111,7 @@ function PurchasePanel({
   variants,
   isOwnerPreview,
   vendorId,
+  detailProps,
   className,
 }: {
   listing: {
@@ -107,30 +131,37 @@ function PurchasePanel({
   }[];
   isOwnerPreview: boolean;
   vendorId: string;
+  detailProps: Omit<Parameters<typeof ListingDetailHighlights>[0], "priceCents" | "variantCount">;
   className?: string;
 }) {
   return (
-    <Card className={className ?? "p-6"}>
-      <div className="flex flex-wrap items-center gap-2">
+    <Card className={className ?? "overflow-hidden border-fix-border/15 p-0 shadow-soft"}>
+      <div className="border-b border-fix-border/15 p-6">
         {listing.category?.trim() ? (
-          <span className="rounded-full bg-fix-border/20 px-2.5 py-1 text-xs font-medium text-fix-heading">
+          <p className="text-xs font-medium uppercase tracking-wide text-fix-text-muted">
             {listing.category.trim()}
-          </span>
+          </p>
         ) : null}
-        <span className="rounded-full bg-fix-bg-muted px-2.5 py-1 text-xs text-fix-text-muted">
-          {listingTypeLabel(listing.listingType)}
-        </span>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">
+          {listing.title}
+        </h1>
+        <div className="mt-4">
+          <ListingDetailHighlights
+            priceCents={listing.priceCents}
+            variantCount={variants.length}
+            {...detailProps}
+          />
+        </div>
       </div>
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">
-        {listing.title}
-      </h1>
-      <p className="mt-2 text-xl font-semibold text-fix-heading">
-        {listingDisplayPrice(listing.priceCents, variants.length)}
-      </p>
 
-      <div className="mt-6">
+      <div className="p-6">
         {isOwnerPreview ? (
-          <ButtonLink href={`/account/vendor/listings/${listing.id}/edit`} variant="cta" size="md" className="w-full justify-center">
+          <ButtonLink
+            href={`/account/vendor/listings/${listing.id}/edit`}
+            variant="cta"
+            size="md"
+            className="w-full justify-center"
+          >
             Edit listing
           </ButtonLink>
         ) : (
@@ -142,24 +173,29 @@ function PurchasePanel({
             productUrl={offering.productUrl}
           />
         )}
-      </div>
 
-      {!isOwnerPreview ? (
-        <div className="mt-4">
-          <MessageVendorLink vendorProfileId={vendorId} variant="secondary" size="sm" className="w-full justify-center" />
+        {!isOwnerPreview ? (
+          <div className="mt-4">
+            <MessageVendorLink
+              vendorProfileId={vendorId}
+              variant="secondary"
+              size="sm"
+              className="w-full justify-center"
+            />
+          </div>
+        ) : null}
+
+        <div className="mt-4 border-t border-fix-border/15 pt-4">
+          <ButtonLink href="/discover" variant="ghost" size="sm" className="w-full justify-center">
+            ← Back to Discover
+          </ButtonLink>
         </div>
-      ) : null}
-
-      <div className="mt-4 border-t border-fix-border/15 pt-4">
-        <ButtonLink href="/discover" variant="ghost" size="sm" className="w-full justify-center">
-          ← All listings
-        </ButtonLink>
       </div>
     </Card>
   );
 }
 
-export default async function MarketplaceListingPage({
+export default async function DiscoverListingPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -174,13 +210,21 @@ export default async function MarketplaceListingPage({
   const offering = listing.offering;
   const variants = offering.variants ?? [];
 
+  const detailProps = {
+    listingType: listing.listingType,
+    product: offering.productDetails,
+    service: offering.serviceDetails,
+    resource: offering.resourceDetails,
+    event: offering.eventDetails,
+  };
+
   return (
-    <div>
-      <section className="border-b border-fix-border/15">
-        <Container className="py-8 sm:py-12">
+    <div className="bg-fix-bg-muted/30">
+      <section className="border-b border-fix-border/15 bg-fix-surface">
+        <Container className="py-6 sm:py-8">
           <nav className="text-sm text-fix-text-muted">
             <Link href="/discover" className="text-fix-link hover:text-fix-link-hover">
-              Discover Marketplace
+              Discover
             </Link>
             <span className="mx-2">/</span>
             <Link
@@ -192,107 +236,118 @@ export default async function MarketplaceListingPage({
             <span className="mx-2">/</span>
             <span className="text-fix-heading">{listing.title}</span>
           </nav>
+        </Container>
+      </section>
 
-          {isOwnerPreview ? (
-            <Card className="mt-5 border-amber/35 bg-fix-bg-muted/60 p-4">
-              <p className="text-sm text-fix-heading">
-                <span className="font-semibold">Preview only.</span>{" "}
-                {listing.visibility !== LISTING_VISIBILITY.PUBLIC ||
-                offering.status !== OFFERING_STATUS.ACTIVE ? (
-                  <>
-                    This offering is <span className="font-medium">{offering.status}</span> and is
-                    not shown on Discover until it is active.
-                  </>
-                ) : v.status !== VENDOR_STATUS.APPROVED ? (
-                  <>
-                    Your vendor profile is <span className="font-medium">{v.status}</span>. The
-                    public Discover feed only surfaces listings from approved vendors.
-                  </>
-                ) : (
-                  <>Signed-in preview of your listing.</>
-                )}
-              </p>
-            </Card>
-          ) : null}
+      <Container className="py-8 sm:py-12">
+        {isOwnerPreview ? (
+          <Card className="mb-8 border-amber/35 bg-fix-bg-muted/60 p-4">
+            <p className="text-sm text-fix-heading">
+              <span className="font-semibold">Preview only.</span>{" "}
+              {listing.visibility !== LISTING_VISIBILITY.PUBLIC ||
+              offering.status !== OFFERING_STATUS.ACTIVE ? (
+                <>
+                  This offering is <span className="font-medium">{offering.status}</span> and is not
+                  shown on Discover until it is active.
+                </>
+              ) : v.status !== VENDOR_STATUS.APPROVED ? (
+                <>
+                  Your vendor profile is <span className="font-medium">{v.status}</span>. The public
+                  Discover feed only surfaces listings from approved vendors.
+                </>
+              ) : (
+                <>Signed-in preview of your listing.</>
+              )}
+            </p>
+          </Card>
+        ) : null}
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start">
-            <div className="min-w-0 space-y-8">
-              <div className="overflow-hidden rounded-2xl border border-fix-border/15 bg-fix-bg-muted aspect-[4/3] lg:aspect-square">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start">
+          <div className="min-w-0 space-y-8">
+            <div className="overflow-hidden rounded-2xl border border-fix-border/15 bg-fix-surface shadow-soft">
+              <div className="aspect-[16/10] bg-fix-bg-muted sm:aspect-[5/3]">
                 {listing.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- vendor uploads or external URLs
                   <img
                     src={listing.imageUrl}
-                    alt={listing.title}
+                    alt=""
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm text-fix-text-muted">
-                    No image
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-fix-text-muted">
+                    <span className="text-4xl font-light text-fix-border">◇</span>
+                    No cover image yet
                   </div>
                 )}
               </div>
-
-              <div className="lg:hidden">
-                <PurchasePanel
-                  listing={listing}
-                  offering={offering}
-                  variants={variants}
-                  isOwnerPreview={isOwnerPreview}
-                  vendorId={v.id}
-                />
-              </div>
-
-              <section aria-labelledby="listing-description">
-                <h2 id="listing-description" className="text-sm font-semibold text-fix-heading">
-                  About this offering
-                </h2>
-                <p className="mt-3 whitespace-pre-wrap text-base leading-relaxed text-fix-text-muted">
-                  {listing.description}
-                </p>
-              </section>
-
-              <section aria-labelledby="listing-vendor" className="border-t border-fix-border/15 pt-6">
-                <h2 id="listing-vendor" className="text-sm font-semibold text-fix-heading">
-                  Vendor
-                </h2>
-                <p className="mt-2">
-                  <Link
-                    href={`/discover/vendors/${v.id}`}
-                    className="font-medium text-fix-link hover:text-fix-link-hover"
-                  >
-                    {v.displayName}
-                  </Link>
-                </p>
-                {v.pickupLocation ? (
-                  <p className="mt-1 text-sm text-fix-text-muted">{v.pickupLocation}</p>
-                ) : null}
-                {v.website ? (
-                  <a
-                    href={v.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex text-sm font-medium text-fix-link hover:text-fix-link-hover"
-                  >
-                    Vendor website →
-                  </a>
-                ) : null}
-              </section>
             </div>
 
-            <div className="hidden lg:block">
-              <div className="sticky top-28">
-                <PurchasePanel
-                  listing={listing}
-                  offering={offering}
-                  variants={variants}
-                  isOwnerPreview={isOwnerPreview}
-                  vendorId={v.id}
-                />
-              </div>
+            <div className="lg:hidden">
+              <PurchasePanel
+                listing={listing}
+                offering={offering}
+                variants={variants}
+                isOwnerPreview={isOwnerPreview}
+                vendorId={v.id}
+                detailProps={detailProps}
+              />
+            </div>
+
+            <ListingTypeDetailCard {...detailProps} />
+
+            <section aria-labelledby="listing-description" className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft sm:p-8">
+              <h2 id="listing-description" className="text-base font-semibold text-fix-heading">
+                About this listing
+              </h2>
+              <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-fix-text">
+                {listing.description}
+              </p>
+            </section>
+
+            <section
+              aria-labelledby="listing-vendor"
+              className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft sm:p-8"
+            >
+              <h2 id="listing-vendor" className="text-base font-semibold text-fix-heading">
+                Vendor
+              </h2>
+              <p className="mt-3">
+                <Link
+                  href={`/discover/vendors/${v.id}`}
+                  className="text-lg font-medium text-fix-link hover:text-fix-link-hover"
+                >
+                  {v.displayName}
+                </Link>
+              </p>
+              <ListingVendorLocationHint pickupLocation={v.pickupLocation} />
+              {v.website ? (
+                <a
+                  href={v.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex text-sm font-medium text-fix-link hover:text-fix-link-hover"
+                >
+                  Vendor website →
+                </a>
+              ) : null}
+            </section>
+          </div>
+
+          <div className="hidden lg:block">
+            <div className="sticky top-28">
+              <PurchasePanel
+                listing={listing}
+                offering={offering}
+                variants={variants}
+                isOwnerPreview={isOwnerPreview}
+                vendorId={v.id}
+                detailProps={detailProps}
+                className="overflow-hidden border-fix-border/15 p-0 shadow-soft"
+              />
             </div>
           </div>
-        </Container>
-      </section>
+        </div>
+      </Container>
     </div>
   );
 }

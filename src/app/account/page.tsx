@@ -48,7 +48,7 @@ export default async function AccountPage() {
           <Card className="p-5">
             <div className="text-sm font-semibold text-fix-heading">Orders</div>
             <p className="mt-2 text-sm text-fix-text-muted">
-              Receipts for Discover purchases and digital resources from vendors.
+              Receipts for Discover purchases and resources from vendors.
             </p>
             <div className="mt-4">
               <ButtonLink href="/account/orders" variant="secondary" size="sm">

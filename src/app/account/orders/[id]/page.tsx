@@ -8,6 +8,7 @@ import { OrderStatusBadge } from "@/components/ui/StatusBadge";
 import { formatPrice } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/authOptions";
+import { isResourceOrderItem, orderItemTypeLabel } from "@/lib/roles";
 
 export default async function AccountOrderDetailPage({
   params,
@@ -72,19 +73,19 @@ export default async function AccountOrderDetailPage({
               <div>
                 <span className="font-medium text-fix-heading">{item.name}</span>
                 <span className="ml-2 text-xs text-fix-text-muted">
-                  × {item.quantity} ({item.type === "digital" ? "Digital" : "Physical"})
+                  × {item.quantity} ({orderItemTypeLabel(item.type)})
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-medium text-fix-heading">
                   {formatPrice(item.priceCents * item.quantity)}
                 </span>
-                {item.type === "digital" && order.status === "paid" && (
+                {isResourceOrderItem(item.type) && order.status === "paid" && (
                   <Link
                     href={`/api/download?orderId=${order.id}&itemId=${item.id}`}
                     className="text-sm font-medium text-fix-link hover:text-fix-link-hover"
                   >
-                    Download
+                    Access resource
                   </Link>
                 )}
               </div>

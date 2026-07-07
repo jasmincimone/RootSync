@@ -9,6 +9,10 @@ export function discoverListingPath(listingId: string) {
   return `${DISCOVER_BASE}/listings/${listingId}`;
 }
 
+export function discoverDirectoryPath(directoryId: string) {
+  return `${DISCOVER_BASE}/directory/${directoryId}`;
+}
+
 export function discoverBookPath(listingId: string, variantId?: string | null) {
   const base = `${DISCOVER_BASE}/listings/${listingId}/book`;
   if (variantId) return `${base}?variant=${encodeURIComponent(variantId)}`;

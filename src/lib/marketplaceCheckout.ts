@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { orderItemTypeForListingType } from "@/lib/roles";
 import { publicListingWhere } from "@/lib/offeringListing";
 import { resolveOfferingVariant } from "@/lib/offeringVariants";
 import {
@@ -124,7 +125,7 @@ export async function createMarketplaceListingCheckout(args: {
           name: lineName,
           quantity,
           priceCents: unitPriceCents,
-          type: "marketplace",
+          type: orderItemTypeForListingType(listing.listingType),
           listingId: listing.id,
           variantId: variant?.id ?? null,
         },

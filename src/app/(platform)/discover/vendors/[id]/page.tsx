@@ -24,7 +24,7 @@ import { VENDOR_STATUS } from "@/lib/roles";
 import { loadVendorCarousel } from "@/lib/vendorCarousel";
 
 import type { Prisma } from "@prisma/client";
-import type { MarketplaceMapVendor } from "@/components/MarketplaceMap";
+import { vendorsToMapPins } from "@/lib/discoverMap";
 
 const publicVendorInclude = {
   listings: {
@@ -101,15 +101,15 @@ export default async function PublicVendorProfilePage({
     Number.isFinite(vendor.latitude) &&
     Number.isFinite(vendor.longitude);
 
-  const mapVendors: MarketplaceMapVendor[] = hasCoords
-    ? [
+  const mapPins = hasCoords
+    ? vendorsToMapPins([
         {
           id: vendor.id,
           displayName: vendor.displayName,
           latitude: vendor.latitude as number,
           longitude: vendor.longitude as number,
         },
-      ]
+      ])
     : [];
 
   const communityPosts = await prisma.communityPost.findMany({
@@ -249,7 +249,7 @@ export default async function PublicVendorProfilePage({
               Pin shows where this vendor is based (from their profile).
             </p>
             <div className="mt-4 overflow-hidden rounded-2xl ring-1 ring-fix-border/15">
-              <MarketplaceMapDynamic vendors={mapVendors} compact />
+              <MarketplaceMapDynamic pins={mapPins} compact />
             </div>
           </section>
         ) : null}

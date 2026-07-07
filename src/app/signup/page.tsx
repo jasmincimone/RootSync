@@ -78,7 +78,7 @@ export default function SignupPage() {
       <div className="mx-auto max-w-md">
         <h1 className="text-2xl font-semibold tracking-tight text-fix-heading">Create account</h1>
         <p className="mt-1 text-sm text-fix-text-muted">
-          Create an account to view order history and download digital purchases. You can add a phone number later in
+          Create an account to view order history and access purchased resources. You can add a phone number later in
           Account Settings to use SMS verification and SMS two-factor. New accounts use email verification codes at
           sign in by default.
         </p>

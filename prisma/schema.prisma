@@ -175,6 +175,51 @@ model VendorProfile {
   offerings       Offering[]
   listings        Listing[]
   bookings        Booking[]
+  claimedDirectoryListing DirectoryListing?
+}
+
+/// View-only imported business — not a Vendor; see docs/adr/ADR-006-directory-listings.md
+model DirectoryListing {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  /// FARMERS_MARKET | CSA | ON_FARM_MARKET | FOOD_HUB | AGRITOURISM
+  directoryType String
+  category      String?
+
+  addressLine1  String?
+  addressLine2  String?
+  city          String?
+  state         String?
+  zip           String?
+  latitude      Float?
+  longitude     Float?
+
+  phone   String?
+  email   String?
+  website String?
+
+  source        String   @default("USDA")
+  externalId    String
+  externalUrl   String?
+  rawSourceJson Json?
+  lastSyncedAt  DateTime?
+
+  /// UNCLAIMED | PENDING | CLAIMED
+  claimStatus   String   @default("UNCLAIMED")
+  claimedVendorProfileId String? @unique
+  claimedVendorProfile   VendorProfile? @relation(fields: [claimedVendorProfileId], references: [id], onDelete: SetNull)
+
+  /// ACTIVE | HIDDEN
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([source, externalId])
+  @@index([directoryType])
+  @@index([state, city])
+  @@index([status])
+  @@index([latitude, longitude])
 }
 
 /// Internal vendor-managed object; see docs/adr/ADR-001-offering-listing-model.md
@@ -263,10 +308,12 @@ model ServiceDetails {
 }
 
 model ResourceDetails {
-  offeringId String  @id
-  offering   Offering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
-  format     String?
-  fileUrl    String?
+  offeringId      String  @id
+  offering        Offering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  /// EBOOK | BUILD_PLAN | GUIDE | CHECKLIST | TEMPLATE — see RESOURCE_SUBTYPE
+  resourceSubtype String?
+  format          String?
+  fileUrl         String?
 }
 
 model EventDetails {

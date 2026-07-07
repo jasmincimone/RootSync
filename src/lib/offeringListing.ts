@@ -147,7 +147,7 @@ export type VendorOfferingRow = Offering & {
     fulfillmentMethod: string;
     defaultTimeZone: string;
   } | null;
-  resourceDetails: { format: string | null; fileUrl: string | null } | null;
+  resourceDetails: { resourceSubtype: string | null; format: string | null; fileUrl: string | null } | null;
   eventDetails: {
     startsAt: Date | null;
     endsAt: Date | null;

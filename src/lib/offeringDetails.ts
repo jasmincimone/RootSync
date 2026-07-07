@@ -5,9 +5,11 @@ import { deleteServiceBookingConfig } from "@/lib/serviceBookingConfig";
 import { normalizeProductUrl } from "@/lib/paymentUrl";
 import {
   LISTING_TYPE,
+  RESOURCE_SUBTYPE,
   SERVICE_KIND,
   FULFILLMENT_METHOD,
   type ListingType,
+  type ResourceSubtype,
   type ServiceKind,
   type FulfillmentMethod,
 } from "@/lib/roles";
@@ -28,6 +30,7 @@ export type ServiceDetailsInput = {
 };
 
 export type ResourceDetailsInput = {
+  resourceSubtype?: ResourceSubtype | null;
   format?: string | null;
   fileUrl?: string | null;
 };
@@ -138,8 +141,20 @@ export function parseOfferingDetailsFromBody(
     if ("fileUrl" in resource) {
       fileUrl = normalizeProductUrl(resource.fileUrl);
     }
+    let resourceSubtype: ResourceSubtype | null | undefined;
+    const st = resource.resourceSubtype;
+    if (st === null || st === "") resourceSubtype = null;
+    else if (
+      typeof st === "string" &&
+      Object.values(RESOURCE_SUBTYPE).includes(st as ResourceSubtype)
+    ) {
+      resourceSubtype = st as ResourceSubtype;
+    } else if (st !== undefined) {
+      throw new Error("Invalid resource subtype");
+    }
     return {
       resource: {
+        ...(resourceSubtype !== undefined ? { resourceSubtype } : {}),
         format: parseOptionalString(resource.format),
         fileUrl,
       },
@@ -179,6 +194,7 @@ export function serializeOfferingDetails(
       defaultTimeZone: string;
     } | null;
     resourceDetails: {
+      resourceSubtype: string | null;
       format: string | null;
       fileUrl: string | null;
     } | null;
@@ -211,6 +227,7 @@ export function serializeOfferingDetails(
       : null,
     resource: offering.resourceDetails
       ? {
+          resourceSubtype: offering.resourceDetails.resourceSubtype as ResourceSubtype | null,
           format: offering.resourceDetails.format,
           fileUrl: offering.resourceDetails.fileUrl,
         }
@@ -300,6 +317,7 @@ async function createDetailForType(
       await tx.resourceDetails.create({
         data: {
           offeringId,
+          resourceSubtype: details?.resource?.resourceSubtype ?? null,
           format: details?.resource?.format ?? null,
           fileUrl: details?.resource?.fileUrl ?? null,
         },
@@ -387,10 +405,14 @@ export async function upsertOfferingDetails(
         where: { offeringId },
         create: {
           offeringId,
+          resourceSubtype: details.resource.resourceSubtype ?? null,
           format: details.resource.format ?? null,
           fileUrl: details.resource.fileUrl ?? null,
         },
         update: {
+          ...(details.resource.resourceSubtype !== undefined
+            ? { resourceSubtype: details.resource.resourceSubtype }
+            : {}),
           ...(details.resource.format !== undefined ? { format: details.resource.format } : {}),
           ...(details.resource.fileUrl !== undefined ? { fileUrl: details.resource.fileUrl } : {}),
         },

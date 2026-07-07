@@ -45,7 +45,7 @@ export function ComingSoonFeature({
           bordered={false}
           icon={icon}
           title="We're building this next"
-          description="Browse the marketplace and book services while we finish the learning library and digital downloads."
+          description="Browse Discover and book services. Resources and events live alongside products in one marketplace."
           action={{ href: "/discover", label: "Explore marketplace", variant: "cta" }}
           secondaryAction={{ href: "/rootsync", label: "RootSync platform", variant: "secondary" }}
         />

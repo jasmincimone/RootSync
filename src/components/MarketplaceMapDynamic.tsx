@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-import type { MarketplaceMapVendor } from "@/components/MarketplaceMap";
+import type { DiscoverMapPin } from "@/lib/discoverMap";
 
 const loadingClass =
   "flex items-center justify-center rounded-2xl border border-fix-border/20 bg-fix-bg-muted/60 text-sm text-fix-text-muted";
@@ -14,19 +14,14 @@ const MarketplaceMap = dynamic(
     loading: () => (
       <div className={`h-[420px] max-h-[55vh] ${loadingClass}`}>Loading map…</div>
     ),
-  }
+  },
 );
 
 type Props = {
-  vendors: MarketplaceMapVendor[];
+  pins: DiscoverMapPin[];
   compact?: boolean;
 };
 
-export function MarketplaceMapDynamic({ vendors, compact }: Props) {
-  if (compact) {
-    return (
-      <MarketplaceMap vendors={vendors} compact />
-    );
-  }
-  return <MarketplaceMap vendors={vendors} />;
+export function MarketplaceMapDynamic({ pins, compact }: Props) {
+  return <MarketplaceMap pins={pins} compact={compact} />;
 }

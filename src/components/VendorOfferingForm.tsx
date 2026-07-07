@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { VendorListingImageField } from "@/components/VendorListingImageField";
+import { VendorResourceFileField } from "@/components/VendorResourceFileField";
 import { FormSection } from "@/components/FormSection";
 import { ServiceBookingConfigFields } from "@/components/ServiceBookingConfigFields";
 import {
@@ -15,6 +16,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormFeedback } from "@/components/ui/FormFeedback";
+import { RESOURCE_SUBTYPE_OPTIONS } from "@/config/resourceSubtypes";
 import { cn } from "@/lib/cn";
 import type { SerializedOfferingDetails } from "@/lib/offeringDetails";
 import type { SerializedOfferingVariant } from "@/lib/offeringVariants";
@@ -28,6 +30,7 @@ import {
 import {
   FULFILLMENT_METHOD,
   LISTING_TYPE,
+  type ResourceSubtype,
   OFFERING_STATUS,
   SERVICE_KIND,
   type FulfillmentMethod,
@@ -155,6 +158,9 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
     draftsFromSerialized(initial?.variants ?? []),
   );
 
+  const [resourceSubtype, setResourceSubtype] = useState<ResourceSubtype | "">(
+    (initial?.details.resource?.resourceSubtype as ResourceSubtype | undefined) ?? "",
+  );
   const [resourceFormat, setResourceFormat] = useState(initial?.details.resource?.format ?? "");
   const [resourceFileUrl, setResourceFileUrl] = useState(initial?.details.resource?.fileUrl ?? "");
 
@@ -204,6 +210,7 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
     if (listingType === LISTING_TYPE.RESOURCE) {
       return {
         resource: {
+          resourceSubtype: resourceSubtype || null,
           format: resourceFormat.trim() || null,
           fileUrl: resourceFileUrl.trim() || null,
         },
@@ -572,27 +579,42 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
         ) : null}
 
         {currentStepKey === "details" && listingType === LISTING_TYPE.RESOURCE ? (
-          <FormSection title="Resource details" description="Format and delivery">
+          <FormSection title="Resource details" description="Kind, format, and delivery file">
           <fieldset className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-fix-text">Resource kind</label>
+              <select
+                value={resourceSubtype}
+                onChange={(e) => setResourceSubtype(e.target.value as ResourceSubtype | "")}
+                className={inputClass}
+              >
+                <option value="">Select kind…</option>
+                {RESOURCE_SUBTYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-fix-text-muted">
+                Classes and workshops are listed as Events, not Resources.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-fix-text">Format</label>
               <input
                 value={resourceFormat}
                 onChange={(e) => setResourceFormat(e.target.value)}
-                placeholder="PDF, ZIP, template…"
+                placeholder="Auto-filled from upload (PDF, ZIP, …)"
                 className={inputClass}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-fix-text">File URL (optional)</label>
-              <input
-                type="url"
-                value={resourceFileUrl}
-                onChange={(e) => setResourceFileUrl(e.target.value)}
-                placeholder="https://… delivery link after purchase"
-                className={inputClass}
-              />
-            </div>
+            <VendorResourceFileField
+              fileRef={resourceFileUrl}
+              onFileRefChange={setResourceFileUrl}
+              format={resourceFormat}
+              onFormatChange={setResourceFormat}
+              disabled={saving}
+            />
           </fieldset>
           </FormSection>
         ) : null}

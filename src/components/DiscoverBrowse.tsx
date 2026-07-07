@@ -1,20 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 
 import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListingCheckoutActions";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { UserAvatar } from "@/components/UserAvatar";
+import { DirectoryListingBadge } from "@/components/DirectoryListingBadge";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { DISCOVER_CATEGORY_SUGGESTIONS, DISCOVER_TYPE_FILTERS } from "@/config/discoverFilters";
-import { discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
+import { DISCOVER_CATEGORY_SUGGESTIONS, DISCOVER_SOURCE_FILTERS, DISCOVER_TYPE_FILTERS, type DiscoverSourceFilter } from "@/config/discoverFilters";
+import { RESOURCE_SUBTYPE_OPTIONS } from "@/config/resourceSubtypes";
+import { discoverDirectoryPath, discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
 import { formatPrice } from "@/lib/format";
+import { directoryTypeLabel } from "@/lib/directory/types";
 import { listingTypeLabel } from "@/lib/listingDisplay";
-import { LISTING_TYPE, type ListingType } from "@/lib/roles";
+import { resourceSubtypeLabel } from "@/config/resourceSubtypes";
+import { LISTING_TYPE, type ListingType, type ResourceSubtype } from "@/lib/roles";
 import { cn } from "@/lib/cn";
 
 export type DiscoverListingRow = {
@@ -33,7 +38,20 @@ export type DiscoverListingRow = {
   offering: {
     paymentUrl: string | null;
     productUrl: string | null;
+    resourceSubtype: string | null;
   };
+};
+
+export type DiscoverDirectoryRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  directoryType: string;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  website: string | null;
+  addressLine1: string | null;
 };
 
 export type DiscoverVendorRow = {
@@ -49,12 +67,31 @@ export type DiscoverVendorRow = {
 type Props = {
   vendors: DiscoverVendorRow[];
   listings: DiscoverListingRow[];
+  directory: DiscoverDirectoryRow[];
 };
 
-export function DiscoverBrowse({ vendors, listings }: Props) {
+export function DiscoverBrowse({ vendors, listings, directory }: Props) {
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<DiscoverSourceFilter>("");
   const [typeFilter, setTypeFilter] = useState<"" | ListingType>("");
+  const [resourceSubtypeFilter, setResourceSubtypeFilter] = useState<"" | ResourceSubtype>("");
   const [categoryFilter, setCategoryFilter] = useState("");
+
+  useEffect(() => {
+    const t = searchParams.get("type");
+    if (t && Object.values(LISTING_TYPE).includes(t as ListingType)) {
+      setTypeFilter(t as ListingType);
+    }
+    const s = searchParams.get("source");
+    if (s === "vendors" || s === "directory" || s === "listings") {
+      setSourceFilter(s);
+    }
+  }, [searchParams]);
+
+  const showVendors = !sourceFilter || sourceFilter === "vendors";
+  const showDirectory = !sourceFilter || sourceFilter === "directory";
+  const showListings = !sourceFilter || sourceFilter === "listings";
 
   const categories = useMemo(() => {
     const fromListings = listings
@@ -80,6 +117,13 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
   const filteredListings = useMemo(() => {
     return listings.filter((l) => {
       if (typeFilter && l.listingType !== typeFilter) return false;
+      if (
+        resourceSubtypeFilter &&
+        (l.listingType !== LISTING_TYPE.RESOURCE ||
+          l.offering.resourceSubtype !== resourceSubtypeFilter)
+      ) {
+        return false;
+      }
       if (categoryFilter && (l.category?.trim() ?? "") !== categoryFilter) return false;
       if (!q) return true;
       const haystack = [
@@ -93,7 +137,25 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [listings, typeFilter, categoryFilter, q]);
+  }, [listings, typeFilter, resourceSubtypeFilter, categoryFilter, q]);
+
+  const filteredDirectory = useMemo(() => {
+    return directory.filter((d) => {
+      if (!q) return true;
+      const haystack = [
+        d.name,
+        d.description ?? "",
+        d.city ?? "",
+        d.state ?? "",
+        d.zip ?? "",
+        d.addressLine1 ?? "",
+        directoryTypeLabel(d.directoryType),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [directory, q]);
 
   return (
     <>
@@ -111,12 +173,30 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search listings, vendors, categories…"
+                placeholder="Search vendors, directory, listings…"
                 className="w-full rounded-full border border-fix-border/20 bg-fix-bg-muted/40 py-2.5 pl-10 pr-4 text-sm text-fix-text focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta"
               />
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div>
+              <label htmlFor="discover-source" className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
+                Show
+              </label>
+              <select
+                id="discover-source"
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value as DiscoverSourceFilter)}
+                className="mt-1 rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+              >
+                {DISCOVER_SOURCE_FILTERS.map((opt) => (
+                  <option key={opt.label} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {showListings ? (
             <div>
               <label htmlFor="discover-type" className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
                 Type
@@ -124,7 +204,11 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
               <select
                 id="discover-type"
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value as "" | ListingType)}
+                onChange={(e) => {
+                  const next = e.target.value as "" | ListingType;
+                  setTypeFilter(next);
+                  if (next !== LISTING_TYPE.RESOURCE) setResourceSubtypeFilter("");
+                }}
                 className="mt-1 rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
               >
                 {DISCOVER_TYPE_FILTERS.map((opt) => (
@@ -134,6 +218,33 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
                 ))}
               </select>
             </div>
+            ) : null}
+            {showListings && typeFilter === LISTING_TYPE.RESOURCE ? (
+              <div>
+                <label
+                  htmlFor="discover-resource-subtype"
+                  className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+                >
+                  Resource kind
+                </label>
+                <select
+                  id="discover-resource-subtype"
+                  value={resourceSubtypeFilter}
+                  onChange={(e) =>
+                    setResourceSubtypeFilter(e.target.value as "" | ResourceSubtype)
+                  }
+                  className="mt-1 max-w-[12rem] rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+                >
+                  <option value="">All resources</option>
+                  {RESOURCE_SUBTYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+            {showListings ? (
             <div>
               <label htmlFor="discover-category" className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
                 Category
@@ -152,8 +263,10 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
                 ))}
               </select>
             </div>
+            ) : null}
           </div>
         </div>
+        {showListings ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {DISCOVER_TYPE_FILTERS.filter((t) => t.value).map((t) => (
             <button
@@ -171,8 +284,10 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
             </button>
           ))}
         </div>
+        ) : null}
       </section>
 
+      {showVendors ? (
       <section className="mt-12" aria-labelledby="featured-vendors-heading">
         <h2 id="featured-vendors-heading" className="text-lg font-semibold text-fix-heading">
           Featured vendors
@@ -240,7 +355,70 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
           </ul>
         )}
       </section>
+      ) : null}
 
+      {showDirectory ? (
+      <section className="mt-12" aria-labelledby="directory-listings-heading">
+        <h2 id="directory-listings-heading" className="text-lg font-semibold text-fix-heading">
+          Directory listings
+        </h2>
+        <p className="mt-1 text-sm text-fix-text-muted">
+          Local food businesses from the USDA directory — view only, not RootSync vendors.
+        </p>
+        {filteredDirectory.length === 0 ? (
+          <div className="mt-6">
+            <EmptyState
+              bordered={false}
+              title={q ? "No directory listings match your search" : "No directory listings yet"}
+              description={
+                q
+                  ? "Try a different search or clear filters."
+                  : "Run npm run directory:sync to import listings near your area."
+              }
+            />
+          </div>
+        ) : (
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredDirectory.map((d) => (
+              <li key={d.id}>
+                <Card id={`discover-directory-${d.id}`} className="h-full scroll-mt-24 p-4 sm:p-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-fix-text-muted">
+                    {directoryTypeLabel(d.directoryType)}
+                  </p>
+                  <Link
+                    href={discoverDirectoryPath(d.id)}
+                    className="mt-1 block text-sm font-semibold text-fix-heading hover:text-fix-link hover:underline"
+                  >
+                    {d.name}
+                  </Link>
+                  <DirectoryListingBadge size="sm" className="mt-1" />
+                  <p className="mt-2 text-xs text-fix-text-muted">
+                    {[d.city, d.state].filter(Boolean).join(", ") || d.addressLine1 || "Location on file"}
+                  </p>
+                  {d.description ? (
+                    <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-fix-text-muted">
+                      {d.description}
+                    </p>
+                  ) : null}
+                  {d.website ? (
+                    <a
+                      href={d.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex text-sm font-medium text-fix-link hover:text-fix-link-hover"
+                    >
+                      Visit website →
+                    </a>
+                  ) : null}
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      ) : null}
+
+      {showListings ? (
       <section className="mt-12" aria-labelledby="discover-listings-heading">
         <h2 id="discover-listings-heading" className="text-lg font-semibold text-fix-heading">
           Listings
@@ -280,6 +458,9 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
                   <div className="min-w-0 flex-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-fix-text-muted">
                       {listingTypeLabel(listing.listingType)}
+                      {listing.offering.resourceSubtype
+                        ? ` · ${resourceSubtypeLabel(listing.offering.resourceSubtype) ?? ""}`
+                        : ""}
                     </span>
                     <Link
                       href={discoverListingPath(listing.id)}
@@ -318,6 +499,7 @@ export function DiscoverBrowse({ vendors, listings }: Props) {
           </ul>
         )}
       </section>
+      ) : null}
     </>
   );
 }
