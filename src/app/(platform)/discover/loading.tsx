@@ -1,13 +1,5 @@
-import { Container } from "@/components/Container";
-import { CardListSkeleton, PageHeaderSkeleton } from "@/components/ui/LoadingSkeleton";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function MarketplaceLoading() {
-  return (
-    <Container>
-      <PageHeaderSkeleton />
-      <div className="mt-8">
-        <CardListSkeleton count={4} />
-      </div>
-    </Container>
-  );
+  return <PageLoading label="Loading marketplace" />;
 }

@@ -17,14 +17,19 @@ import {
 } from "@/config/discoverPagination";
 import { directoryToMapPins, vendorsToMapPins, type DiscoverMapPin } from "@/lib/discoverMap";
 import {
+  DEFAULT_DISCOVER_SEARCH_FORM,
   directoryLocationPayload,
   filterDiscoverListings,
   filterDiscoverVendors,
   locationSummaryFromSearch,
+  normalizeDiscoverSearchForm,
+  parseDiscoverStateRadius,
   shouldFetchDirectory,
+  validateDiscoverSearch,
   type AppliedDiscoverSearch,
 } from "@/lib/discoverSearch";
-import { isValidUsZip } from "@/lib/directory/directoryLocationFilter";
+import { isStateLocationComplete, isValidUsZip } from "@/lib/directory/directoryLocationFilter";
+import { normalizeUsState } from "@/lib/usStates";
 
 type Props = {
   vendors: DiscoverVendorRow[];
@@ -38,22 +43,41 @@ type DirectorySearchResponse = {
   pageSize: number;
   summary: string | null;
   mapPins: { id: string; name: string; latitude: number; longitude: number }[];
+  searchScope?: "state" | "zip" | null;
   error?: string;
 };
 
-const DEFAULT_FORM: DiscoverSearchFormValues = {
-  query: "",
-  sourceFilter: "",
-  typeFilter: "",
-  resourceSubtypeFilter: "",
-  categoryFilter: "",
-  locationMode: "state",
-  state: "",
-  zip: "",
-  radiusMiles: "20",
-};
+const DEFAULT_FORM = DEFAULT_DISCOVER_SEARCH_FORM;
 
-async function geocodeZip(zip: string): Promise<{ latitude: number; longitude: number } | null> {
+async function geocodeCityState(
+  city: string,
+  state: string,
+): Promise<{ latitude: number; longitude: number }> {
+  const abbrev = normalizeUsState(state);
+  if (!abbrev) throw new Error("Choose a valid US state.");
+  const params = new URLSearchParams({
+    city: city.trim(),
+    state: abbrev,
+  });
+  const res = await fetch(`/api/discover/geocode?${params.toString()}`);
+  const body = (await res.json()) as {
+    latitude?: number;
+    longitude?: number;
+    error?: string;
+  };
+  if (!res.ok) throw new Error(body.error ?? "Could not look up that city.");
+  if (
+    typeof body.latitude !== "number" ||
+    typeof body.longitude !== "number" ||
+    !Number.isFinite(body.latitude) ||
+    !Number.isFinite(body.longitude)
+  ) {
+    throw new Error("Invalid geocoder response.");
+  }
+  return { latitude: body.latitude, longitude: body.longitude };
+}
+
+async function geocodeZip(zip: string): Promise<{ latitude: number; longitude: number }> {
   const res = await fetch(`/api/discover/geocode?zip=${encodeURIComponent(zip)}`);
   const body = (await res.json()) as {
     latitude?: number;
@@ -74,15 +98,22 @@ async function geocodeZip(zip: string): Promise<{ latitude: number; longitude: n
 
 export function DiscoverMarketplace({ vendors, listings }: Props) {
   const [form, setForm] = useState<DiscoverSearchFormValues>(DEFAULT_FORM);
+  const handleFormChange = (next: DiscoverSearchFormValues) => {
+    setForm(normalizeDiscoverSearchForm(next));
+  };
   const [pageSize, setPageSize] = useState<DiscoverPageSize>(DEFAULT_DISCOVER_PAGE_SIZE);
   const [applied, setApplied] = useState<AppliedDiscoverSearch | null>(null);
-  const [zipCenter, setZipCenter] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationCenter, setLocationCenter] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [directoryPage, setDirectoryPage] = useState(1);
   const [vendorsPage, setVendorsPage] = useState(1);
   const [listingsPage, setListingsPage] = useState(1);
   const [directoryItems, setDirectoryItems] = useState<DiscoverDirectoryRow[]>([]);
   const [directoryTotal, setDirectoryTotal] = useState(0);
   const [directorySummary, setDirectorySummary] = useState<string | null>(null);
+  const [directorySearchScope, setDirectorySearchScope] = useState<"state" | "zip" | null>(null);
   const [directoryMapPins, setDirectoryMapPins] = useState<
     { id: string; name: string; latitude: number; longitude: number }[]
   >([]);
@@ -91,11 +122,20 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
   const [searchError, setSearchError] = useState<string | null>(null);
   const initialSearchDone = useRef(false);
 
-  const fetchDirectory = useCallback(async (search: AppliedDiscoverSearch, page: number) => {
+  const fetchDirectory = useCallback(
+    async (
+      search: AppliedDiscoverSearch,
+      page: number,
+      options?: {
+        refresh?: boolean;
+        locationCenter?: { latitude: number; longitude: number } | null;
+      },
+    ) => {
     if (!shouldFetchDirectory(search.sourceFilter)) {
       setDirectoryItems([]);
       setDirectoryTotal(0);
       setDirectorySummary(null);
+      setDirectorySearchScope(null);
       setDirectoryMapPins([]);
       setDirectoryError(null);
       setDirectoryLoading(false);
@@ -104,6 +144,13 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
 
     setDirectoryLoading(true);
     setDirectoryError(null);
+    setDirectorySearchScope(
+      search.locationMode === "state" && search.state.trim() && (search.city ?? "").trim()
+        ? "state"
+        : search.locationMode === "zip" && isValidUsZip(search.zip)
+          ? "zip"
+          : null,
+    );
     try {
       const location = directoryLocationPayload(search);
       const res = await fetch("/api/discover/directory-search", {
@@ -113,6 +160,8 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
           query: search.query,
           page,
           pageSize: search.pageSize,
+          refresh: options?.refresh === true,
+          locationCenter: options?.locationCenter ?? null,
           ...location,
         }),
       });
@@ -123,43 +172,73 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
       setDirectoryItems(body.items);
       setDirectoryTotal(body.total);
       setDirectorySummary(body.summary);
+      setDirectorySearchScope(body.searchScope ?? null);
       setDirectoryMapPins(body.mapPins);
       setDirectoryPage(body.page);
     } catch (err) {
       setDirectoryItems([]);
       setDirectoryTotal(0);
       setDirectoryMapPins([]);
+      setDirectorySearchScope(null);
       setDirectoryError(err instanceof Error ? err.message : "Directory search failed.");
     } finally {
       setDirectoryLoading(false);
     }
-  }, []);
+  },
+  [],
+);
 
   const runSearch = useCallback(
     async (nextForm: DiscoverSearchFormValues, nextPageSize: DiscoverPageSize = pageSize) => {
       setSearchError(null);
-      const nextApplied: AppliedDiscoverSearch = { ...nextForm, pageSize: nextPageSize };
+      const nextApplied: AppliedDiscoverSearch = {
+        ...normalizeDiscoverSearchForm(nextForm),
+        pageSize: nextPageSize,
+      };
 
-      let nextZipCenter: { latitude: number; longitude: number } | null = null;
+      const validationError = validateDiscoverSearch(nextApplied);
+      if (validationError) {
+        setSearchError(validationError);
+        return;
+      }
+
+      let nextLocationCenter: { latitude: number; longitude: number } | null = null;
       if (
+        nextApplied.locationMode === "state" &&
+        isStateLocationComplete({
+          state: nextApplied.state,
+          city: nextApplied.city,
+          stateRadius: parseDiscoverStateRadius(nextApplied.radiusMiles),
+        })
+      ) {
+        try {
+          nextLocationCenter = await geocodeCityState(nextApplied.city, nextApplied.state);
+        } catch (err) {
+          setSearchError(err instanceof Error ? err.message : "City lookup failed.");
+          return;
+        }
+      } else if (
         nextApplied.locationMode === "zip" &&
         isValidUsZip(nextApplied.zip) &&
         Number(nextApplied.radiusMiles) > 0
       ) {
         try {
-          nextZipCenter = await geocodeZip(nextApplied.zip.trim());
+          nextLocationCenter = await geocodeZip(nextApplied.zip.trim());
         } catch (err) {
           setSearchError(err instanceof Error ? err.message : "ZIP lookup failed.");
           return;
         }
       }
 
-      setZipCenter(nextZipCenter);
+      setLocationCenter(nextLocationCenter);
       setApplied(nextApplied);
       setDirectoryPage(1);
       setVendorsPage(1);
       setListingsPage(1);
-      await fetchDirectory(nextApplied, 1);
+      await fetchDirectory(nextApplied, 1, {
+        refresh: true,
+        locationCenter: nextLocationCenter,
+      });
     },
     [fetchDirectory, pageSize],
   );
@@ -178,13 +257,13 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
 
   const filteredVendors = useMemo(() => {
     if (!applied) return [];
-    return filterDiscoverVendors(vendors, applied, zipCenter);
-  }, [applied, vendors, zipCenter]);
+    return filterDiscoverVendors(vendors, applied, locationCenter);
+  }, [applied, vendors, locationCenter]);
 
   const filteredListings = useMemo(() => {
     if (!applied) return [];
-    return filterDiscoverListings(listings, vendors, applied, zipCenter);
-  }, [applied, listings, vendors, zipCenter]);
+    return filterDiscoverListings(listings, vendors, applied, locationCenter);
+  }, [applied, listings, vendors, locationCenter]);
 
   const pagedVendors = useMemo(
     () => paginateSlice(filteredVendors, vendorsPage, pageSize),
@@ -250,7 +329,7 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
   const handleDirectoryPageChange = (page: number) => {
     if (!applied) return;
     setDirectoryPage(page);
-    void fetchDirectory(applied, page);
+    void fetchDirectory(applied, page, { refresh: false, locationCenter });
   };
 
   return (
@@ -293,12 +372,13 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
         directoryLoading={directoryLoading}
         directoryError={directoryError}
         directorySummary={directorySummary}
+        directorySearchScope={directorySearchScope}
         locationSummary={locationSummary}
         searchError={searchError}
         pageSize={pageSize}
         onPageSizeChange={handlePageSizeChange}
         form={form}
-        onFormChange={setForm}
+        onFormChange={handleFormChange}
         onSearch={handleSearch}
         showVendors={showVendors}
         showDirectory={showDirectory}

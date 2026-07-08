@@ -1,3 +1,7 @@
+import {
+  type DiscoverStateRadius,
+  isDiscoverStateRadiusAnywhere,
+} from "@/config/discoverLocation";
 import { distanceMiles } from "@/lib/geo";
 import { normalizeUsState } from "@/lib/usStates";
 
@@ -6,8 +10,10 @@ export type DirectoryLocationMode = "state" | "zip";
 export type DirectoryLocationFilterInput = {
   mode: DirectoryLocationMode;
   state: string;
+  city: string;
   zip: string;
   radiusMiles: number;
+  stateRadius: DiscoverStateRadius | null;
   zipCenter: { latitude: number; longitude: number } | null;
 };
 
@@ -22,9 +28,21 @@ export function isValidUsZip(zip: string): boolean {
   return /^\d{5}$/.test(zip.trim());
 }
 
+export function isStateLocationComplete(input: {
+  state: string;
+  city: string;
+  stateRadius: DiscoverStateRadius | null;
+}): boolean {
+  return Boolean(normalizeUsState(input.state) && input.city.trim() && input.stateRadius);
+}
+
 export function isDirectoryLocationFilterActive(input: DirectoryLocationFilterInput): boolean {
   if (input.mode === "state") {
-    return normalizeUsState(input.state) != null;
+    return isStateLocationComplete({
+      state: input.state,
+      city: input.city,
+      stateRadius: input.stateRadius,
+    });
   }
   return (
     isValidUsZip(input.zip) &&
@@ -37,7 +55,12 @@ export function directoryLocationFilterSummary(input: DirectoryLocationFilterInp
   if (!isDirectoryLocationFilterActive(input)) return null;
   if (input.mode === "state") {
     const st = normalizeUsState(input.state);
-    return st ? `State: ${st}` : null;
+    const city = input.city.trim();
+    if (!st || !city || !input.stateRadius) return null;
+    if (isDiscoverStateRadiusAnywhere(input.stateRadius)) {
+      return `Anywhere in ${st} (from ${city})`;
+    }
+    return `Within ${input.stateRadius} mi of ${city}, ${st}`;
   }
   return `Within ${input.radiusMiles} mi of ${input.zip.trim()}`;
 }
@@ -51,7 +74,20 @@ export function filterDirectoryByLocation<T extends DirectoryWithCoords>(
   if (input.mode === "state") {
     const st = normalizeUsState(input.state);
     if (!st) return rows;
-    return rows.filter((r) => r.state?.toUpperCase() === st);
+    let filtered = rows.filter((r) => r.state?.toUpperCase() === st);
+    if (
+      input.stateRadius &&
+      !isDiscoverStateRadiusAnywhere(input.stateRadius) &&
+      input.zipCenter
+    ) {
+      const radiusMiles = input.stateRadius;
+      const { latitude: cLat, longitude: cLon } = input.zipCenter;
+      filtered = filtered.filter((r) => {
+        if (r.latitude == null || r.longitude == null) return false;
+        return distanceMiles(cLat, cLon, r.latitude, r.longitude) <= radiusMiles;
+      });
+    }
+    return filtered;
   }
 
   const zip = input.zip.trim();

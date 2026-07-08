@@ -3,8 +3,9 @@ import { Store } from "lucide-react";
 
 import { Container } from "@/components/Container";
 import { DiscoverMarketplace } from "@/components/DiscoverMarketplace";
+import { PageLoading } from "@/components/PageLoading";
 import { RoleCtaButton } from "@/components/RoleCtaButton";
-import { publishDueScheduledOfferings } from "@/lib/publishScheduledOfferings";
+import { publishDueScheduledOfferingsBestEffort } from "@/lib/publishScheduledOfferings";
 import { publicListingRelationWhere, publicListingWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
 import { VENDOR_STATUS } from "@/lib/roles";
@@ -16,7 +17,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function DiscoverPage() {
-  await publishDueScheduledOfferings(prisma);
+  await publishDueScheduledOfferingsBestEffort(prisma);
 
   const [vendorsRaw, listings] = await Promise.all([
     prisma.vendorProfile.findMany({
@@ -67,7 +68,7 @@ export default async function DiscoverPage() {
         </p>
       </div>
 
-      <Suspense fallback={<p className="mt-8 text-sm text-fix-text-muted">Loading browse…</p>}>
+      <Suspense fallback={<PageLoading contained={false} label="Loading browse" />}>
         <DiscoverMarketplace
           vendors={featuredVendors.map((v) => ({
             id: v.id,

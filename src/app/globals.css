@@ -84,4 +84,18 @@ body {
     background: transparent !important;
     border: none !important;
   }
+
+  @keyframes rootsync-loader-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .rootsync-loader {
+    animation: rootsync-loader-spin 4s linear infinite;
+    transform-origin: center center;
+  }
 }

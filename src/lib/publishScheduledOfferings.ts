@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 
+import { isPrismaUnavailableError } from "@/lib/prisma";
 import { updateOfferingAndSyncListing } from "@/lib/offeringListing";
 import { OFFERING_STATUS } from "@/lib/roles";
 
@@ -42,4 +43,25 @@ export async function publishDueScheduledOfferings(prisma: PrismaClient) {
   }
 
   return { published, checked: due.length, checkedAt: now.toISOString() };
+}
+
+/** Page/cron helper — skip scheduled publish when the DB is temporarily unreachable (Neon wake-up, etc.). */
+export async function publishDueScheduledOfferingsBestEffort(
+  prisma: PrismaClient,
+): Promise<{ published: number }> {
+  try {
+    const result = await publishDueScheduledOfferings(prisma);
+    return { published: result.published };
+  } catch (error) {
+    if (isPrismaUnavailableError(error)) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "[publishDueScheduledOfferings] Database unreachable — skipping scheduled publish. " +
+            "If using Neon free tier, open the Neon console to wake the database or retry in a few seconds.",
+        );
+      }
+      return { published: 0 };
+    }
+    throw error;
+  }
 }

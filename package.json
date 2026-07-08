@@ -18,6 +18,7 @@
     "db:push": "prisma db push",
     "calendar:poc": "tsx --env-file=.env.local scripts/calendar-poc.ts",
     "directory:sync": "tsx --env-file=.env.local scripts/sync-usda-directory.ts",
+    "directory:benchmark": "tsx --env-file=.env.local scripts/benchmark-directory-state.ts",
     "test:calendar": "tsx --test src/services/calendar/calendar.test.ts"
   },
   "dependencies": {

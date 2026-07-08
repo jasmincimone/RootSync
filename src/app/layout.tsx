@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   description:
     "RootSync is a marketplace and community platform — discover local vendors, book services, and connect with creators.",
   metadataBase: new URL("https://rootsync.io"),
+  icons: {
+    icon: [{ url: "/rootsync-symbol.png?v=4", type: "image/png" }],
+    apple: [{ url: "/rootsync-symbol.png?v=4", type: "image/png" }],
+  },
   openGraph: {
     title: "RootSync, Inc.",
     description:

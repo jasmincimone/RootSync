@@ -1,13 +1,5 @@
-import { Container } from "@/components/Container";
-import { CardSkeleton, PageHeaderSkeleton } from "@/components/ui/LoadingSkeleton";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function CheckoutLoading() {
-  return (
-    <Container className="py-12 sm:py-16">
-      <div className="mx-auto max-w-xl space-y-6">
-        <PageHeaderSkeleton />
-        <CardSkeleton className="min-h-[280px]" />
-      </div>
-    </Container>
-  );
+  return <PageLoading label="Loading checkout" />;
 }

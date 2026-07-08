@@ -1,10 +1,5 @@
-import { CardSkeleton, PageHeaderSkeleton } from "@/components/ui/LoadingSkeleton";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function NewVendorListingLoading() {
-  return (
-    <div className="space-y-6">
-      <PageHeaderSkeleton />
-      <CardSkeleton className="min-h-[480px]" />
-    </div>
-  );
+  return <PageLoading contained={false} label="Loading listing editor" />;
 }

@@ -107,10 +107,17 @@ export function MarketplaceMap({ pins, compact }: Props) {
     } else if (points.length === 1) {
       map.setView(points[0], 11);
     } else {
-      map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 14 });
+      try {
+        if (el.isConnected) {
+          map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 14 });
+        }
+      } catch {
+        map.setView(points[0], 10);
+      }
     }
 
     return () => {
+      map.stop();
       map.remove();
       clearLeafletContainer(el);
     };

@@ -9,6 +9,7 @@ import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListi
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { UserAvatar } from "@/components/UserAvatar";
 import { DirectoryListingBadge } from "@/components/DirectoryListingBadge";
+import { RootSyncLoader } from "@/components/RootSyncLoader";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -20,11 +21,15 @@ import {
   type DiscoverSourceFilter,
 } from "@/config/discoverFilters";
 import {
+  DISCOVER_STATE_RADIUS_OPTIONS,
+  DEFAULT_STATE_RADIUS_MILES,
+} from "@/config/discoverLocation";
+import {
   DISCOVER_PAGE_SIZE_OPTIONS,
   type DiscoverPageSize,
 } from "@/config/discoverPagination";
-import { RESOURCE_SUBTYPE_OPTIONS } from "@/config/resourceSubtypes";
 import { discoverDirectoryPath, discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
+import { RESOURCE_SUBTYPE_OPTIONS } from "@/config/resourceSubtypes";
 import { formatPrice } from "@/lib/format";
 import { directoryTypeLabel } from "@/lib/directory/types";
 import type { DirectoryLocationMode } from "@/lib/directory/directoryLocationFilter";
@@ -88,6 +93,7 @@ export type DiscoverSearchFormValues = {
   categoryFilter: string;
   locationMode: DirectoryLocationMode;
   state: string;
+  city: string;
   zip: string;
   radiusMiles: string;
 };
@@ -109,6 +115,7 @@ type Props = {
   directoryLoading: boolean;
   directoryError: string | null;
   directorySummary: string | null;
+  directorySearchScope: "state" | "zip" | null;
   locationSummary: string | null;
   pageSize: DiscoverPageSize;
   onPageSizeChange: (size: DiscoverPageSize) => void;
@@ -139,6 +146,7 @@ export function DiscoverBrowse({
   directoryLoading,
   directoryError,
   directorySummary,
+  directorySearchScope,
   locationSummary,
   pageSize,
   onPageSizeChange,
@@ -192,7 +200,7 @@ export function DiscoverBrowse({
   }, [allListings]);
 
   const patchForm = (patch: Partial<DiscoverSearchFormValues>) => {
-    onFormChange({ ...form, ...patch });
+    onFormChange({ ...form, city: form.city ?? "", ...patch });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -384,13 +392,18 @@ export function DiscoverBrowse({
               Location
             </p>
             <p className="mt-1 text-sm text-fix-text-muted">
-              Filter vendors, listings, and directory results by state, or by ZIP code and radius in
-              miles. Click Search to apply.
+              By state: pick a state, city, and distance. By ZIP: use a ZIP code and radius in miles.
+              Click Search to apply.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => patchForm({ locationMode: "state" })}
+                onClick={() =>
+                  patchForm({
+                    locationMode: "state",
+                    radiusMiles: String(DEFAULT_STATE_RADIUS_MILES),
+                  })
+                }
                 className={cn(
                   "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                   form.locationMode === "state"
@@ -414,31 +427,74 @@ export function DiscoverBrowse({
               </button>
             </div>
             {form.locationMode === "state" ? (
-              <div className="mt-3 max-w-xs">
-                <label
-                  htmlFor="discover-location-state"
-                  className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
-                >
-                  State
-                </label>
-                <input
-                  id="discover-location-state"
-                  list="discover-us-states"
-                  value={form.state}
-                  onChange={(e) => patchForm({ state: e.target.value })}
-                  placeholder="GA or Georgia"
-                  className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
-                />
-                <datalist id="discover-us-states">
-                  {US_STATE_OPTIONS.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                  {US_STATE_OPTIONS.map((s) => (
-                    <option key={`${s.value}-name`} value={s.label} />
-                  ))}
-                </datalist>
+              <div className="mt-3 space-y-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="max-w-xs flex-1">
+                    <label
+                      htmlFor="discover-location-state"
+                      className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+                    >
+                      State
+                    </label>
+                    <input
+                      id="discover-location-state"
+                      list="discover-us-states"
+                      required
+                      value={form.state}
+                      onChange={(e) => patchForm({ state: e.target.value })}
+                      placeholder="GA or Georgia"
+                      className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+                    />
+                    <datalist id="discover-us-states">
+                      {US_STATE_OPTIONS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                      {US_STATE_OPTIONS.map((s) => (
+                        <option key={`${s.value}-name`} value={s.label} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div className="max-w-xs flex-1">
+                    <label
+                      htmlFor="discover-location-city"
+                      className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+                    >
+                      City
+                    </label>
+                    <input
+                      id="discover-location-city"
+                      required
+                      value={form.city}
+                      onChange={(e) => patchForm({ city: e.target.value })}
+                      placeholder="Hartford"
+                      className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
+                    Distance from city
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {DISCOVER_STATE_RADIUS_OPTIONS.map((opt) => (
+                      <button
+                        key={String(opt.value)}
+                        type="button"
+                        onClick={() => patchForm({ radiusMiles: String(opt.value) })}
+                        className={cn(
+                          "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                          form.radiusMiles === String(opt.value)
+                            ? "bg-forest text-fix-primary-foreground"
+                            : "bg-fix-surface text-fix-text-muted hover:bg-fix-bg-muted",
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -603,8 +659,17 @@ export function DiscoverBrowse({
             Local food businesses from the USDA directory — view only, not RootSync vendors.
             {directorySummary ? ` · ${directorySummary}` : ""}
           </p>
+          {directorySearchScope === "state" ? (
+            <p className="mt-2 text-sm text-fix-text-muted">
+              {directoryLoading
+                ? "Searching directory listings near your city… Use distance presets above to narrow results, or ZIP & radius for a different anchor."
+                : "Results are scoped by city and distance. Try a smaller radius for more local listings, or Anywhere for the full state."}
+            </p>
+          ) : null}
           {directoryLoading ? (
-            <p className="mt-6 text-sm text-fix-text-muted">Searching directory listings…</p>
+            <div className="mt-6">
+              <RootSyncLoader label="Searching directory listings…" size="md" block />
+            </div>
           ) : directoryError ? (
             <div className="mt-6">
               <EmptyState bordered={false} title="Directory search failed" description={directoryError} />

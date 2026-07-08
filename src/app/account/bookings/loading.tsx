@@ -1,10 +1,5 @@
-import { CardListSkeleton, PageHeaderSkeleton } from "@/components/ui/LoadingSkeleton";
+import { PageLoading } from "@/components/PageLoading";
 
 export default function MemberBookingsLoading() {
-  return (
-    <div className="space-y-6">
-      <PageHeaderSkeleton />
-      <CardListSkeleton count={3} />
-    </div>
-  );
+  return <PageLoading contained={false} label="Loading bookings" />;
 }
