@@ -93,8 +93,8 @@ export default async function HomePage() {
           </div>
 
           {featuredVendors.length > 0 ? (
-            <div className="mx-auto mt-14 w-full min-w-0 max-w-4xl overflow-hidden rounded-2xl bg-espresso shadow-soft ring-1 ring-fix-border/10 sm:mt-16">
-              <div className="flex flex-col items-center px-6 py-10 text-clay sm:py-12">
+            <div className="mx-auto mt-14 w-full min-w-0 max-w-4xl overflow-hidden rounded-2xl bg-warm-brown shadow-soft ring-1 ring-fix-border/10 sm:mt-16">
+              <div className="flex flex-col items-center px-6 py-10 text-clay-muted sm:py-12">
                 <Image
                   src={ROOTSYNC_SYMBOL_SRC}
                   alt="RootSync"
@@ -106,13 +106,13 @@ export default async function HomePage() {
                 <div className="mt-4 text-center">
                   <div className="text-2xl font-bold tracking-tight sm:text-3xl">RootSync</div>
                 </div>
-                <p className="mx-auto mt-6 max-w-lg text-center text-sm leading-relaxed text-clay/85 sm:text-base">
+                <p className="mx-auto mt-6 max-w-lg text-center text-sm leading-relaxed text-clay-muted/90 sm:text-base">
                   Meet vendors on Discover Marketplace — from urban gardening and self-care to
                   preparedness and handmade goods.
                 </p>
               </div>
-              <div className="border-t border-clay/10 px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-8">
-                <p className="text-center text-xs font-semibold uppercase tracking-wider text-clay/70">
+              <div className="border-t border-gold/15 px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-8">
+                <p className="text-center text-xs font-semibold uppercase tracking-wider text-clay-muted/80">
                   Featured vendors
                 </p>
                 <div className="mx-auto mt-5 grid max-w-3xl gap-3 sm:grid-cols-2">
@@ -120,14 +120,14 @@ export default async function HomePage() {
                     <Link
                       key={vendor.id}
                       href={discoverVendorPath(vendor.id)}
-                      className="rounded-2xl border border-clay/25 bg-clay/10 px-4 py-4 text-center text-sm font-semibold text-clay transition-all hover:border-gold/50 hover:bg-clay/15"
+                      className="rounded-2xl border border-gold/30 bg-gold/10 px-4 py-4 text-center text-sm font-semibold text-clay-muted transition-all hover:border-gold/50 hover:bg-gold/15"
                     >
                       {vendor.displayName}
                     </Link>
                   ))}
                 </div>
                 <div className="mt-6 text-center">
-                  <Link href="/discover" className="text-sm font-medium text-gold hover:underline">
+                  <Link href="/discover" className="text-sm font-medium text-clay-muted hover:underline">
                     View all vendors →
                   </Link>
                 </div>

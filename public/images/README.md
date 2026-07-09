@@ -29,11 +29,11 @@ Syntha menu cards and icons for the RootSync landing explore menu.
 | File | Feature |
 |------|---------|
 | `discover-marketplace-menu-card.png` | Discover Marketplace card |
-| `rootsync-ai-menu-card.png` | RootSync AI card |
+| `rootsense-ai-menu-card.PNG` | RootSense AI card |
 | `stay-synced-menu-card.png` | Stay Synced card |
 | `pulse-menu-card.png` | Pulse card |
 | `icons/discover-marketplace-icon.png` | Discover icon (mobile menu) |
-| `icons/rootsync-ai-icon.png` | RootSync AI icon |
+| `icons/rootsense-ai-icon.png` | RootSense AI icon |
 | `icons/stay-synced-icon.png` | Stay Synced icon |
 
 Icons ship without alpha; run `node scripts/process-brand-icons.mjs` after replacing them.

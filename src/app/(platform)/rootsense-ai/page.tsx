@@ -1,8 +1,9 @@
-import Image from "next/image";
-
 import { Container } from "@/components/Container";
 import { RootSyncChat } from "@/components/RootSyncChat";
 import { RootSyncFeatureCards } from "@/components/RootSyncFeatureCards";
+import { BrandPngIcon } from "@/components/ui/BrandPngIcon";
+import { platformNavIconByHref } from "@/config/platformExploreNav";
+import { ROOTSENSE_AI_HREF } from "@/config/rootsensePaths";
 
 export const metadata = {
   title: "RootSense AI",
@@ -13,12 +14,11 @@ export default function RootSenseAiPage() {
     <Container className="py-12 sm:py-16">
       <div className="max-w-3xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
-          <Image
-            src="/images/platform/rootsync/logo.png"
-            alt="RootSync"
-            width={72}
-            height={72}
-            className="h-16 w-16 shrink-0 rounded-full object-cover sm:h-[72px] sm:w-[72px]"
+          <BrandPngIcon
+            src={platformNavIconByHref[ROOTSENSE_AI_HREF]}
+            alt="RootSense AI"
+            size={72}
+            className="h-16 w-16 shrink-0 sm:h-[72px] sm:w-[72px]"
           />
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-fix-heading sm:text-4xl">
@@ -30,18 +30,6 @@ export default function RootSenseAiPage() {
             </p>
           </div>
         </div>
-      </div>
-
-      <div className="mx-auto mt-10 max-w-56 sm:mt-12">
-        <Image
-          src="/images/platform/rootsync/hero-mark.png"
-          alt="RootSense AI illustration: growth, food, and connection"
-          width={400}
-          height={400}
-          className="h-auto w-full rounded-2xl object-contain shadow-soft"
-          sizes="(max-width: 768px) 100vw, 14rem"
-          priority
-        />
       </div>
 
       <RootSyncFeatureCards />

@@ -26,14 +26,14 @@ export const PLATFORM_EXPLORE_ITEMS: PlatformExploreItem[] = [
     gridClass: "col-start-1 row-start-1",
   },
   {
-    id: "rootsync-ai",
+    id: "rootsense-ai",
     title: "RootSense AI",
     tagline: "Wiser decisions. Stronger roots.",
     description:
       "Meet Rootie — your conversational guide powered by RootSense AI. Get practical help growing food, building your business, and strengthening your community.",
     href: ROOTSENSE_AI_HREF,
-    menuCardSrc: "/images/platform/explore/rootsync-ai-menu-card.png",
-    iconSrc: "/images/platform/explore/icons/rootsync-ai-icon.png",
+    menuCardSrc: "/images/platform/explore/rootsense-ai-menu-card.PNG",
+    iconSrc: "/images/platform/explore/icons/rootsense-ai-icon.png",
     gridClass: "col-start-2 row-start-1",
   },
   {
@@ -62,3 +62,7 @@ export const PLATFORM_EXPLORE_ITEMS: PlatformExploreItem[] = [
 
 /** Site-wide RootSync mark (favicon, loader, featured sections). */
 export const ROOTSYNC_SYMBOL_SRC = "/images/brand/rootsync-platform-symbol.png";
+
+export const platformNavIconByHref = Object.fromEntries(
+  PLATFORM_EXPLORE_ITEMS.map((item) => [item.href, item.iconSrc]),
+);

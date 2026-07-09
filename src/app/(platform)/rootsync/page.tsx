@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Store, UserPlus } from "lucide-react";
 
 import { Container } from "@/components/Container";
@@ -10,6 +9,7 @@ import {
   VendorPricingSuffix,
   VENDOR_STARTUP_PROMO_NOTICE,
 } from "@/components/RoleCtaPricing";
+import { ROOTSYNC_SYMBOL_SRC } from "@/config/platformExploreNav";
 
 export const metadata = {
   title: "RootSync",
@@ -22,13 +22,15 @@ export default function RootSyncPlatformPage() {
     <Container className="py-12 sm:py-16">
       <div className="mx-auto max-w-5xl">
         <div className="flex justify-center">
-          <Image
-            src="/images/platform/rootsync/logo.png"
+          {/* Native img preserves PNG alpha (same mark as favicon and loader). */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`${ROOTSYNC_SYMBOL_SRC}?v=5`}
             alt="RootSync"
-            width={280}
-            height={280}
-            className="h-44 w-44 rounded-full object-cover sm:h-56 sm:w-56"
-            priority
+            width={224}
+            height={224}
+            decoding="async"
+            className="h-44 w-44 object-contain sm:h-56 sm:w-56"
           />
         </div>
 

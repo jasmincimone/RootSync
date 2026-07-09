@@ -5,6 +5,7 @@ const fixTokens = {
   espresso: "#342a0f",
   bark: "#59281d",
   gold: "#b8895f",
+  "warm-brown": "#80654b",
   forest: "#044730",
   amber: "#e59a28",
   "clay-muted": "#d4bcae",

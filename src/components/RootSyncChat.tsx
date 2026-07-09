@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, PenSquare, Send, Trash2 } from "lucide-react";
+import { Loader2, PanelLeft, PenSquare, Send, Trash2, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 import { Card } from "@/components/ui/Card";
@@ -25,9 +25,9 @@ function formatChatApiError(data: { error?: string; hint?: string }) {
 }
 
 const SUGGESTIONS = [
-  "What should I plant first in early spring in zone 6b?",
-  "Help me sketch a simple 4-bed crop rotation for vegetables.",
-  "How do I price CSA shares for a new micro-farm?",
+  "What can I grow in my backyard this month based on where I live?",
+  "Help me create a backyard that feeds my family.",
+  "Find local farms, growers, and sustainability events near me."
 ];
 
 function formatRelative(iso: string) {
@@ -64,6 +64,7 @@ export function RootSyncChat() {
   const [error, setError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
   const [joinGateOpen, setJoinGateOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const promptJoin = useCallback(() => {
@@ -119,6 +120,15 @@ export function RootSyncChat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  useEffect(() => {
+    if (!historyOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setHistoryOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [historyOpen]);
+
   const loadConversation = useCallback(async (id: string) => {
     setError(null);
     setThreadLoading(true);
@@ -145,6 +155,19 @@ export function RootSyncChat() {
     setError(null);
     setInput("");
   }, []);
+
+  const startNewChat = useCallback(() => {
+    newChat();
+    setHistoryOpen(false);
+  }, [newChat]);
+
+  const selectConversation = useCallback(
+    (id: string) => {
+      void loadConversation(id);
+      setHistoryOpen(false);
+    },
+    [loadConversation],
+  );
 
   const deleteConversation = useCallback(
     async (id: string, e: React.MouseEvent) => {
@@ -356,90 +379,134 @@ export function RootSyncChat() {
     </div>
   );
 
+  const chatSidebarPanel = (
+    <>
+      <div className="p-2 pt-3">
+        <button
+          type="button"
+          onClick={startNewChat}
+          className="flex w-full items-center gap-2 rounded-lg border border-gold/30 bg-gold/10 px-3 py-2.5 text-left text-sm font-medium text-clay-muted transition-colors hover:bg-gold/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-warm-brown"
+        >
+          <PenSquare className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+          New chat
+        </button>
+      </div>
+
+      <div className="px-3 pb-1 pt-1">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-clay-muted/70">
+          Your chats
+        </h2>
+      </div>
+
+      <nav
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pb-4"
+        aria-label="Saved conversations"
+      >
+        {listError ? (
+          <p className="px-2 py-2 text-sm leading-relaxed text-amber/90">{listError}</p>
+        ) : listLoading && sortedConversations.length === 0 ? (
+          <p className="px-2 py-3 text-sm text-clay-muted/70">Loading…</p>
+        ) : sortedConversations.length === 0 ? (
+          <p className="px-2 py-2 text-sm leading-relaxed text-clay-muted/70">
+            No chats yet. Start one above.
+          </p>
+        ) : (
+          <ul className="space-y-0.5">
+            {sortedConversations.map((c) => {
+              const active = conversationId === c.id;
+              return (
+                <li key={c.id}>
+                  <div
+                    className={cn(
+                      "group relative flex items-center rounded-lg transition-colors",
+                      active ? "bg-gold/15" : "hover:bg-gold/10",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => selectConversation(c.id)}
+                      className="min-w-0 flex-1 px-3 py-2.5 pr-9 text-left"
+                    >
+                      <span className="block truncate text-sm text-clay-muted">{c.title}</span>
+                      <span className="mt-0.5 block text-[11px] text-clay-muted/60">
+                        {formatRelative(c.updatedAt)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => void deleteConversation(c.id, e)}
+                      className={cn(
+                        "absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-clay-muted/50",
+                        "opacity-0 transition-opacity hover:bg-gold/15 hover:text-clay-muted group-hover:opacity-100",
+                        active && "opacity-100",
+                      )}
+                      aria-label={`Delete ${c.title}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </nav>
+    </>
+  );
+
   const memberChrome = (
     <div
       className={cn(
-        "mt-10 flex min-h-[min(680px,calc(100dvh-11rem))] flex-col overflow-hidden rounded-2xl border border-fix-border/20 shadow-soft",
-        "lg:flex-row lg:rounded-2xl"
+        "relative mt-10 flex min-h-[min(680px,calc(100dvh-11rem))] flex-row overflow-hidden rounded-2xl border border-fix-border/20 shadow-soft",
       )}
     >
-      <aside
-        className={cn(
-          "flex w-full flex-col border-b border-clay/10 bg-espresso text-clay",
-          "lg:w-[260px] lg:shrink-0 lg:border-b-0 lg:border-r lg:border-clay/10"
-        )}
-      >
-        <div className="p-2 pt-3">
+      <div className="flex w-11 shrink-0 flex-col items-center gap-1 border-r border-gold/15 bg-warm-brown py-2 lg:hidden">
+        <button
+          type="button"
+          onClick={startNewChat}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-clay-muted transition-colors hover:bg-gold/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+          aria-label="New chat"
+        >
+          <PenSquare className="h-4 w-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => setHistoryOpen(true)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-clay-muted transition-colors hover:bg-gold/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+          aria-label="Open chat history"
+        >
+          <PanelLeft className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+
+      <aside className="hidden w-[260px] shrink-0 flex-col border-r border-gold/15 bg-warm-brown lg:flex">
+        {chatSidebarPanel}
+      </aside>
+
+      {historyOpen ? (
+        <>
           <button
             type="button"
-            onClick={newChat}
-            className="flex w-full items-center gap-2 rounded-lg border border-clay/25 bg-clay/5 px-3 py-2.5 text-left text-sm font-medium text-clay transition-colors hover:bg-clay/12 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-espresso"
-          >
-            <PenSquare className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-            New chat
-          </button>
-        </div>
-
-        <div className="px-3 pb-1 pt-1">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-clay/50">
-            Your chats
-          </h2>
-        </div>
-
-        <nav
-          className="flex min-h-[200px] flex-1 flex-col overflow-y-auto px-2 pb-4 lg:min-h-0"
-          aria-label="Saved conversations"
-        >
-          {listError ? (
-            <p className="px-2 py-2 text-sm leading-relaxed text-amber/90">{listError}</p>
-          ) : listLoading && sortedConversations.length === 0 ? (
-            <p className="px-2 py-3 text-sm text-clay/55">Loading…</p>
-          ) : sortedConversations.length === 0 ? (
-            <p className="px-2 py-2 text-sm leading-relaxed text-clay/55">
-              No chats yet. Start one in the panel →
-            </p>
-          ) : (
-            <ul className="space-y-0.5">
-              {sortedConversations.map((c) => {
-                const active = conversationId === c.id;
-                return (
-                  <li key={c.id}>
-                    <div
-                      className={cn(
-                        "group relative flex items-center rounded-lg transition-colors",
-                        active ? "bg-clay/15" : "hover:bg-clay/10"
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => void loadConversation(c.id)}
-                        className="min-w-0 flex-1 px-3 py-2.5 pr-9 text-left"
-                      >
-                        <span className="block truncate text-sm text-clay">{c.title}</span>
-                        <span className="mt-0.5 block text-[11px] text-clay/45">
-                          {formatRelative(c.updatedAt)}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => void deleteConversation(c.id, e)}
-                        className={cn(
-                          "absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-clay/40",
-                          "opacity-0 transition-opacity hover:bg-clay/15 hover:text-clay group-hover:opacity-100",
-                          active && "opacity-100"
-                        )}
-                        aria-label={`Delete ${c.title}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </nav>
-      </aside>
+            aria-label="Close chat history"
+            className="absolute inset-0 z-30 bg-fix-text/35 lg:hidden"
+            onClick={() => setHistoryOpen(false)}
+          />
+          <aside className="absolute inset-y-0 left-11 z-40 flex w-[min(280px,calc(100%-2.75rem))] flex-col border-r border-gold/15 bg-warm-brown shadow-lg lg:hidden">
+            <div className="flex shrink-0 items-center justify-between border-b border-gold/15 px-3 py-2.5">
+              <span className="text-sm font-semibold text-clay-muted">Chats</span>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-clay-muted transition-colors hover:bg-gold/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+                aria-label="Close chat history"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{chatSidebarPanel}</div>
+          </aside>
+        </>
+      ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">{chatPanel}</div>
     </div>

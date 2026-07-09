@@ -6,8 +6,10 @@ import { Menu } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 import { UserAvatar } from "@/components/UserAvatar";
+import { BrandPngIcon } from "@/components/ui/BrandPngIcon";
 import { PulseIcon } from "@/components/pulse/PulseIcon";
 import { PLATFORM_PRIMARY_NAV_LINKS } from "@/config/platformNav";
+import { platformNavIconByHref } from "@/config/platformExploreNav";
 import { cn } from "@/lib/cn";
 import { leaveMenu, rememberPathBeforeMenu } from "@/lib/menuReturn";
 
@@ -90,6 +92,13 @@ export function SiteHeader() {
               >
                 {item.usePulseIcon ? (
                   <PulseIcon size={16} alt="" className="shrink-0" />
+                ) : platformNavIconByHref[item.href] ? (
+                  <BrandPngIcon
+                    src={platformNavIconByHref[item.href]}
+                    size={16}
+                    className="shrink-0"
+                    alt=""
+                  />
                 ) : null}
                 <span className="truncate">{item.label}</span>
               </Link>

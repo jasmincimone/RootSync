@@ -23,7 +23,7 @@ const FEATURES = [
 ] as const;
 
 const cardBase =
-  "rounded-2xl border border-fix-border/15 bg-fix-surface shadow-soft transition-colors hover:bg-fix-bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2 focus-visible:ring-offset-fix-bg";
+  "rounded-xl border border-fix-border/15 bg-fix-surface shadow-soft transition-colors hover:bg-fix-bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2 focus-visible:ring-offset-fix-bg";
 
 export function RootSyncFeatureCards() {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -33,13 +33,13 @@ export function RootSyncFeatureCards() {
     : null;
 
   return (
-    <div className="mt-8 w-full min-w-0">
+    <div className="mx-auto mt-6 w-full max-w-3xl px-6 py-8 sm:mt-8 sm:px-10 sm:py-10">
       {active ? (
         <button
           type="button"
           className={cn(
             cardBase,
-            "flex w-full min-w-0 flex-col items-center justify-center px-4 py-6 text-center sm:px-6 sm:py-8 sm:aspect-[3/1]",
+            "mx-auto flex w-full max-w-sm flex-col items-center justify-center px-5 py-5 text-center sm:max-w-md sm:px-6 sm:py-6",
           )}
           onClick={() => setOpenId(null)}
           aria-expanded
@@ -47,13 +47,13 @@ export function RootSyncFeatureCards() {
           <span className="text-sm font-semibold text-fix-heading">
             {active.title}
           </span>
-          <p className="mt-3 max-w-prose text-sm text-fix-text-muted">
+          <p className="mt-2 line-clamp-2 text-sm leading-snug text-fix-text-muted">
             {active.body}
           </p>
         </button>
       ) : (
         <div
-          className="flex w-full min-w-0 flex-row gap-2 sm:gap-4"
+          className="flex flex-wrap items-stretch justify-center gap-3 sm:gap-4"
           role="group"
           aria-label="RootSense AI features"
         >
@@ -63,12 +63,13 @@ export function RootSyncFeatureCards() {
               type="button"
               className={cn(
                 cardBase,
-                "flex aspect-square min-h-0 min-w-0 flex-1 flex-col items-center justify-center overflow-hidden px-1 py-2 text-center sm:px-4 sm:py-6",
+                "flex min-h-[5.5rem] flex-col items-center justify-center px-4 py-3.5 text-center sm:min-h-24 sm:px-5 sm:py-4",
+                f.id === "shop" ? "w-[10rem] sm:w-[10.75rem]" : "w-[7.25rem] sm:w-28",
               )}
               onClick={() => setOpenId(f.id)}
               aria-expanded={false}
             >
-              <span className="line-clamp-4 text-[10px] font-semibold leading-tight text-fix-heading sm:text-sm sm:leading-snug">
+              <span className="line-clamp-2 text-xs font-semibold leading-snug text-fix-heading sm:text-sm">
                 {f.title}
               </span>
             </button>

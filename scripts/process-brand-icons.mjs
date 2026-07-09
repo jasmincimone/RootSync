@@ -12,7 +12,7 @@ const BLACK_THRESHOLD = 48;
 
 const files = [
   "public/images/platform/explore/icons/discover-marketplace-icon.png",
-  "public/images/platform/explore/icons/rootsync-ai-icon.png",
+  "public/images/platform/explore/icons/rootsense-ai-icon.png",
   "public/images/platform/explore/icons/stay-synced-icon.png",
   "public/images/pulse/pulse-icon.png",
 ];
