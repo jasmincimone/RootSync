@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
+import { ROOTSENSE_AI_HREF } from "@/config/rootsensePaths";
 import { Card } from "@/components/ui/Card";
 import { PageBody } from "@/components/ui/PageBody";
 import { ButtonLink } from "@/components/ui/Button";
@@ -45,7 +46,7 @@ export function GrowthModuleShell({
         title="Module foundation is in place"
         description="Database tables and navigation are ready. CRUD workflows and integrations ship in the next phase."
         action={{ href: "/account/growth", label: "Back to Growth overview", variant: "secondary" }}
-        secondaryAction={{ href: "/rootsyncai", label: "Ask RootSync AI", variant: "secondary" }}
+        secondaryAction={{ href: ROOTSENSE_AI_HREF, label: "Ask RootSense AI", variant: "secondary" }}
       />
     </PageBody>
   );

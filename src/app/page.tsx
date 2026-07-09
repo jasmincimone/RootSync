@@ -143,7 +143,7 @@ export default async function HomePage() {
             <div className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft sm:p-8">
               <h2 className="text-lg font-semibold text-fix-heading">RootSync platform</h2>
               <p className="mt-2 text-sm leading-relaxed text-fix-text-muted">
-                Pulse, Stay Synced, RootSync AI, and Discover Marketplace — shop local goods, book
+                Pulse, Stay Synced, RootSense AI, and Discover Marketplace — shop local goods, book
                 services, and connect with makers in your region, all from one place.
               </p>
               <div className="mt-4 flex flex-wrap gap-3">

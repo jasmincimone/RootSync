@@ -17,7 +17,7 @@ export function rootSyncPrismaReady():
       response: NextResponse.json(
         {
           error:
-            "RootSync storage is not ready. Run `npx prisma generate`, then fully restart the dev server (stop and start `npm run dev`). If you haven’t migrated yet, run `npx prisma migrate dev`.",
+            "RootSync storage is not ready. Run `npx prisma generate`, then fully restart the dev server (stop and start `npm run dev`). If you haven't migrated yet, run `npx prisma migrate dev`.",
         },
         { status: 503 }
       ),

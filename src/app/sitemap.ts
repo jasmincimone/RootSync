@@ -10,6 +10,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://rootsync.io/pulse", lastModified: now },
     { url: "https://rootsync.io/rootsync/dashboard", lastModified: now },
     { url: "https://rootsync.io/messages/inbox", lastModified: now },
-    { url: "https://rootsync.io/rootsyncai", lastModified: now },
+    { url: "https://rootsync.io/rootsense-ai", lastModified: now },
   ];
 }

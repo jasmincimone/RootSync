@@ -1,3 +1,5 @@
+import { ROOTSENSE_AI_HREF, isRootSenseAiActive } from "@/config/rootsensePaths";
+
 /** Shared labels for header + /menu + footer (single source of truth). */
 export type PlatformNavLink = {
   href: string;
@@ -17,9 +19,9 @@ export const PLATFORM_PRIMARY_NAV_LINKS: PlatformNavLink[] = [
     description: "Find local vendors, products, and opportunities",
   },
   {
-    href: "/rootsyncai",
-    label: "RootSync AI",
-    description: "Your intelligent Grow Partner",
+    href: ROOTSENSE_AI_HREF,
+    label: "RootSense AI",
+    description: "Meet Rootie — your intelligent guide for local living",
   },
   {
     href: "/messages/inbox",
@@ -48,7 +50,7 @@ export const PLATFORM_FOOTER_LINKS: PlatformNavLink[] = [
   { href: "/rootsync", label: "RootSync platform" },
   { href: "/discover", label: "Discover Marketplace" },
   { href: "/pulse", label: "Pulse" },
-  { href: "/rootsyncai", label: "RootSync AI" },
+  { href: ROOTSENSE_AI_HREF, label: "RootSense AI" },
   { href: "/messages/inbox", label: "Stay Synced" },
 ];
 
@@ -57,7 +59,7 @@ export function isPlatformHeaderRootsyncSectionActive(pathname: string): boolean
 }
 
 export function isPlatformPrimaryNavActive(pathname: string): boolean {
-  if (pathname.startsWith("/rootsyncai")) return true;
+  if (isRootSenseAiActive(pathname)) return true;
   if (pathname.startsWith("/discover") || pathname.startsWith("/marketplace")) return true;
   if (pathname.startsWith("/pulse") || pathname.startsWith("/community")) return true;
   if (pathname.startsWith("/messages")) return true;

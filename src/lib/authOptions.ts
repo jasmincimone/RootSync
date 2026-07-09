@@ -86,6 +86,23 @@ export const authOptions: AuthOptions = {
               : ROLES.CUSTOMER;
           token.vendorStatus = toVendorStatus(u.vendorProfile?.status);
         }
+      } else if (token.email) {
+        // Older sessions may lack token.id — resolve from email so APIs (e.g. saved chats) keep working.
+        const u = await prisma.user.findUnique({
+          where: { email: String(token.email).trim().toLowerCase() },
+          include: { vendorProfile: true },
+        });
+        if (u) {
+          token.id = u.id;
+          token.email = u.email ?? undefined;
+          token.name = u.name ?? undefined;
+          token.picture = u.imageUrl ?? undefined;
+          token.role =
+            u.role === ROLES.ADMIN || u.role === ROLES.VENDOR || u.role === ROLES.CUSTOMER
+              ? u.role
+              : ROLES.CUSTOMER;
+          token.vendorStatus = toVendorStatus(u.vendorProfile?.status);
+        }
       }
       return token;
     },

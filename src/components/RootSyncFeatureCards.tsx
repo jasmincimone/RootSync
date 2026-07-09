@@ -7,18 +7,18 @@ import { cn } from "@/lib/cn";
 const FEATURES = [
   {
     id: "ask",
-    title: "Ask RootSync",
-    body: "Chat below for crop plans, soil tips, nutrition ideas, and small-farm business questions—powered by OpenAI.",
+    title: "Ask Rootie",
+    body: "Chat below for business ideas, community building, & sustainable living  — powered by RootSense AI.",
   },
   {
     id: "plans",
     title: "Personalized Plans",
-    body: "Saves your context, goals, and preferences (with clear privacy controls).",
+    body: "Saves your context, goals, & preferences (with clear privacy controls).",
   },
   {
     id: "shop",
     title: "Shop-aware recommendations",
-    body: "Suggests marketplace listings, resources, and services from RootSync vendors.",
+    body: "Suggests Discover marketplace listings, resources, & services found on RootSync.",
   },
 ] as const;
 
@@ -55,7 +55,7 @@ export function RootSyncFeatureCards() {
         <div
           className="flex w-full min-w-0 flex-row gap-2 sm:gap-4"
           role="group"
-          aria-label="RootSync features"
+          aria-label="RootSense AI features"
         >
           {FEATURES.map((f) => (
             <button

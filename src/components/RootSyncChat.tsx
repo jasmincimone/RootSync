@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
+import { RootSenseJoinGate } from "@/components/RootSenseJoinGate";
 import { cn } from "@/lib/cn";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -46,19 +47,28 @@ function formatRelative(iso: string) {
 
 export function RootSyncChat() {
   const { data: session, status: sessionStatus } = useSession();
-  const signedIn = sessionStatus === "authenticated" && !!session?.user;
+  const sessionLoading = sessionStatus === "loading";
+  const isAuthenticated = sessionStatus === "authenticated" && !!session?.user;
+  const signedIn = isAuthenticated && !!session?.user?.id;
+  const needsReauth = isAuthenticated && !session?.user?.id;
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
+  const [joinGateOpen, setJoinGateOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const promptJoin = useCallback(() => {
+    setJoinGateOpen(true);
+  }, []);
 
   const sortedConversations = useMemo(() => {
     return [...conversations].sort(
@@ -68,10 +78,26 @@ export function RootSyncChat() {
 
   const refreshConversations = useCallback(async () => {
     if (!signedIn) return;
-    const res = await fetch("/api/rootsync/conversations");
-    if (!res.ok) return;
-    const data = (await res.json()) as { conversations?: ConversationSummary[] };
-    setConversations(data.conversations ?? []);
+    setListError(null);
+    try {
+      const res = await fetch("/api/rootsync/conversations", { cache: "no-store" });
+      const data = (await res.json().catch(() => ({}))) as {
+        conversations?: ConversationSummary[];
+        error?: string;
+      };
+      if (!res.ok) {
+        setListError(
+          data.error ||
+            (res.status === 401
+              ? "Sign in again to load saved chats."
+              : "Could not load your chats. Try refreshing the page.")
+        );
+        return;
+      }
+      setConversations(data.conversations ?? []);
+    } catch {
+      setListError("Network error loading chats. Check your connection and try again.");
+    }
   }, [signedIn]);
 
   useEffect(() => {
@@ -82,6 +108,12 @@ export function RootSyncChat() {
     setListLoading(true);
     void refreshConversations().finally(() => setListLoading(false));
   }, [signedIn, refreshConversations]);
+
+  useEffect(() => {
+    if (needsReauth) {
+      setListError("Sign out and sign in again to load your saved chats.");
+    }
+  }, [needsReauth]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -135,69 +167,29 @@ export function RootSyncChat() {
     const text = input.trim();
     if (!text || loading) return;
 
+    if (!signedIn) {
+      promptJoin();
+      return;
+    }
+
     setError(null);
     setSendSuccess(null);
     setInput("");
 
-    if (signedIn) {
-      setMessages((prev) => [...prev, { role: "user", content: text }]);
-      setLoading(true);
-      try {
-        const res = await fetch("/api/rootsync/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            conversationId: conversationId ?? undefined,
-            message: text,
-          }),
-        });
-        const data = (await res.json().catch(() => ({}))) as {
-          message?: string;
-          conversationId?: string;
-          error?: string;
-          hint?: string;
-        };
-        if (!res.ok) {
-          setError(formatChatApiError(data));
-          setMessages((prev) => prev.slice(0, -1));
-          setInput(text);
-          return;
-        }
-        if (!data.message) {
-          setError("Empty response from the assistant. Try again.");
-          setMessages((prev) => prev.slice(0, -1));
-          setInput(text);
-          return;
-        }
-        if (data.conversationId) {
-          setConversationId(data.conversationId);
-        }
-        setSendSuccess("Submitted.");
-        window.setTimeout(() => setSendSuccess(null), 4000);
-        setMessages((prev) => [...prev, { role: "assistant", content: data.message! }]);
-        void refreshConversations();
-      } catch {
-        setError("Network error. Try again.");
-        setMessages((prev) => prev.slice(0, -1));
-        setInput(text);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    const next: Msg[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
     setLoading(true);
-
     try {
       const res = await fetch("/api/rootsync/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({
+          conversationId: conversationId ?? undefined,
+          message: text,
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         message?: string;
+        conversationId?: string;
         error?: string;
         hint?: string;
       };
@@ -213,9 +205,13 @@ export function RootSyncChat() {
         setInput(text);
         return;
       }
+      if (data.conversationId) {
+        setConversationId(data.conversationId);
+      }
       setSendSuccess("Submitted.");
       window.setTimeout(() => setSendSuccess(null), 4000);
-      setMessages([...next, { role: "assistant", content: data.message }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.message! }]);
+      void refreshConversations();
     } catch {
       setError("Network error. Try again.");
       setMessages((prev) => prev.slice(0, -1));
@@ -223,17 +219,18 @@ export function RootSyncChat() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, signedIn, conversationId, refreshConversations]);
+  }, [input, loading, signedIn, conversationId, refreshConversations, promptJoin]);
 
   const chatPanel = (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-fix-surface">
       <div className="border-b border-fix-border/15 bg-fix-bg-muted/40 px-4 py-3 sm:px-5">
-        <h2 className="text-sm font-semibold text-fix-heading">Chat with RootSync</h2>
+        <h2 className="text-sm font-semibold text-fix-heading">Chat with Rootie</h2>
         <p className="mt-0.5 text-xs text-fix-text-muted">
-          Powered by OpenAI. Ask about growing, harvests, healthy food, and small-farm planning.
+          Powered by RootSense AI. Ask about growing, local business, community, and sustainable
+          living.
           {signedIn
-            ? " Signed-in chats are saved to your account."
-            : " Sign in to save conversations across visits."}
+            ? " Your chats are saved to your account."
+            : " Join RootSync to start chatting with Rootie."}
         </p>
       </div>
 
@@ -253,7 +250,13 @@ export function RootSyncChat() {
                 <li key={s}>
                   <button
                     type="button"
-                    onClick={() => setInput(s)}
+                    onClick={() => {
+                      if (!signedIn) {
+                        promptJoin();
+                        return;
+                      }
+                      setInput(s);
+                    }}
                     className="w-full rounded-xl border border-fix-border/15 bg-fix-surface px-3 py-2.5 text-left text-sm text-fix-link hover:bg-fix-bg-muted"
                   >
                     {s}
@@ -310,7 +313,7 @@ export function RootSyncChat() {
         <FormFeedback className="mb-2" success={sendSuccess} />
         <div className="flex gap-2">
           <label htmlFor="rootsync-input" className="sr-only">
-            Message to RootSync
+            Message to Rootie
           </label>
           <textarea
             id="rootsync-input"
@@ -326,7 +329,7 @@ export function RootSyncChat() {
                 void send();
               }
             }}
-            placeholder="Ask about crops, soil, meals, or farm business…"
+            placeholder="What would you like to grow today?"
             disabled={loading || threadLoading}
             className="min-h-[44px] flex-1 resize-y rounded-xl border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm text-fix-text placeholder:text-fix-text-muted/70 focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber disabled:opacity-60"
           />
@@ -353,22 +356,13 @@ export function RootSyncChat() {
     </div>
   );
 
-  if (!signedIn) {
-    return (
-      <div className="mt-10">
-        <Card className="flex flex-col overflow-hidden border-fix-border/20">{chatPanel}</Card>
-      </div>
-    );
-  }
-
-  return (
+  const memberChrome = (
     <div
       className={cn(
         "mt-10 flex min-h-[min(680px,calc(100dvh-11rem))] flex-col overflow-hidden rounded-2xl border border-fix-border/20 shadow-soft",
         "lg:flex-row lg:rounded-2xl"
       )}
     >
-      {/* ChatGPT-style left rail */}
       <aside
         className={cn(
           "flex w-full flex-col border-b border-clay/10 bg-espresso text-clay",
@@ -396,7 +390,9 @@ export function RootSyncChat() {
           className="flex min-h-[200px] flex-1 flex-col overflow-y-auto px-2 pb-4 lg:min-h-0"
           aria-label="Saved conversations"
         >
-          {listLoading && sortedConversations.length === 0 ? (
+          {listError ? (
+            <p className="px-2 py-2 text-sm leading-relaxed text-amber/90">{listError}</p>
+          ) : listLoading && sortedConversations.length === 0 ? (
             <p className="px-2 py-3 text-sm text-clay/55">Loading…</p>
           ) : sortedConversations.length === 0 ? (
             <p className="px-2 py-2 text-sm leading-relaxed text-clay/55">
@@ -447,5 +443,23 @@ export function RootSyncChat() {
 
       <div className="flex min-w-0 flex-1 flex-col">{chatPanel}</div>
     </div>
+  );
+
+  return (
+    <>
+      {sessionLoading ? (
+        <div className="mt-10 flex min-h-[280px] items-center justify-center rounded-2xl border border-fix-border/20 bg-fix-surface">
+          <Loader2 className="h-6 w-6 animate-spin text-fix-text-muted" aria-hidden />
+          <span className="sr-only">Loading chat…</span>
+        </div>
+      ) : isAuthenticated ? (
+        memberChrome
+      ) : (
+        <div className="mt-10">
+          <Card className="flex flex-col overflow-hidden border-fix-border/20">{chatPanel}</Card>
+        </div>
+      )}
+      <RootSenseJoinGate open={joinGateOpen} onClose={() => setJoinGateOpen(false)} />
+    </>
   );
 }

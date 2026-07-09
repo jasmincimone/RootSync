@@ -63,7 +63,7 @@ export const GROWTH_NAV_ITEMS: GrowthNavItem[] = [
   {
     href: "/account/growth/ai-marketing",
     label: "AI Marketing",
-    description: "RootSync AI — generate campaigns, funnels, and recommendations.",
+    description: "RootSense AI — generate campaigns, funnels, and recommendations.",
   },
 ];
 

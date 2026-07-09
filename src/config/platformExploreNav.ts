@@ -1,3 +1,5 @@
+import { ROOTSENSE_AI_HREF } from "@/config/rootsensePaths";
+
 /** RootSync landing page — explore menu cards and icons (Syntha assets). */
 export type PlatformExploreItem = {
   id: string;
@@ -25,11 +27,11 @@ export const PLATFORM_EXPLORE_ITEMS: PlatformExploreItem[] = [
   },
   {
     id: "rootsync-ai",
-    title: "RootSync AI",
-    tagline: "Smart guidance. Stronger roots.",
+    title: "RootSense AI",
+    tagline: "Wiser decisions. Stronger roots.",
     description:
-      "Your intelligent Grow Partner — learn, plan, and make informed decisions for local living and your ecosystem.",
-    href: "/rootsyncai",
+      "Meet Rootie — your conversational guide powered by RootSense AI. Get practical help growing food, building your business, and strengthening your community.",
+    href: ROOTSENSE_AI_HREF,
     menuCardSrc: "/images/platform/explore/rootsync-ai-menu-card.png",
     iconSrc: "/images/platform/explore/icons/rootsync-ai-icon.png",
     gridClass: "col-start-2 row-start-1",

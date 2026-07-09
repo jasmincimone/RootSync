@@ -23,7 +23,7 @@ export function pulseEarnedToastMessage(
     case "DAILY_ACTIVITY":
       return "You showed up for your community today.";
     case "AI_GROW_PLAN_COMPLETED":
-      return "You completed a RootSync AI growth plan.";
+      return "You completed a RootSense AI growth plan.";
     case "VENDOR_REVIEW_GIVEN":
       return "Thanks for strengthening trust with your review.";
     case "VENDOR_PULSE_RECEIVED":

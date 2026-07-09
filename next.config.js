@@ -16,6 +16,8 @@ const nextConfig = {
       { source: "/downloads/:path*", destination: "/discover?type=RESOURCE", permanent: true },
       { source: "/courses", destination: "/discover?type=EVENT", permanent: true },
       { source: "/courses/:path*", destination: "/discover?type=EVENT", permanent: true },
+      { source: "/rootsyncai", destination: "/rootsense-ai", permanent: true },
+      { source: "/rootsyncai/:path*", destination: "/rootsense-ai/:path*", permanent: true },
     ];
   },
 };

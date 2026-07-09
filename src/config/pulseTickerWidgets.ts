@@ -45,7 +45,7 @@ export const DEFAULT_PUBLIC_DASHBOARD_WIDGETS = [
   },
   {
     key: "ai_conversations",
-    label: "RootSync AI",
+    label: "RootSense AI",
     widgetType: "metric",
     sortOrder: 7,
   },

@@ -24,7 +24,7 @@ export default function AiDisclaimerPage() {
 
         <Section title="1. AI Nature of the Tool">
           <p>
-            The RootSync AI Assistant (&ldquo;AI Tool&rdquo;) is powered by artificial intelligence
+            The RootSense AI Assistant (&ldquo;AI Tool&rdquo;) is powered by artificial intelligence
             and is designed to:
           </p>
           <ul className="list-disc space-y-1 pl-5">

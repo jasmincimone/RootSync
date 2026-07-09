@@ -22,7 +22,7 @@ const DEFAULT_PLATFORM_WEIGHTS: { metricKey: string; weight: number; description
   { metricKey: "messages_sent", weight: 0.5, description: "Stay Synced messages" },
   { metricKey: "consultations", weight: 100, description: "Completed consultations" },
   { metricKey: "vendor_activity", weight: 60, description: "Approved vendors + listings" },
-  { metricKey: "ai_conversations", weight: 15, description: "RootSync AI conversations" },
+  { metricKey: "ai_conversations", weight: 15, description: "RootSense AI conversations" },
 ];
 
 async function seedCategories(): Promise<Map<string, string>> {

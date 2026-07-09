@@ -4,33 +4,14 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
 import { rootSyncPrismaReady } from "@/lib/ensureRootSyncPrisma";
-import { prisma } from "@/lib/prisma";
-import { ROOTSYNC_SYSTEM_PROMPT } from "@/lib/rootsyncPrompt";
+import { withPrismaRetry } from "@/lib/prisma";
+import { formatAssistantError } from "@/lib/rootsenseChatErrors";
+import { ROOTSENSE_SYSTEM_PROMPT } from "@/lib/rootsenseSystemPrompt";
 
 const MAX_MESSAGES = 24;
 const MAX_CONTENT = 8000;
 
 type ChatRole = "user" | "assistant";
-
-type IncomingMessage = { role: string; content: string };
-
-function sanitizeMessages(raw: unknown): { role: ChatRole; content: string }[] | null {
-  if (!Array.isArray(raw)) return null;
-  const out: { role: ChatRole; content: string }[] = [];
-  for (const m of raw) {
-    if (!m || typeof m !== "object") return null;
-    const role = (m as IncomingMessage).role;
-    const content = (m as IncomingMessage).content;
-    if (role !== "user" && role !== "assistant") return null;
-    if (typeof content !== "string") return null;
-    const trimmed = content.trim();
-    if (!trimmed) continue;
-    if (trimmed.length > MAX_CONTENT) return null;
-    out.push({ role, content: trimmed });
-  }
-  if (out.length > MAX_MESSAGES) return null;
-  return out;
-}
 
 function deriveTitle(firstUserMessage: string): string {
   const t = firstUserMessage.trim().replace(/\s+/g, " ");
@@ -53,7 +34,7 @@ async function completeChat(
   const completion = await openai.chat.completions.create({
     model,
     messages: [
-      { role: "system", content: ROOTSYNC_SYSTEM_PROMPT },
+      { role: "system", content: ROOTSENSE_SYSTEM_PROMPT },
       ...messages.map((m) => ({ role: m.role, content: m.content })),
     ],
     max_tokens: 2048,
@@ -72,9 +53,9 @@ export async function POST(request: NextRequest) {
   if (!apiKey?.trim()) {
     return NextResponse.json(
       {
-        error: "RootSync is not configured yet. Add OPENAI_API_KEY to your environment.",
+        error: "RootSense AI is not configured yet. Add OPENAI_API_KEY to your environment.",
         hint:
-          "Local: put OPENAI_API_KEY in .env.local at the project root, then restart the dev server (env is read at startup). Production: add OPENAI_API_KEY in your host’s environment (e.g. Vercel → Project → Settings → Environment Variables) and redeploy. Use the exact name OPENAI_API_KEY (server-only; do not use NEXT_PUBLIC_).",
+          "Local: put OPENAI_API_KEY in .env.local at the project root, then restart the dev server (env is read at startup). Production: add OPENAI_API_KEY in your host's environment (e.g. Vercel → Project → Settings → Environment Variables) and redeploy. Use the exact name OPENAI_API_KEY (server-only; do not use NEXT_PUBLIC_).",
       },
       { status: 503 }
     );
@@ -88,123 +69,112 @@ export async function POST(request: NextRequest) {
   }
 
   const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      {
+        error: "RootSense AI is for RootSync members. Sign up or sign in to chat with Rootie.",
+      },
+      { status: 401 }
+    );
+  }
 
-  // Logged-in: persist per conversation (single new user message per request)
-  if (session?.user?.id && typeof (body as { message?: unknown }).message === "string") {
-    const ready = rootSyncPrismaReady();
-    if (!ready.ok) return ready.response;
+  if (typeof (body as { message?: unknown }).message !== "string") {
+    return NextResponse.json({ error: "Message is required." }, { status: 400 });
+  }
 
-    const userId = session.user.id;
-    const userMessage = (body as { message: string }).message.trim();
-    const rawConvId = (body as { conversationId?: unknown }).conversationId;
-    const conversationId =
-      typeof rawConvId === "string" && rawConvId.trim() !== "" ? rawConvId.trim() : null;
+  const ready = rootSyncPrismaReady();
+  if (!ready.ok) return ready.response;
 
-    if (!userMessage) {
-      return NextResponse.json({ error: "Message is required." }, { status: 400 });
-    }
-    if (userMessage.length > MAX_CONTENT) {
-      return NextResponse.json({ error: "Message too long." }, { status: 400 });
-    }
+  const userId = session.user.id;
+  const userMessage = (body as { message: string }).message.trim();
+  const rawConvId = (body as { conversationId?: unknown }).conversationId;
+  const conversationId =
+    typeof rawConvId === "string" && rawConvId.trim() !== "" ? rawConvId.trim() : null;
 
-    try {
-      let convId: string;
-      let priorForModel: { role: ChatRole; content: string }[] = [];
+  if (!userMessage) {
+    return NextResponse.json({ error: "Message is required." }, { status: 400 });
+  }
+  if (userMessage.length > MAX_CONTENT) {
+    return NextResponse.json({ error: "Message too long." }, { status: 400 });
+  }
 
-      if (conversationId) {
-        const existing = await prisma.rootSyncConversation.findFirst({
+  try {
+    let convId: string;
+    let priorForModel: { role: ChatRole; content: string }[] = [];
+
+    if (conversationId) {
+      const existing = await withPrismaRetry((client) =>
+        client.rootSyncConversation.findFirst({
           where: { id: conversationId, userId },
           include: {
             messages: { orderBy: { createdAt: "asc" }, select: { role: true, content: true } },
           },
-        });
-        if (!existing) {
-          return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
-        }
-        convId = existing.id;
-        priorForModel = existing.messages.map((m) => ({
-          role: m.role as ChatRole,
-          content: m.content,
-        }));
-      } else {
-        const created = await prisma.rootSyncConversation.create({
+        })
+      );
+      if (!existing) {
+        return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+      }
+      convId = existing.id;
+      priorForModel = existing.messages.map((m) => ({
+        role: m.role as ChatRole,
+        content: m.content,
+      }));
+    } else {
+      const created = await withPrismaRetry((client) =>
+        client.rootSyncConversation.create({
           data: {
             userId,
             title: deriveTitle(userMessage),
           },
-        });
-        convId = created.id;
-      }
+        })
+      );
+      convId = created.id;
+    }
 
-      const maxPrior = Math.max(0, MAX_MESSAGES - 1);
-      if (priorForModel.length > maxPrior) {
-        priorForModel = priorForModel.slice(-maxPrior);
-      }
-      const messagesForOpenAI: { role: ChatRole; content: string }[] = [
-        ...priorForModel,
-        { role: "user", content: userMessage },
-      ];
+    const maxPrior = Math.max(0, MAX_MESSAGES - 1);
+    if (priorForModel.length > maxPrior) {
+      priorForModel = priorForModel.slice(-maxPrior);
+    }
+    const messagesForOpenAI: { role: ChatRole; content: string }[] = [
+      ...priorForModel,
+      { role: "user", content: userMessage },
+    ];
 
-      await prisma.rootSyncMessage.create({
+    await withPrismaRetry((client) =>
+      client.rootSyncMessage.create({
         data: {
           conversationId: convId,
           role: "user",
           content: userMessage,
         },
-      });
+      })
+    );
 
-      const assistantText = await completeChat(apiKey, messagesForOpenAI);
+    const assistantText = await completeChat(apiKey, messagesForOpenAI);
 
-      await prisma.rootSyncMessage.create({
+    await withPrismaRetry((client) =>
+      client.rootSyncMessage.create({
         data: {
           conversationId: convId,
           role: "assistant",
           content: assistantText,
         },
-      });
+      })
+    );
 
-      await prisma.rootSyncConversation.update({
+    await withPrismaRetry((client) =>
+      client.rootSyncConversation.update({
         where: { id: convId },
         data: { updatedAt: new Date() },
-      });
-
-      return NextResponse.json({
-        message: assistantText,
-        conversationId: convId,
-      });
-    } catch (e) {
-      console.error("RootSync persist chat error:", e);
-      const msg =
-        e instanceof Error && e.message
-          ? `Assistant error: ${e.message}`
-          : "Something went wrong talking to the assistant.";
-      return NextResponse.json({ error: msg }, { status: 502 });
-    }
-  }
-
-  // Guest / not logged in: stateless conversation (full message array)
-  const messages = sanitizeMessages((body as { messages?: unknown }).messages);
-  if (!messages || messages.length === 0) {
-    return NextResponse.json(
-      { error: "Send at least one user message, or sign in to save chats." },
-      { status: 400 }
+      })
     );
-  }
 
-  const last = messages[messages.length - 1];
-  if (last.role !== "user") {
-    return NextResponse.json({ error: "Last message must be from the user." }, { status: 400 });
-  }
-
-  try {
-    const text = await completeChat(apiKey, messages);
-    return NextResponse.json({ message: text });
+    return NextResponse.json({
+      message: assistantText,
+      conversationId: convId,
+    });
   } catch (e) {
-    console.error("RootSync chat error:", e);
-    const msg =
-      e instanceof Error && e.message
-        ? `Assistant error: ${e.message}`
-        : "Something went wrong talking to the assistant.";
-    return NextResponse.json({ error: msg }, { status: 502 });
+    console.error("RootSense persist chat error:", e);
+    return NextResponse.json({ error: formatAssistantError(e) }, { status: 502 });
   }
 }

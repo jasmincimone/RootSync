@@ -77,7 +77,7 @@ export function PublicPulseDashboard({ metrics, platformSnapshot, className }: P
         <MetricCard label="Vendors connected" value={metrics.vendorsConnected.toLocaleString()} />
         <MetricCard label="Products listed" value={metrics.productsListed.toLocaleString()} />
         <MetricCard label="Stay Synced messages" value={metrics.messagesSent.toLocaleString()} />
-        <MetricCard label="RootSync AI conversations" value={metrics.aiConversations.toLocaleString()} />
+        <MetricCard label="RootSense AI conversations" value={metrics.aiConversations.toLocaleString()} />
       </div>
 
       <Card className="p-5">

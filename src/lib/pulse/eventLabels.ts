@@ -23,7 +23,7 @@ export function pulseEventLabel(
     case "DAILY_ACTIVITY":
       return "Active in the ecosystem";
     case "AI_GROW_PLAN_COMPLETED":
-      return "Completed a RootSync AI plan";
+      return "Completed a RootSense AI plan";
     case "VENDOR_REVIEW_GIVEN":
       return "Gave a vendor Pulse review";
     case "VENDOR_PULSE_RECEIVED":

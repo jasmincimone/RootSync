@@ -151,7 +151,7 @@ function resolvePlatformTickerItem(
         label,
         value: fmt(metrics.aiConversations),
         sub: "AI chats",
-        detail: "RootSync AI conversations helping members grow.",
+        detail: "RootSense AI conversations helping members grow.",
         href: "/rootsync/dashboard",
         scope: "platform",
       };

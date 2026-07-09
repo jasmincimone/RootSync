@@ -84,7 +84,7 @@ export function GrowthOverviewDashboard({ data, pulseWorkspace, pulseSummary }: 
   const nextBooking = upcomingBookings[0];
   const aiInsight =
     metrics.contacts === 0
-      ? "Import contacts from recent orders and bookings to start nurturing relationships. RootSync AI can suggest your first welcome series."
+      ? "Import contacts from recent orders and bookings to start nurturing relationships. RootSense AI can suggest your first welcome series."
       : metrics.activeFunnels === 0
         ? "You have contacts but no active funnels. Build a podcast → consultation funnel to convert interest into booked sessions."
         : "Demand for local wellness and growing products is trending up in your region. Consider a seasonal newsletter and a QR campaign at your next event.";
