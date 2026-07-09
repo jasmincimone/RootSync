@@ -3,6 +3,7 @@
 import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 
+import { PulseStatusGuideProvider } from "@/components/pulse/PulseStatusGuide";
 import { PulseToastProvider } from "@/components/pulse/PulseToastProvider";
 
 type Props = {
@@ -14,7 +15,9 @@ type Props = {
 export function Providers({ children, session }: Props) {
   return (
     <SessionProvider session={session} refetchOnWindowFocus={false}>
-      <PulseToastProvider>{children}</PulseToastProvider>
+      <PulseToastProvider>
+        <PulseStatusGuideProvider>{children}</PulseStatusGuideProvider>
+      </PulseToastProvider>
     </SessionProvider>
   );
 }

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { Container } from "@/components/Container";
+import { DiscoverDetailBackLink } from "@/components/DiscoverDetailBackLink";
+import { DiscoverDetailTopBack } from "@/components/DiscoverDetailTopBack";
 import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListingCheckoutActions";
@@ -17,14 +19,16 @@ import { ButtonLink } from "@/components/ui/Button";
 import { ShopMediaCarousel } from "@/components/ShopMediaCarousel";
 import { UserAvatar } from "@/components/UserAvatar";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
-import { discoverListingPath, DISCOVER_BASE } from "@/config/discoverPaths";
+import { discoverListingPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
+import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
 import { communityAuthorSelect } from "@/lib/userProfileDisplay";
 import { formatPrice } from "@/lib/format";
 import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
+import { parsePulsePostMediaJson } from "@/lib/pulsePostMedia";
 import { loadVendorPulseReviews, loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
-import { VENDOR_STATUS } from "@/lib/roles";
+import { VENDOR_STATUS, PULSE_POST_STATUS } from "@/lib/roles";
 import { loadVendorCarousel } from "@/lib/vendorCarousel";
 
 import type { Prisma } from "@prisma/client";
@@ -88,10 +92,14 @@ export async function generateMetadata({
 
 export default async function PublicVendorProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
+  const discoverBack = resolveDiscoverBackLink(returnTo);
   const session = await getServerSession(authOptions);
   const loaded = await loadVendorForPage(id, session?.user?.id);
   if (!loaded) notFound();
@@ -117,7 +125,7 @@ export default async function PublicVendorProfilePage({
     : [];
 
   const communityPosts = await prisma.communityPost.findMany({
-    where: { authorId: vendor.userId },
+    where: { authorId: vendor.userId, status: PULSE_POST_STATUS.PUBLISHED },
     orderBy: { updatedAt: "desc" },
     take: 30,
     include: {
@@ -142,8 +150,9 @@ export default async function PublicVendorProfilePage({
     <div>
       <section className="border-b border-fix-border/15 bg-gradient-to-b from-fix-bg-muted/60 via-fix-bg-muted/30 to-fix-surface">
         <Container className="px-4 py-6 sm:px-6 sm:py-10">
+          <DiscoverDetailTopBack returnTo={returnTo} />
           <nav className="text-xs text-fix-text-muted sm:text-sm">
-            <Link href={DISCOVER_BASE} className="text-fix-link hover:text-fix-link-hover">
+            <Link href={discoverBack.href} className="text-fix-link hover:text-fix-link-hover">
               Discover Marketplace
             </Link>
             <span className="mx-1.5 sm:mx-2">/</span>
@@ -222,14 +231,11 @@ export default async function PublicVendorProfilePage({
                     Visit website
                   </a>
                 ) : null}
-                <ButtonLink
-                  href="/discover"
-                  variant="ghost"
-                  size="md"
+                <DiscoverDetailBackLink
+                  returnTo={returnTo}
+                  variant="button"
                   className="w-full sm:w-auto"
-                >
-                  ← All vendors
-                </ButtonLink>
+                />
               </div>
             </div>
           </div>
@@ -360,7 +366,10 @@ export default async function PublicVendorProfilePage({
         <ProfilePulseFeedSection
           headingId="vendor-pulse-heading"
           displayName={vendor.displayName}
-          posts={communityPosts}
+          posts={communityPosts.map((p) => ({
+            ...p,
+            media: parsePulsePostMediaJson(p.mediaJson),
+          }))}
           messageUserId={vendor.userId}
           className="mt-10 sm:mt-12"
         />

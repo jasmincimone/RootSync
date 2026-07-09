@@ -1,11 +1,16 @@
 import { CommunityPostHeader } from "@/components/CommunityPostHeader";
 import { GivePulseButton } from "@/components/pulse/GivePulseButton";
+import { PulsePostContent } from "@/components/pulse/PulsePostContent";
+import { PulsePostMediaGallery } from "@/components/pulse/PulsePostMediaGallery";
 import { Card } from "@/components/ui/Card";
+import type { PulsePostMediaItem } from "@/config/pulsePostMedia";
+import { isPulseHtmlContent, plainTextToPulseHtml } from "@/lib/pulsePostHtml";
 import type { UserProfilePeer } from "@/lib/userProfileDisplay";
 
 export type PulseFeedPost = {
   id: string;
   content: string;
+  media: PulsePostMediaItem[];
   authorId: string;
   roleAtPost: string;
   showVendorBadge: boolean;
@@ -21,6 +26,13 @@ type Props = {
 };
 
 export function PulsePostCard({ post }: Props) {
+  const html = isPulseHtmlContent(post.content)
+    ? post.content
+    : post.content
+      ? plainTextToPulseHtml(post.content)
+      : "";
+  const showLegacyGallery = !isPulseHtmlContent(post.content) && post.media.length > 0;
+
   return (
     <Card className="p-5 shadow-soft">
       <CommunityPostHeader
@@ -30,7 +42,8 @@ export function PulsePostCard({ post }: Props) {
         createdAt={post.createdAt}
         editedAt={post.editedAt}
       />
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-fix-text">{post.content}</p>
+      <PulsePostContent html={html} />
+      {showLegacyGallery ? <PulsePostMediaGallery media={post.media} /> : null}
       <GivePulseButton
         postId={post.id}
         authorId={post.authorId}

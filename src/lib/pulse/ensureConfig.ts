@@ -119,6 +119,14 @@ async function seedPublicDashboardWidgets(): Promise<void> {
   });
 }
 
+/** Rename legacy ticker labels (e.g. RootSync AI → RootSense AI). */
+async function syncPublicDashboardWidgetLabels(): Promise<void> {
+  await prisma.publicDashboardWidget.updateMany({
+    where: { key: "ai_conversations", label: "RootSync AI" },
+    data: { label: "RootSense AI" },
+  });
+}
+
 async function seedPlatformConfig(): Promise<void> {
   const platformWeightCount = await prisma.platformPulseWeight.count();
   if (platformWeightCount === 0) {
@@ -156,6 +164,7 @@ export async function ensurePulseConfig(): Promise<void> {
     await upgradeIndividualThresholds();
     await seedPlatformConfig();
     await seedPublicDashboardWidgets();
+    await syncPublicDashboardWidgetLabels();
     ensured = true;
   } catch {
     // Tables may not exist yet in dev — defaults in code still apply

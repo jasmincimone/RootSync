@@ -2,15 +2,20 @@ import Link from "next/link";
 
 import { CommunityPostHeader } from "@/components/CommunityPostHeader";
 import { MessageUserLink } from "@/components/MessageUserLink";
+import { PulsePostContent } from "@/components/pulse/PulsePostContent";
+import { PulsePostMediaGallery } from "@/components/pulse/PulsePostMediaGallery";
 import { PulseIcon } from "@/components/pulse/PulseIcon";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PULSE_HREF } from "@/config/platformNav";
+import type { PulsePostMediaItem } from "@/config/pulsePostMedia";
+import { isPulseHtmlContent, plainTextToPulseHtml } from "@/lib/pulsePostHtml";
 import type { UserProfilePeer } from "@/lib/userProfileDisplay";
 
 type PulsePost = {
   id: string;
   content: string;
+  media: PulsePostMediaItem[];
   roleAtPost: string;
   showVendorBadge: boolean;
   createdAt: Date;
@@ -75,7 +80,14 @@ export function ProfilePulseFeedSection({
         </div>
       ) : (
         <ul className="mt-6 space-y-4">
-          {posts.map((p) => (
+          {posts.map((p) => {
+            const html = isPulseHtmlContent(p.content)
+              ? p.content
+              : p.content
+                ? plainTextToPulseHtml(p.content)
+                : "";
+            const showLegacyGallery = !isPulseHtmlContent(p.content) && p.media.length > 0;
+            return (
             <li key={p.id}>
               <Card className="p-5">
                 <CommunityPostHeader
@@ -86,10 +98,12 @@ export function ProfilePulseFeedSection({
                   editedAt={p.editedAt?.toISOString() ?? null}
                   showMessageLink={showMessageLink && !isSelf}
                 />
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-fix-text">{p.content}</p>
+                <PulsePostContent html={html} />
+                {showLegacyGallery ? <PulsePostMediaGallery media={p.media} /> : null}
               </Card>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </section>

@@ -1,16 +1,18 @@
-import type { Prisma } from "@prisma/client";
+import { Suspense } from "react";
 import { getServerSession } from "next-auth";
 
-import { CommunityPostForm } from "@/components/CommunityPostForm";
-import { PulsePostCard } from "@/components/pulse/PulsePostCard";
-import { PulseIcon } from "@/components/pulse/PulseIcon";
+import { Container } from "@/components/Container";
 import { PlatformIllustrationBanner } from "@/components/PlatformIllustrationBanner";
+import { PulseComposerSection } from "@/components/pulse/PulseComposerSection";
+import { PulseIcon } from "@/components/pulse/PulseIcon";
+import { PulsePostCard } from "@/components/pulse/PulsePostCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { Container } from "@/components/Container";
 import { authOptions } from "@/lib/authOptions";
 import { ensurePulseConfig } from "@/lib/pulse/ensureConfig";
 import { loadPulseFeedPosts } from "@/lib/pulse/feed";
+import { prisma } from "@/lib/prisma";
+import { PULSE_POST_STATUS } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +24,25 @@ export const metadata = {
 export default async function PulsePage() {
   const session = await getServerSession(authOptions);
   let posts: Awaited<ReturnType<typeof loadPulseFeedPosts>> = [];
+  let drafts: { id: string; content: string; updatedAt: string }[] = [];
   let dbError: string | null = null;
 
   try {
     await ensurePulseConfig();
     posts = await loadPulseFeedPosts(session?.user?.id);
+    if (session?.user?.id) {
+      const draftRows = await prisma.communityPost.findMany({
+        where: { authorId: session.user.id, status: PULSE_POST_STATUS.DRAFT },
+        orderBy: { updatedAt: "desc" },
+        take: 50,
+        select: { id: true, content: true, updatedAt: true },
+      });
+      drafts = draftRows.map((d) => ({
+        id: d.id,
+        content: d.content,
+        updatedAt: d.updatedAt.toISOString(),
+      }));
+    }
   } catch (e) {
     console.error("Pulse feed DB error:", e);
     posts = [];
@@ -64,7 +80,9 @@ export default async function PulsePage() {
       />
 
       <div className="mx-auto mt-10 max-w-3xl space-y-8">
-        <CommunityPostForm />
+        <Suspense fallback={null}>
+          <PulseComposerSection drafts={drafts} />
+        </Suspense>
 
         {dbError ? <ErrorBanner message={dbError} /> : null}
 

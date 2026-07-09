@@ -1,4 +1,7 @@
+"use client";
+
 import { PulseIcon } from "@/components/pulse/PulseIcon";
+import { PulseStatusLink } from "@/components/pulse/PulseStatusGuide";
 import { Card } from "@/components/ui/Card";
 import type { ActivityTrend, PulseStatus } from "@/lib/pulse/eventTypes";
 import { cn } from "@/lib/cn";
@@ -41,7 +44,9 @@ export function PulseMeter({
               Your Pulse
             </p>
             <p className="text-2xl font-semibold text-fix-heading">{totalScore}</p>
-            <p className="text-sm text-fix-text-muted">{statusLabel}</p>
+            <PulseStatusLink scope="member" currentStatus={status} className="text-sm text-fix-text-muted">
+              {statusLabel}
+            </PulseStatusLink>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5">

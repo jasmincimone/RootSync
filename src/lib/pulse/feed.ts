@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/prisma";
+import { parsePulsePostMediaJson } from "@/lib/pulsePostMedia";
 import { communityAuthorSelect } from "@/lib/userProfileDisplay";
+
+import { PULSE_POST_STATUS } from "@/lib/roles";
 
 import type { PulseFeedPost } from "@/components/pulse/PulsePostCard";
 
 export async function loadPulseFeedPosts(viewerUserId?: string | null): Promise<PulseFeedPost[]> {
   const rows = await prisma.communityPost.findMany({
+    where: { status: PULSE_POST_STATUS.PUBLISHED },
     include: {
       author: { select: communityAuthorSelect },
       _count: { select: { pulseReactions: true } },
@@ -25,6 +29,7 @@ export async function loadPulseFeedPosts(viewerUserId?: string | null): Promise<
   return rows.map((p) => ({
     id: p.id,
     content: p.content,
+    media: parsePulsePostMediaJson(p.mediaJson),
     authorId: p.authorId,
     roleAtPost: p.roleAtPost,
     showVendorBadge: p.showVendorBadge,

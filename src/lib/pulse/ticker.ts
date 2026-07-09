@@ -1,4 +1,7 @@
-import { DEFAULT_PUBLIC_DASHBOARD_WIDGETS } from "@/config/pulseTickerWidgets";
+import {
+  DEFAULT_PUBLIC_DASHBOARD_WIDGETS,
+  type PublicDashboardWidgetKey,
+} from "@/config/pulseTickerWidgets";
 import { ensurePulseConfig } from "@/lib/pulse/ensureConfig";
 import { loadMemberPulseScore } from "@/lib/pulse/memberScore";
 import { loadPlatformDashboardMetrics } from "@/lib/pulse/platformMetrics";
@@ -14,6 +17,8 @@ export type TickerItem = {
   href?: string;
   highlight?: boolean;
   scope: "platform" | "personal";
+  statusGuideScope?: "member" | "platform";
+  currentStatus?: string;
 };
 
 export type DashboardWidgetRow = {
@@ -80,6 +85,8 @@ function resolvePlatformTickerItem(
         href: "/rootsync/dashboard",
         highlight: true,
         scope: "platform",
+        statusGuideScope: "platform",
+        currentStatus: platformSnapshot.status,
       };
     case "members_synced": {
       const target = config?.target ?? metrics.membersMilestone;
@@ -185,10 +192,13 @@ export async function loadPlatformTickerItems(): Promise<TickerItem[]> {
   }
 
   const items: TickerItem[] = [];
+  const defaultLabels = new Map(
+    DEFAULT_PUBLIC_DASHBOARD_WIDGETS.map((w) => [w.key, w.label] as const),
+  );
   for (const widget of widgets) {
     const item = resolvePlatformTickerItem(
       widget.key,
-      widget.label,
+      defaultLabels.get(widget.key as PublicDashboardWidgetKey) ?? widget.label,
       widget.widgetType,
       metrics,
       platformSnapshot,
@@ -221,6 +231,8 @@ export async function loadPersonalTickerItems(userId: string): Promise<TickerIte
       href: "/account",
       highlight: true,
       scope: "personal",
+      statusGuideScope: "member",
+      currentStatus: pulse.status,
     },
     {
       key: "pulse_weekly",

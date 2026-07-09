@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import { Search } from "lucide-react";
 
 import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListingCheckoutActions";
@@ -31,6 +30,7 @@ import {
   type DiscoverPageSize,
 } from "@/config/discoverPagination";
 import { discoverDirectoryPath, discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
+import { rememberDiscoverResults } from "@/lib/discoverReturn";
 import { RESOURCE_SUBTYPE_OPTIONS } from "@/config/resourceSubtypes";
 import { formatPrice } from "@/lib/format";
 import { directoryTypeLabel } from "@/lib/directory/types";
@@ -130,6 +130,12 @@ type Props = {
   showListings: boolean;
   isAllView: boolean;
   searchError?: string | null;
+  discoverResultsHref: string;
+  buildDetailHref: (
+    detailPath: string,
+    kind: "vendor" | "directory" | "listing",
+    id: string,
+  ) => string;
 };
 
 export function DiscoverBrowse({
@@ -162,25 +168,10 @@ export function DiscoverBrowse({
   showListings,
   isAllView,
   searchError,
+  discoverResultsHref,
+  buildDetailHref,
 }: Props) {
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const t = searchParams.get("type");
-    const s = searchParams.get("source");
-    if (!t && !s) return;
-    onFormChange({
-      ...form,
-      ...(t && Object.values(LISTING_TYPE).includes(t as ListingType)
-        ? { typeFilter: t as ListingType }
-        : {}),
-      ...(s === "vendors" || s === "directory" || s === "listings"
-        ? { sourceFilter: s }
-        : {}),
-    });
-    // Only seed URL params once on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  const rememberResults = () => rememberDiscoverResults(discoverResultsHref);
 
   const showListingsFilters = !form.sourceFilter || form.sourceFilter === "listings";
 
@@ -622,7 +613,8 @@ export function DiscoverBrowse({
                         />
                         <div className="min-w-0 flex-1">
                           <Link
-                            href={discoverVendorPath(v.id)}
+                            href={buildDetailHref(discoverVendorPath(v.id), "vendor", v.id)}
+                            onClick={rememberResults}
                             className="text-sm font-semibold text-fix-heading hover:text-fix-link hover:underline"
                           >
                             {v.displayName}
@@ -721,7 +713,8 @@ export function DiscoverBrowse({
                         {directoryTypeLabel(d.directoryType)}
                       </p>
                       <Link
-                        href={discoverDirectoryPath(d.id)}
+                        href={buildDetailHref(discoverDirectoryPath(d.id), "directory", d.id)}
+                        onClick={rememberResults}
                         className="mt-1 block text-sm font-semibold text-fix-heading hover:text-fix-link hover:underline"
                       >
                         {d.name}
@@ -786,9 +779,13 @@ export function DiscoverBrowse({
               <ul className="mt-6 grid gap-4 sm:grid-cols-2">
                 {listings.map((listing) => (
                   <li key={listing.id}>
-                    <Card className="flex h-full gap-4 overflow-hidden p-4">
+                    <Card
+                      id={`discover-listing-${listing.id}`}
+                      className="flex h-full scroll-mt-24 gap-4 overflow-hidden p-4"
+                    >
                       <Link
-                        href={discoverListingPath(listing.id)}
+                        href={buildDetailHref(discoverListingPath(listing.id), "listing", listing.id)}
+                        onClick={rememberResults}
                         className="relative block h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-fix-border/15 bg-fix-bg-muted outline-none ring-fix-cta transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
                         aria-label={`View ${listing.title}`}
                       >
@@ -809,13 +806,19 @@ export function DiscoverBrowse({
                             : ""}
                         </span>
                         <Link
-                          href={discoverListingPath(listing.id)}
+                          href={buildDetailHref(discoverListingPath(listing.id), "listing", listing.id)}
+                          onClick={rememberResults}
                           className="mt-0.5 block font-medium text-fix-heading hover:text-fix-link hover:underline"
                         >
                           {listing.title}
                         </Link>
                         <Link
-                          href={discoverVendorPath(listing.vendorProfile.id)}
+                          href={buildDetailHref(
+                            discoverVendorPath(listing.vendorProfile.id),
+                            "vendor",
+                            listing.vendorProfile.id,
+                          )}
+                          onClick={rememberResults}
                           className="mt-1 inline-flex flex-col items-start gap-0.5 text-xs font-medium text-fix-link hover:text-fix-link-hover"
                         >
                           <span className="inline-flex items-center gap-1.5">

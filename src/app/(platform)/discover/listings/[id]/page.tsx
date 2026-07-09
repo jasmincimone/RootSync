@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { Container } from "@/components/Container";
+import { DiscoverDetailBackLink } from "@/components/DiscoverDetailBackLink";
+import { DiscoverDetailTopBack } from "@/components/DiscoverDetailTopBack";
 import {
   ListingDetailHighlights,
   ListingTypeDetailCard,
@@ -14,6 +16,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { PulseRatingBadge } from "@/components/pulse/PulseRatingDisplay";
 import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurchase";
 import { authOptions } from "@/lib/authOptions";
+import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
 import { prisma } from "@/lib/prisma";
 import { loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
 import { LISTING_VISIBILITY, OFFERING_STATUS, VENDOR_STATUS } from "@/lib/roles";
@@ -115,6 +118,7 @@ function PurchasePanel({
   vendorId,
   detailProps,
   className,
+  returnTo,
 }: {
   listing: {
     id: string;
@@ -135,6 +139,7 @@ function PurchasePanel({
   vendorId: string;
   detailProps: Omit<Parameters<typeof ListingDetailHighlights>[0], "priceCents" | "variantCount">;
   className?: string;
+  returnTo?: string | null;
 }) {
   return (
     <Card className={className ?? "overflow-hidden border-fix-border/15 p-0 shadow-soft"}>
@@ -188,9 +193,11 @@ function PurchasePanel({
         ) : null}
 
         <div className="mt-4 border-t border-fix-border/15 pt-4">
-          <ButtonLink href="/discover" variant="ghost" size="sm" className="w-full justify-center">
-            ← Back to Discover
-          </ButtonLink>
+          <DiscoverDetailBackLink
+            returnTo={returnTo}
+            variant="button"
+            className="w-full justify-center"
+          />
         </div>
       </div>
     </Card>
@@ -199,10 +206,14 @@ function PurchasePanel({
 
 export default async function DiscoverListingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
+  const discoverBack = resolveDiscoverBackLink(returnTo);
   const session = await getServerSession(authOptions);
   const loaded = await loadListingForPage(id, session?.user?.id);
   if (!loaded) notFound();
@@ -226,8 +237,9 @@ export default async function DiscoverListingPage({
     <div className="bg-fix-bg-muted/30">
       <section className="border-b border-fix-border/15 bg-fix-surface">
         <Container className="py-6 sm:py-8">
+          <DiscoverDetailTopBack returnTo={returnTo} />
           <nav className="text-sm text-fix-text-muted">
-            <Link href="/discover" className="text-fix-link hover:text-fix-link-hover">
+            <Link href={discoverBack.href} className="text-fix-link hover:text-fix-link-hover">
               Discover
             </Link>
             <span className="mx-2">/</span>
@@ -294,6 +306,7 @@ export default async function DiscoverListingPage({
                 isOwnerPreview={isOwnerPreview}
                 vendorId={v.id}
                 detailProps={detailProps}
+                returnTo={returnTo}
               />
             </div>
 
@@ -354,6 +367,7 @@ export default async function DiscoverListingPage({
                 vendorId={v.id}
                 detailProps={detailProps}
                 className="overflow-hidden border-fix-border/15 p-0 shadow-soft"
+                returnTo={returnTo}
               />
             </div>
           </div>

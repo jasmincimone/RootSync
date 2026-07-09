@@ -7,6 +7,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { PulseDashboardManager } from "@/components/pulse/PulseDashboardManager";
 import { PulseIcon } from "@/components/pulse/PulseIcon";
+import { PulseStatusLink } from "@/components/pulse/PulseStatusGuide";
 import type { DashboardWidgetRow, TickerItem } from "@/lib/pulse/ticker";
 import { cn } from "@/lib/cn";
 
@@ -26,20 +27,40 @@ function TickerChip({
   onSelect: (item: TickerItem) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(item)}
+    <div
       className={cn(
-        "inline-flex shrink-0 items-center gap-2 rounded px-2.5 py-1 text-left transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber/60",
+        "inline-flex shrink-0 items-center gap-2 rounded px-2.5 py-1 transition-colors",
         active && "bg-white/15",
         item.highlight && "font-medium",
       )}
-      aria-pressed={active}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-clay/70">{item.label}</span>
-      <span className="text-sm font-semibold text-clay">{item.value}</span>
-      {item.sub ? <span className="hidden text-xs text-clay/60 sm:inline">{item.sub}</span> : null}
-    </button>
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        className={cn(
+          "inline-flex items-center gap-2 text-left transition-colors hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber/60",
+        )}
+        aria-pressed={active}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-clay/70">{item.label}</span>
+        <span className="text-sm font-semibold text-clay">{item.value}</span>
+      </button>
+      {item.sub ? (
+        <span className="hidden text-xs text-clay/60 sm:inline">
+          {item.statusGuideScope ? (
+            <PulseStatusLink
+              scope={item.statusGuideScope}
+              currentStatus={item.currentStatus}
+              className="text-clay/80 hover:text-clay"
+            >
+              {item.sub}
+            </PulseStatusLink>
+          ) : (
+            item.sub
+          )}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -222,7 +243,21 @@ export function PulseTickerBar({ platformItems, personalItems, isAdmin }: Props)
                   {selected.label}
                 </p>
                 <p className="mt-1 text-2xl font-semibold text-clay">{selected.value}</p>
-                {selected.sub ? <p className="mt-0.5 text-sm text-clay/70">{selected.sub}</p> : null}
+                {selected.sub ? (
+                  <p className="mt-0.5 text-sm text-clay/70">
+                    {selected.statusGuideScope ? (
+                      <PulseStatusLink
+                        scope={selected.statusGuideScope}
+                        currentStatus={selected.currentStatus}
+                        className="text-clay/90 hover:text-clay"
+                      >
+                        {selected.sub}
+                      </PulseStatusLink>
+                    ) : (
+                      selected.sub
+                    )}
+                  </p>
+                ) : null}
                 {selected.detail ? (
                   <p className="mt-2 max-w-xl text-sm leading-relaxed text-clay/80">{selected.detail}</p>
                 ) : null}
@@ -249,7 +284,21 @@ export function PulseTickerBar({ platformItems, personalItems, isAdmin }: Props)
                     {item.label}
                   </p>
                   <p className="mt-1 text-lg font-semibold text-clay">{item.value}</p>
-                  {item.sub ? <p className="text-xs text-clay/70">{item.sub}</p> : null}
+                  {item.sub ? (
+                    <p className="text-xs text-clay/70">
+                      {item.statusGuideScope ? (
+                        <PulseStatusLink
+                          scope={item.statusGuideScope}
+                          currentStatus={item.currentStatus}
+                          className="text-clay/90 hover:text-clay"
+                        >
+                          {item.sub}
+                        </PulseStatusLink>
+                      ) : (
+                        item.sub
+                      )}
+                    </p>
+                  ) : null}
                 </button>
               ))}
             </div>

@@ -9,8 +9,8 @@ type StackProps = {
 /** Centered landing-page CTA column — home + RootSync platform hero. */
 export function LandingCtaStack({ children, className }: StackProps) {
   return (
-    <div className={cn("mx-auto w-full max-w-md overflow-visible", className)}>
-      <div className="flex flex-col gap-3 [&>*]:w-full [&>*]:translate-x-[calc((2.75rem+0.5rem)/2)]">
+    <div className={cn("mx-auto w-full max-w-md px-4 sm:px-0", className)}>
+      <div className="flex flex-col gap-3 [&>*]:min-w-0 [&>*]:w-full sm:[&>*]:translate-x-[calc((2.75rem+0.5rem)/2)]">
         {children}
       </div>
     </div>
@@ -24,7 +24,7 @@ export function LandingCtaButtonLink({
   ...props
 }: React.ComponentProps<typeof ButtonLink>) {
   return (
-    <div className="flex w-full gap-2">
+    <div className="flex w-full min-w-0 gap-2">
       <ButtonLink
         size={size}
         className={cn("min-w-0 flex-1 uppercase tracking-wide", className)}

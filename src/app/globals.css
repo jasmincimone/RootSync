@@ -136,4 +136,93 @@ body {
     animation: pulse-earned-heartbeat 0.85s ease-out 1;
     transform-origin: center center;
   }
+
+  .pulse-rich-editor {
+    min-height: 10rem;
+  }
+
+  .pulse-rich-editor:empty::before {
+    content: attr(data-placeholder);
+    color: color-mix(in srgb, var(--text-muted) 70%, transparent);
+    pointer-events: none;
+  }
+
+  .pulse-post-content figure.pulse-embed,
+  .pulse-rich-editor figure.pulse-embed {
+    margin: 0.75rem 0;
+    max-width: 100%;
+  }
+
+  .pulse-post-content .pulse-embed-image img,
+  .pulse-post-content .pulse-embed-video video,
+  .pulse-rich-editor .pulse-embed-image img,
+  .pulse-rich-editor .pulse-embed-video video {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+  }
+
+  .pulse-post-content .pulse-embed-image img,
+  .pulse-rich-editor .pulse-embed-image img {
+    max-height: min(420px, 70vh);
+    object-fit: cover;
+  }
+
+  .pulse-post-content .pulse-embed-video video,
+  .pulse-rich-editor .pulse-embed-video video {
+    max-height: min(480px, 75vh);
+    object-fit: contain;
+    background: #000;
+  }
+
+  .pulse-post-content figure.pulse-embed:not([style*="width"]) {
+    width: 100%;
+  }
+
+  .pulse-post-content figcaption,
+  .pulse-rich-editor figcaption {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .pulse-post-content .pulse-embed-file,
+  .pulse-rich-editor .pulse-embed-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--border) 15%, transparent);
+    background: var(--bg-muted);
+    padding: 0.5rem 0.75rem;
+    font-weight: 500;
+    color: var(--link);
+    text-decoration: none;
+  }
+
+  .pulse-post-content h1,
+  .pulse-rich-editor h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+  }
+
+  .pulse-post-content h2,
+  .pulse-rich-editor h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+
+  .pulse-post-content h3,
+  .pulse-rich-editor h3 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .pulse-post-content blockquote,
+  .pulse-rich-editor blockquote {
+    border-left: 3px solid color-mix(in srgb, var(--forest) 35%, transparent);
+    padding-left: 0.75rem;
+    color: var(--text-muted);
+  }
 }

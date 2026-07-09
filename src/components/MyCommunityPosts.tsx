@@ -3,14 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PulsePostContent } from "@/components/pulse/PulsePostContent";
+import { PulseRichTextEditor } from "@/components/pulse/PulseRichTextEditor";
+import { PulsePostMediaGallery } from "@/components/pulse/PulsePostMediaGallery";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { FormFeedback } from "@/components/ui/FormFeedback";
+import { PulsePostFeedback, pulsePostErrorFromResponse } from "@/components/pulse/PulsePostFeedback";
+import type { PulsePostMediaItem } from "@/config/pulsePostMedia";
 import { formatCommunityDate, formatCommunityDateTime } from "@/lib/formatCommunityDate";
+import { isPulseHtmlContent, plainTextToPulseHtml, pulsePostHasVisibleContent } from "@/lib/pulsePostHtml";
+import type { PulsePostApiError } from "@/lib/pulsePostValidation";
 
 export type SerializedCommunityPost = {
   id: string;
   content: string;
+  media: PulsePostMediaItem[];
   createdAt: string;
   updatedAt: string;
   editedAt: string | null;
@@ -20,6 +27,10 @@ type Props = {
   posts: SerializedCommunityPost[];
 };
 
+function toEditorHtml(content: string): string {
+  return isPulseHtmlContent(content) ? content : content ? plainTextToPulseHtml(content) : "";
+}
+
 export function MyCommunityPosts({ posts: initialPosts }: Props) {
   const router = useRouter();
   const [posts, setPosts] = useState(initialPosts);
@@ -27,12 +38,12 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<PulsePostApiError | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   function startEdit(p: SerializedCommunityPost) {
     setEditingId(p.id);
-    setDraft(p.content);
+    setDraft(toEditorHtml(p.content));
     setError(null);
     setSuccess(null);
   }
@@ -45,9 +56,11 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
   }
 
   async function saveEdit(postId: string) {
-    const trimmed = draft.trim();
-    if (!trimmed || trimmed.length > 8000) {
-      setError("Content must be between 1 and 8,000 characters.");
+    if (!pulsePostHasVisibleContent(draft)) {
+      setError({
+        error: "Add text or at least one attachment.",
+        hint: "Your post needs visible text, a photo, a video, or a file.",
+      });
       return;
     }
     setSaving(true);
@@ -57,11 +70,11 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
       const res = await fetch(`/api/community/posts/${encodeURIComponent(postId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: trimmed }),
+        body: JSON.stringify({ content: draft }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(typeof data.error === "string" ? data.error : "Could not save.");
+        setError(pulsePostErrorFromResponse(data, "Could not save."));
         setSaving(false);
         return;
       }
@@ -78,6 +91,7 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
             ? {
                 id: post.id,
                 content: post.content,
+                media: [],
                 createdAt: post.createdAt,
                 updatedAt: post.updatedAt,
                 editedAt: post.editedAt,
@@ -94,7 +108,10 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
       window.setTimeout(() => setSuccess(null), 5000);
       router.refresh();
     } catch {
-      setError("Something went wrong. Check your connection and try again.");
+      setError({
+        error: "Something went wrong.",
+        hint: "Check your connection and try again.",
+      });
     } finally {
       setSaving(false);
     }
@@ -111,7 +128,7 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(typeof data.error === "string" ? data.error : "Could not delete.");
+        setError(pulsePostErrorFromResponse(data, "Could not delete."));
         setDeletingId(null);
         return;
       }
@@ -121,7 +138,10 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
       if (editingId === postId) cancelEdit();
       router.refresh();
     } catch {
-      setError("Something went wrong. Check your connection and try again.");
+      setError({
+        error: "Something went wrong.",
+        hint: "Check your connection and try again.",
+      });
     } finally {
       setDeletingId(null);
     }
@@ -131,9 +151,9 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
     return (
       <Card className="p-6">
         <p className="text-sm text-fix-text-muted">
-          You haven&apos;t posted in the community yet.{" "}
-          <a href="/community" className="font-medium text-fix-link hover:text-fix-link-hover">
-            Start a post
+          You haven&apos;t posted on Pulse yet.{" "}
+          <a href="/pulse" className="font-medium text-fix-link hover:text-fix-link-hover">
+            Start a Pulse
           </a>
         </p>
       </Card>
@@ -142,72 +162,73 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
 
   return (
     <div className="space-y-4">
-      <FormFeedback success={success} error={error} />
+      <PulsePostFeedback success={success} error={error} />
       <ul className="space-y-4">
-        {posts.map((p) => (
-          <li key={p.id}>
-            <Card className="p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1 text-xs text-fix-text-muted">
-                  <span>Posted {formatCommunityDate(p.createdAt)}</span>
-                  {p.editedAt ? (
-                    <>
-                      <span className="mx-1.5">·</span>
-                      <span className="text-fix-text-muted">
-                        Edited {formatCommunityDateTime(p.editedAt)}
-                      </span>
-                    </>
+        {posts.map((p) => {
+          const html = toEditorHtml(p.content);
+          const showLegacyGallery = !isPulseHtmlContent(p.content) && p.media.length > 0;
+          return (
+            <li key={p.id}>
+              <Card className="p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 text-xs text-fix-text-muted">
+                    <span>Posted {formatCommunityDate(p.createdAt)}</span>
+                    {p.editedAt ? (
+                      <>
+                        <span className="mx-1.5">·</span>
+                        <span className="text-fix-text-muted">
+                          Edited {formatCommunityDateTime(p.editedAt)}
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
+                  {editingId !== p.id ? (
+                    <div className="flex shrink-0 gap-2">
+                      <Button type="button" variant="secondary" size="sm" onClick={() => startEdit(p)}>
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-bark hover:bg-bark/10"
+                        disabled={deletingId === p.id}
+                        onClick={() => remove(p.id)}
+                      >
+                        {deletingId === p.id ? "Deleting…" : "Delete"}
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
-                {editingId !== p.id ? (
-                  <div className="flex shrink-0 gap-2">
-                    <Button type="button" variant="secondary" size="sm" onClick={() => startEdit(p)}>
-                      Edit
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-bark hover:bg-bark/10"
-                      disabled={deletingId === p.id}
-                      onClick={() => remove(p.id)}
-                    >
-                      {deletingId === p.id ? "Deleting…" : "Delete"}
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
 
-              {editingId === p.id ? (
-                <div className="mt-3 space-y-3">
-                  <textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    rows={5}
-                    maxLength={8000}
-                    className="w-full rounded-xl border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm text-fix-text"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="cta"
-                      size="sm"
-                      disabled={saving}
-                      onClick={() => saveEdit(p.id)}
-                    >
-                      {saving ? "Saving…" : "Save"}
-                    </Button>
-                    <Button type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
-                      Cancel
-                    </Button>
+                {editingId === p.id ? (
+                  <div className="mt-3 space-y-3">
+                    <PulseRichTextEditor value={draft} onChange={setDraft} disabled={saving} />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="cta"
+                        size="sm"
+                        disabled={saving}
+                        onClick={() => saveEdit(p.id)}
+                      >
+                        {saving ? "Saving…" : "Save"}
+                      </Button>
+                      <Button type="button" variant="secondary" size="sm" disabled={saving} onClick={cancelEdit}>
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-fix-text">{p.content}</p>
-              )}
-            </Card>
-          </li>
-        ))}
+                ) : (
+                  <>
+                    <PulsePostContent html={html} />
+                    {showLegacyGallery ? <PulsePostMediaGallery media={p.media} /> : null}
+                  </>
+                )}
+              </Card>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import {
   DiscoverBrowse,
@@ -15,6 +16,7 @@ import {
   paginateSlice,
   type DiscoverPageSize,
 } from "@/config/discoverPagination";
+import { discoverDetailHref } from "@/config/discoverPaths";
 import {
   isDiscoverStateRadiusAnywhere,
 } from "@/config/discoverLocation";
@@ -31,6 +33,12 @@ import {
   validateDiscoverSearch,
   type AppliedDiscoverSearch,
 } from "@/lib/discoverSearch";
+import {
+  buildDiscoverSearchHref,
+  discoverResultAnchor,
+  discoverUrlStateFromApplied,
+  parseDiscoverSearchParams,
+} from "@/lib/discoverSearchUrl";
 import { isValidUsZip } from "@/lib/directory/directoryLocationFilter";
 import { normalizeUsState } from "@/lib/usStates";
 
@@ -102,6 +110,8 @@ async function geocodeZip(zip: string): Promise<{ latitude: number; longitude: n
 }
 
 export function DiscoverMarketplace({ vendors, listings }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [form, setForm] = useState<DiscoverSearchFormValues>(DEFAULT_FORM);
   const handleFormChange = (next: DiscoverSearchFormValues) => {
     setForm(normalizeDiscoverSearchForm(next));
@@ -127,6 +137,21 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
   const [directoryError, setDirectoryError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const initialSearchDone = useRef(false);
+  const pendingScrollHash = useRef<string | null>(null);
+
+  const syncDiscoverUrl = useCallback(
+    (
+      nextApplied: AppliedDiscoverSearch,
+      pages: { vendorsPage: number; listingsPage: number; directoryPage: number },
+      hash?: string,
+    ) => {
+      const href = buildDiscoverSearchHref(discoverUrlStateFromApplied(nextApplied, pages), {
+        hash,
+      });
+      router.replace(href, { scroll: false });
+    },
+    [router],
+  );
 
   const fetchDirectory = useCallback(
     async (
@@ -202,7 +227,12 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
 );
 
   const runSearch = useCallback(
-    async (nextForm: DiscoverSearchFormValues, nextPageSize: DiscoverPageSize = pageSize) => {
+    async (
+      nextForm: DiscoverSearchFormValues,
+      nextPageSize: DiscoverPageSize = pageSize,
+      pages?: { vendorsPage?: number; listingsPage?: number; directoryPage?: number },
+      options?: { syncUrl?: boolean },
+    ) => {
       setSearchError(null);
       const nextApplied: AppliedDiscoverSearch = {
         ...normalizeDiscoverSearchForm(nextForm),
@@ -242,24 +272,53 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
         }
       }
 
+      const nextVendorsPage = pages?.vendorsPage ?? 1;
+      const nextListingsPage = pages?.listingsPage ?? 1;
+      const nextDirectoryPage = pages?.directoryPage ?? 1;
+
       setLocationCenter(nextLocationCenter);
       setApplied(nextApplied);
-      setDirectoryPage(1);
-      setVendorsPage(1);
-      setListingsPage(1);
-      await fetchDirectory(nextApplied, 1, {
+      setForm(normalizeDiscoverSearchForm(nextForm));
+      setPageSize(nextPageSize);
+      setDirectoryPage(nextDirectoryPage);
+      setVendorsPage(nextVendorsPage);
+      setListingsPage(nextListingsPage);
+      await fetchDirectory(nextApplied, nextDirectoryPage, {
         refresh: true,
         locationCenter: nextLocationCenter,
       });
+
+      if (options?.syncUrl !== false) {
+        syncDiscoverUrl(nextApplied, {
+          vendorsPage: nextVendorsPage,
+          listingsPage: nextListingsPage,
+          directoryPage: nextDirectoryPage,
+        });
+      }
     },
-    [fetchDirectory, pageSize],
+    [fetchDirectory, pageSize, syncDiscoverUrl],
   );
 
   useEffect(() => {
     if (initialSearchDone.current) return;
     initialSearchDone.current = true;
-    void runSearch(DEFAULT_FORM, DEFAULT_DISCOVER_PAGE_SIZE);
-  }, [runSearch]);
+
+    const parsed = parseDiscoverSearchParams(searchParams);
+    const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+    if (hash) pendingScrollHash.current = hash;
+
+    if (parsed) {
+      setForm(parsed.form);
+      setPageSize(parsed.pageSize);
+      setVendorsPage(parsed.vendorsPage);
+      setListingsPage(parsed.listingsPage);
+      setDirectoryPage(parsed.directoryPage);
+      void runSearch(parsed.form, parsed.pageSize, parsed, { syncUrl: false });
+      return;
+    }
+
+    void runSearch(DEFAULT_FORM, DEFAULT_DISCOVER_PAGE_SIZE, undefined, { syncUrl: false });
+  }, [runSearch, searchParams]);
 
   const isAllView = !applied?.sourceFilter;
 
@@ -334,21 +393,85 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
   };
 
   const handlePageSizeChange = (next: DiscoverPageSize) => {
-    setPageSize(next);
     void runSearch(form, next);
+  };
+
+  const handleVendorsPageChange = (page: number) => {
+    setVendorsPage(page);
+    if (!applied) return;
+    syncDiscoverUrl(applied, { vendorsPage: page, listingsPage, directoryPage });
+  };
+
+  const handleListingsPageChange = (page: number) => {
+    setListingsPage(page);
+    if (!applied) return;
+    syncDiscoverUrl(applied, { vendorsPage, listingsPage: page, directoryPage });
   };
 
   const handleDirectoryPageChange = (page: number) => {
     if (!applied) return;
     setDirectoryPage(page);
     void fetchDirectory(applied, page, { refresh: false, locationCenter });
+    syncDiscoverUrl(applied, { vendorsPage, listingsPage, directoryPage: page });
   };
+
+  const discoverResultsHref = useMemo(() => {
+    if (!applied) return buildDiscoverSearchHref({
+      form: DEFAULT_FORM,
+      pageSize,
+      vendorsPage,
+      listingsPage,
+      directoryPage,
+    });
+    return buildDiscoverSearchHref(
+      discoverUrlStateFromApplied(applied, { vendorsPage, listingsPage, directoryPage }),
+    );
+  }, [applied, pageSize, vendorsPage, listingsPage, directoryPage]);
+
+  const buildDetailHref = useCallback(
+    (detailPath: string, kind: "vendor" | "directory" | "listing", id: string) => {
+      const resultsHref = buildDiscoverSearchHref(
+        applied
+          ? discoverUrlStateFromApplied(applied, { vendorsPage, listingsPage, directoryPage })
+          : { form, pageSize, vendorsPage, listingsPage, directoryPage },
+        { hash: discoverResultAnchor(kind, id) },
+      );
+      return discoverDetailHref(detailPath, resultsHref);
+    },
+    [applied, directoryPage, form, listingsPage, pageSize, vendorsPage],
+  );
+
+  useEffect(() => {
+    const hash = pendingScrollHash.current;
+    if (!hash || !applied) return;
+    if (directoryLoading) return;
+
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(hash);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        pendingScrollHash.current = null;
+      }
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [applied, directoryLoading, filteredVendors.length, filteredListings.length, directoryItems.length]);
 
   return (
     <>
       <div className="mt-8">
         <h2 className="sr-only">Discover map</h2>
-        <MarketplaceMapDynamic pins={mapPins} />
+        <MarketplaceMapDynamic
+          pins={mapPins}
+          buildDetailHref={(pin) =>
+            buildDetailHref(
+              pin.kind === "vendor"
+                ? `/discover/vendors/${pin.id}`
+                : `/discover/directory/${pin.id}`,
+              pin.kind,
+              pin.id,
+            )
+          }
+        />
         {mapPins.length === 0 ? (
           <p className="mt-3 text-sm text-fix-text-muted">
             Map pins appear for search results with location coordinates.
@@ -371,16 +494,18 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
         vendors={pagedVendors}
         vendorsTotal={filteredVendors.length}
         vendorsPage={vendorsPage}
-        onVendorsPageChange={setVendorsPage}
+        onVendorsPageChange={handleVendorsPageChange}
         allListings={listings}
         listings={pagedListings}
         listingsTotal={filteredListings.length}
         listingsPage={listingsPage}
-        onListingsPageChange={setListingsPage}
+        onListingsPageChange={handleListingsPageChange}
         directory={directoryItems}
         directoryTotal={directoryTotal}
         directoryPage={directoryPage}
         onDirectoryPageChange={handleDirectoryPageChange}
+        buildDetailHref={buildDetailHref}
+        discoverResultsHref={discoverResultsHref}
         directoryLoading={directoryLoading}
         directoryError={directoryError}
         directorySummary={directorySummary}

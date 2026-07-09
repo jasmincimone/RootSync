@@ -177,6 +177,14 @@ export const DIRECTORY_SOURCE = {
   MANUAL: "MANUAL",
 } as const;
 
+/** Community Pulse post visibility */
+export const PULSE_POST_STATUS = {
+  DRAFT: "DRAFT",
+  PUBLISHED: "PUBLISHED",
+} as const;
+
+export type PulsePostStatus = (typeof PULSE_POST_STATUS)[keyof typeof PULSE_POST_STATUS];
+
 export type DirectorySource = (typeof DIRECTORY_SOURCE)[keyof typeof DIRECTORY_SOURCE];
 
 export function isRole(value: string | undefined | null): value is Role {

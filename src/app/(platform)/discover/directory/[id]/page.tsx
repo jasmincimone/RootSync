@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Container } from "@/components/Container";
+import { DiscoverDetailBackLink } from "@/components/DiscoverDetailBackLink";
+import { DiscoverDetailTopBack } from "@/components/DiscoverDetailTopBack";
 import { DirectoryListingBadge } from "@/components/DirectoryListingBadge";
 import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { DISCOVER_BASE } from "@/config/discoverPaths";
+import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
 import { formatDirectoryAddress } from "@/lib/directory/usdaClient";
 import { directoryTypeLabel } from "@/lib/directory/types";
 import { directoryToMapPins } from "@/lib/discoverMap";
@@ -42,10 +44,14 @@ export async function generateMetadata({
 
 export default async function DiscoverDirectoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
+  const discoverBack = resolveDiscoverBackLink(returnTo);
   const listing = await prisma.directoryListing.findFirst({
     where: { id, ...publicDirectoryWhere },
   });
@@ -76,8 +82,9 @@ export default async function DiscoverDirectoryPage({
     <div className="bg-fix-bg-muted/30">
       <section className="border-b border-fix-border/15 bg-fix-surface">
         <Container className="py-6 sm:py-8">
+          <DiscoverDetailTopBack returnTo={returnTo} />
           <nav className="text-sm text-fix-text-muted">
-            <Link href={DISCOVER_BASE} className="text-fix-link hover:text-fix-link-hover">
+            <Link href={discoverBack.href} className="text-fix-link hover:text-fix-link-hover">
               Discover
             </Link>
             <span className="mx-2">/</span>
@@ -201,12 +208,7 @@ export default async function DiscoverDirectoryPage({
                 </div>
               ) : null}
               <div className="mt-4 border-t border-fix-border/15 pt-4">
-                <Link
-                  href={DISCOVER_BASE}
-                  className="text-sm font-medium text-fix-link hover:text-fix-link-hover"
-                >
-                  ← Back to Discover
-                </Link>
+                <DiscoverDetailBackLink returnTo={returnTo} />
               </div>
             </Card>
           </aside>

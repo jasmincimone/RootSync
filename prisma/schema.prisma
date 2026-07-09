@@ -357,10 +357,15 @@ model CommunityPost {
   updatedAt        DateTime @updatedAt
   /// Set when content is edited; used for “Edited” label and sorting with `updatedAt`.
   editedAt         DateTime?
+  /// Images, videos, and file attachments (`PulsePostMediaItem[]`).
+  mediaJson        Json?
+  /// DRAFT posts are visible only to the author until published.
+  status           String   @default("PUBLISHED")
 
   pulseReactions   PulseReaction[]
 
   @@index([authorId])
+  @@index([authorId, status])
   @@index([createdAt])
   @@index([updatedAt])
 }

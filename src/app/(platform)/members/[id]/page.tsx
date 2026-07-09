@@ -11,7 +11,8 @@ import { ButtonLink } from "@/components/ui/Button";
 import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
-import { ROLES, VENDOR_STATUS } from "@/lib/roles";
+import { parsePulsePostMediaJson } from "@/lib/pulsePostMedia";
+import { PULSE_POST_STATUS, ROLES, VENDOR_STATUS } from "@/lib/roles";
 import {
   communityAuthorSelect,
   resolveUserAvatarUrl,
@@ -65,7 +66,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
     user.vendorProfile?.status === VENDOR_STATUS.APPROVED ? user.vendorProfile : null;
 
   const posts = await prisma.communityPost.findMany({
-    where: { authorId: user.id },
+    where: { authorId: user.id, status: PULSE_POST_STATUS.PUBLISHED },
     orderBy: { createdAt: "desc" },
     take: 30,
     include: { author: { select: communityAuthorSelect } },
@@ -133,7 +134,10 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
         <ProfilePulseFeedSection
           headingId="member-pulse-heading"
           displayName={displayName}
-          posts={posts}
+          posts={posts.map((p) => ({
+            ...p,
+            media: parsePulsePostMediaJson(p.mediaJson),
+          }))}
           messageUserId={user.id}
           isSelf={isSelf}
           showMessageLink={!isSelf}

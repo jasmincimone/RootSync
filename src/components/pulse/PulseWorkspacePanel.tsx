@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 
 import { GrowthSparkline } from "@/components/growth/GrowthSparkline";
 import { PulseIcon } from "@/components/pulse/PulseIcon";
+import { PulseStatusLink } from "@/components/pulse/PulseStatusGuide";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatPulseRelativeTime } from "@/lib/pulse/eventLabels";
@@ -44,7 +47,10 @@ export function PulseWorkspacePanel({ data, summary, className }: Props) {
             <p className="text-lg font-semibold text-fix-heading">
               {summary.totalScore}{" "}
               <span className="text-sm font-medium text-fix-text-muted">
-                · {summary.statusLabel}
+                ·{" "}
+                <PulseStatusLink scope="member" currentStatus={summary.status}>
+                  {summary.statusLabel}
+                </PulseStatusLink>
               </span>
             </p>
           </div>

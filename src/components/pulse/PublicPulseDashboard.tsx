@@ -1,4 +1,7 @@
+"use client";
+
 import { PulseIcon } from "@/components/pulse/PulseIcon";
+import { PulseStatusLink } from "@/components/pulse/PulseStatusGuide";
 import { Card } from "@/components/ui/Card";
 import type { PlatformPulseSnapshot } from "@/lib/pulse/platformPulse";
 import type { PlatformDashboardMetrics } from "@/lib/pulse/platformMetrics";
@@ -47,7 +50,13 @@ export function PublicPulseDashboard({ metrics, platformSnapshot, className }: P
         <PulseIcon size={44} alt="Platform Pulse" />
         <div>
           <h2 className="text-2xl font-semibold text-fix-heading sm:text-3xl">Platform Pulse</h2>
-          <p className="text-sm text-fix-text-muted">{platformSnapshot.label}</p>
+          <PulseStatusLink
+            scope="platform"
+            currentStatus={platformSnapshot.status}
+            className="text-sm text-fix-text-muted"
+          >
+            {platformSnapshot.label}
+          </PulseStatusLink>
         </div>
       </div>
 
@@ -58,7 +67,13 @@ export function PublicPulseDashboard({ metrics, platformSnapshot, className }: P
         <p className="mt-2 text-4xl font-semibold tracking-tight text-fix-heading sm:text-5xl">
           {platformSnapshot.pulseValue.toLocaleString()}
         </p>
-        <p className="mt-1 text-sm text-fix-text-muted">{platformSnapshot.label}</p>
+        <PulseStatusLink
+          scope="platform"
+          currentStatus={platformSnapshot.status}
+          className="mt-1 text-sm text-fix-text-muted"
+        >
+          {platformSnapshot.label}
+        </PulseStatusLink>
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

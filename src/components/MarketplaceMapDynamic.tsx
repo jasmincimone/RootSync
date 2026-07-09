@@ -20,8 +20,9 @@ const MarketplaceMap = dynamic(
 type Props = {
   pins: DiscoverMapPin[];
   compact?: boolean;
+  buildDetailHref?: (pin: DiscoverMapPin) => string;
 };
 
-export function MarketplaceMapDynamic({ pins, compact }: Props) {
-  return <MarketplaceMap pins={pins} compact={compact} />;
+export function MarketplaceMapDynamic({ pins, compact, buildDetailHref }: Props) {
+  return <MarketplaceMap pins={pins} compact={compact} buildDetailHref={buildDetailHref} />;
 }

@@ -31,9 +31,10 @@ function escapeHtml(text: string): string {
 type Props = {
   pins: DiscoverMapPin[];
   compact?: boolean;
+  buildDetailHref?: (pin: DiscoverMapPin) => string;
 };
 
-export function MarketplaceMap({ pins, compact }: Props) {
+export function MarketplaceMap({ pins, compact, buildDetailHref }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const heightClass = compact ? "h-[280px] max-h-[40vh]" : "h-[420px] max-h-[55vh]";
 
@@ -88,7 +89,8 @@ export function MarketplaceMap({ pins, compact }: Props) {
 
       const name = escapeHtml(pin.label);
       const href =
-        pin.kind === "vendor" ? discoverVendorPath(pin.id) : discoverDirectoryPath(pin.id);
+        buildDetailHref?.(pin) ??
+        (pin.kind === "vendor" ? discoverVendorPath(pin.id) : discoverDirectoryPath(pin.id));
       const subtitle =
         pin.kind === "vendor" ? "Verified vendor" : "Directory listing";
       const subtitleColor = pin.kind === "vendor" ? "#044730" : "#b8860b";
@@ -121,7 +123,7 @@ export function MarketplaceMap({ pins, compact }: Props) {
       map.remove();
       clearLeafletContainer(el);
     };
-  }, [pinKey, vendorIcon, directoryIcon]);
+  }, [pinKey, vendorIcon, directoryIcon, buildDetailHref]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-fix-border/20 shadow-soft">

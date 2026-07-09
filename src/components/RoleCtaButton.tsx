@@ -62,7 +62,7 @@ export function RoleCtaButton({
   }, [open]);
 
   return (
-    <div ref={rootRef} className={cn("relative flex w-full gap-2", centerInfoButton ? "items-center" : "items-stretch", className)}>
+    <div ref={rootRef} className={cn("relative flex w-full min-w-0 gap-2", centerInfoButton ? "items-center" : "items-stretch", className)}>
       <ButtonLink
         href={href}
         variant={variant}
@@ -109,7 +109,7 @@ export function RoleCtaButton({
           id={panelId}
           role="dialog"
           aria-labelledby={`${panelId}-title`}
-          className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,22rem)] p-4 text-left shadow-soft sm:w-80"
+          className="absolute left-0 right-0 top-full z-50 mt-2 w-full max-w-[min(100%,22rem)] p-4 text-left shadow-soft sm:left-auto sm:right-0 sm:w-80"
         >
           {infoNotice ? (
             <p className="mb-3 rounded-lg border border-forest/20 bg-forest/5 px-3 py-2.5 text-xs leading-relaxed text-fix-text-muted">
