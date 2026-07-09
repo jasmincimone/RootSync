@@ -2,14 +2,49 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { ArrowLeft, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 
-import { Card } from "@/components/ui/Card";
 import { AccountProfileImageField } from "@/components/AccountProfileImageField";
+import {
+  AccountSettingsCard,
+  accountSettingsInputClass,
+  accountSettingsTextareaClass,
+} from "@/components/account/AccountSettingsCard";
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
+import { SettingsSectionTile } from "@/components/account/settings/SettingsSectionTile";
 import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
 import { normalizeOtpSixDigits } from "@/lib/auth-tokens";
 import { PASSWORD_POLICY_TEXT } from "@/lib/passwordPolicy";
 import { TWO_FACTOR_METHOD } from "@/lib/twoFactor";
+
+type SettingsSectionId = "account" | "password" | "two-factor";
+
+const SETTINGS_SECTIONS: {
+  id: SettingsSectionId;
+  label: string;
+  description: string;
+  icon: typeof UserRound;
+}[] = [
+  {
+    id: "account",
+    label: "Account information",
+    description: "Profile, email, and neighborhoods",
+    icon: UserRound,
+  },
+  {
+    id: "password",
+    label: "Password",
+    description: "Update your sign-in password",
+    icon: KeyRound,
+  },
+  {
+    id: "two-factor",
+    label: "Two-factor authentication",
+    description: "Email, SMS, and security consent",
+    icon: ShieldCheck,
+  },
+];
 
 type SettingsState = {
   email: string;
@@ -28,35 +63,9 @@ type SettingsState = {
   emailOtpConfigured: boolean;
 };
 
-function Section({
-  id,
-  title,
-  description,
-  children,
-}: {
-  id: string;
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section aria-labelledby={id} className="space-y-4">
-      <div>
-        <h2 id={id} className="text-base font-semibold text-fix-heading">
-          {title}
-        </h2>
-        {description && <p className="mt-1 text-sm text-fix-text-muted">{description}</p>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-const inputClass =
-  "mt-1 w-full max-w-md rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text focus:border-amber focus:outline-none focus:ring-1 focus:ring-amber";
-
 export default function AccountSettingsPage() {
   const { update: updateSession } = useSession();
+  const [activeSection, setActiveSection] = useState<SettingsSectionId | null>(null);
   const [data, setData] = useState<SettingsState | null>(null);
   const [loadError, setLoadError] = useState("");
 
@@ -423,21 +432,33 @@ export default function AccountSettingsPage() {
     ? "—"
     : created.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
-  return (
-    <div className="space-y-10">
-      <div>
-        <h2 className="text-lg font-semibold text-fix-heading">Settings</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">
-          Manage your profile, password, and how you sign in—including optional two-factor verification.
-        </p>
-      </div>
+  const activeMeta = SETTINGS_SECTIONS.find((s) => s.id === activeSection);
 
-      <Section
+  return (
+    <AccountSubpageBody
+      description={
+        activeMeta
+          ? activeMeta.description
+          : "Choose a section to manage your profile, password, and sign-in security."
+      }
+    >
+      {activeSection ? (
+        <div className="space-y-6">
+          <button
+            type="button"
+            onClick={() => setActiveSection(null)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-fix-border/15 bg-fix-surface px-3 py-1.5 text-sm font-medium text-fix-text-muted shadow-soft transition-colors hover:bg-fix-bg-muted hover:text-fix-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Account settings
+          </button>
+
+          {activeSection === "account" ? (
+      <AccountSettingsCard
         id="account-info-heading"
         title="Account information"
         description="Your display name and email used for sign-in and receipts."
       >
-        <Card className="p-5">
           <AccountProfileImageField
             imageUrl={imageUrl}
             displayName={nameInput || data.email}
@@ -473,7 +494,7 @@ export default function AccountSettingsPage() {
                   setProfileMsg("");
                   setProfileErr("");
                 }}
-                className={inputClass}
+                className={accountSettingsInputClass}
                 placeholder="Your name"
               />
             </div>
@@ -500,7 +521,7 @@ export default function AccountSettingsPage() {
                   setProfileMsg("");
                   setProfileErr("");
                 }}
-                className={`${inputClass} max-w-lg`}
+                className={accountSettingsTextareaClass}
                 placeholder="e.g. East Austin, Mueller, Downtown"
               />
             </div>
@@ -527,7 +548,7 @@ export default function AccountSettingsPage() {
                   setEmailMsg("");
                   setEmailErr("");
                 }}
-                className={inputClass}
+                className={accountSettingsInputClass}
                 placeholder="new@example.com"
               />
             </div>
@@ -545,7 +566,7 @@ export default function AccountSettingsPage() {
                   setEmailMsg("");
                   setEmailErr("");
                 }}
-                className={inputClass}
+                className={accountSettingsInputClass}
               />
             </div>
             <FormFeedback success={emailMsg || null} error={emailErr || null} />
@@ -553,15 +574,15 @@ export default function AccountSettingsPage() {
               {emailLoading ? "Saving…" : "Update email"}
             </Button>
           </form>
-        </Card>
-      </Section>
+      </AccountSettingsCard>
+          ) : null}
 
-      <Section
+          {activeSection === "password" ? (
+      <AccountSettingsCard
         id="password-heading"
         title="Password"
-        description="Use a strong password you don’t reuse on other sites. Forgot your password? Use the link on the sign-in page."
+        description="Use a strong password you don't reuse on other sites. Forgot your password? Use the link on the sign-in page."
       >
-        <Card className="p-5">
           <form onSubmit={onChangePassword} className="max-w-md space-y-3">
             <div>
               <label htmlFor="pw-current" className="block text-sm font-medium text-fix-text">
@@ -577,7 +598,7 @@ export default function AccountSettingsPage() {
                   setPasswordMsg("");
                   setPasswordErr("");
                 }}
-                className={inputClass}
+                className={accountSettingsInputClass}
               />
             </div>
             <div>
@@ -594,7 +615,7 @@ export default function AccountSettingsPage() {
                   setPasswordMsg("");
                   setPasswordErr("");
                 }}
-                className={inputClass}
+                className={accountSettingsInputClass}
                 minLength={12}
               />
               <p className="mt-0.5 text-xs text-fix-text-muted">{PASSWORD_POLICY_TEXT}</p>
@@ -613,7 +634,7 @@ export default function AccountSettingsPage() {
                   setPasswordMsg("");
                   setPasswordErr("");
                 }}
-                className={inputClass}
+                className={accountSettingsInputClass}
                 minLength={12}
               />
             </div>
@@ -622,15 +643,16 @@ export default function AccountSettingsPage() {
               {passwordLoading ? "Saving…" : "Update password"}
             </Button>
           </form>
-        </Card>
-      </Section>
+      </AccountSettingsCard>
+          ) : null}
 
-      <Section
+          {activeSection === "two-factor" ? (
+      <AccountSettingsCard
         id="two-factor-heading"
         title="Two-factor authentication"
         description="Add a second step after your password: a code by email or SMS. Choose None to turn it off or start over."
       >
-        <Card className="p-5">
+          <div>
           <h3 className="text-sm font-semibold text-fix-heading">Sign-in method</h3>
           <p className="mt-2 text-sm text-fix-text-muted">
             After your password, we&apos;ll ask for a one-time code. <strong>None</strong> resets two-factor to
@@ -656,7 +678,7 @@ export default function AccountSettingsPage() {
                 setTfaErr("");
                 setTfaMsg("");
               }}
-              className={inputClass}
+              className={accountSettingsInputClass}
             />
           </div>
           <p className="mt-3 max-w-lg text-xs text-fix-text-muted">
@@ -706,9 +728,9 @@ export default function AccountSettingsPage() {
           {!verified && method === TWO_FACTOR_METHOD.SMS && (
             <p className="mt-2 text-xs text-bark">Verify your phone below before SMS two-factor can stay enabled.</p>
           )}
-        </Card>
+          </div>
 
-        <Card className="p-5 ring-1 ring-fix-border/30">
+          <div className="pt-2">
           <h3 className="text-sm font-semibold text-fix-heading">Phone number &amp; SMS consent</h3>
           <p className="mt-2 text-sm text-fix-text-muted">
             Add a phone number to use SMS verification and SMS two-factor. Review the agreements in the highlighted
@@ -809,7 +831,7 @@ export default function AccountSettingsPage() {
                   setTfaErr("");
                 }}
                 placeholder="+15551234567 or 5551234567"
-                className={inputClass}
+                className={accountSettingsInputClass}
               />
             </div>
             {data.phoneVerifiedAt && data.phone && (
@@ -912,7 +934,7 @@ export default function AccountSettingsPage() {
                         setTfaMsg("");
                         setTfaErr("");
                       }}
-                      className={inputClass}
+                      className={accountSettingsInputClass}
                       placeholder="6-digit code"
                     />
                   </div>
@@ -923,10 +945,30 @@ export default function AccountSettingsPage() {
               </div>
             )}
           </div>
-        </Card>
+          </div>
 
         <FormFeedback success={tfaMsg || null} error={tfaErr || null} />
-      </Section>
-    </div>
+      </AccountSettingsCard>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            {SETTINGS_SECTIONS.map((section) => (
+              <SettingsSectionTile
+                key={section.id}
+                label={section.label}
+                description={section.description}
+                icon={section.icon}
+                onClick={() => setActiveSection(section.id)}
+              />
+            ))}
+          </div>
+          <p className="text-center text-sm text-fix-text-muted">
+            Tap a section to view and update your settings.
+          </p>
+        </div>
+      )}
+    </AccountSubpageBody>
   );
 }

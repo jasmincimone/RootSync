@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { Card } from "@/components/ui/Card";
-import { ButtonLink } from "@/components/ui/Button";
 import { OrderStatusBadge } from "@/components/ui/StatusBadge";
+import { VendorPulseReviewForm } from "@/components/pulse/VendorPulseReviewForm";
 import { formatPrice } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/authOptions";
+import { checkVendorReviewEligibility } from "@/lib/pulse/vendorReviews";
 import { isResourceOrderItem, orderItemTypeLabel } from "@/lib/roles";
 
 export default async function AccountOrderDetailPage({
@@ -24,10 +26,34 @@ export default async function AccountOrderDetailPage({
       id,
       OR: [{ email: session.user.email }, { userId: session.user.id }],
     },
-    include: { items: true },
+    include: {
+      items: {
+        include: {
+          listing: {
+            select: {
+              id: true,
+              title: true,
+              vendorProfileId: true,
+              vendorProfile: { select: { displayName: true } },
+            },
+          },
+        },
+      },
+      vendorPulseReview: { select: { id: true } },
+    },
   });
 
   if (!order) notFound();
+
+  const vendorListing = order.items.find((i) => i.listing)?.listing ?? null;
+  const reviewEligibility =
+    vendorListing && session.user.id
+      ? await checkVendorReviewEligibility({
+          reviewerUserId: session.user.id,
+          vendorProfileId: vendorListing.vendorProfileId,
+          orderId: order.id,
+        })
+      : null;
 
   const hasShipping =
     order.shippingName &&
@@ -37,25 +63,21 @@ export default async function AccountOrderDetailPage({
     order.shippingPostal;
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-fix-heading">Order {order.id}</h2>
-          <p className="mt-1 text-sm text-fix-text-muted">
-            {new Date(order.createdAt).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-        </div>
-        <ButtonLink href="/account/orders" variant="secondary" size="sm">
-          Back to orders
-        </ButtonLink>
-      </div>
-
+    <AccountSubpageBody
+      description={
+        <>
+          Order <span className="font-mono text-xs">{order.id}</span>
+          {" · "}
+          {new Date(order.createdAt).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </>
+      }
+    >
       <Card className="p-6">
         <div className="flex flex-wrap items-center gap-2 border-b border-fix-border/15 pb-4">
           <OrderStatusBadge status={order.status} />
@@ -146,6 +168,17 @@ export default async function AccountOrderDetailPage({
           </div>
         )}
       </Card>
-    </div>
+
+      {reviewEligibility?.eligible && vendorListing ? (
+        <Card className="mt-6 p-6">
+          <VendorPulseReviewForm
+            vendorProfileId={vendorListing.vendorProfileId}
+            vendorName={vendorListing.vendorProfile.displayName}
+            listingTitle={vendorListing.title}
+            orderId={order.id}
+          />
+        </Card>
+      ) : null}
+    </AccountSubpageBody>
   );
 }

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { VendorListingsClient } from "@/components/VendorListingsClient";
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
+import { ButtonLink } from "@/components/ui/Button";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { ROLES, VENDOR_STATUS } from "@/lib/roles";
@@ -24,5 +26,14 @@ export default async function VendorListingsPage() {
     redirect("/account/vendor");
   }
 
-  return <VendorListingsClient />;
+  return (
+    <AccountSubpageBody description="Manage offerings and their public listings.">
+      <div className="flex justify-end">
+        <ButtonLink href="/account/vendor/listings/new" variant="cta" size="sm">
+          New offering
+        </ButtonLink>
+      </div>
+      <VendorListingsClient hideHeader />
+    </AccountSubpageBody>
+  );
 }

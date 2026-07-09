@@ -9,7 +9,12 @@ import { withPrismaRetry } from "@/lib/prisma";
 import { DIRECTORY_SOURCE } from "@/lib/roles";
 import { normalizeUsState } from "@/lib/usStates";
 
+import {
+  getStateDirectorySyncMeta,
+  isDirectoryDbFresh,
+} from "./directoryDbFreshness";
 import { filterDirectoryByLocation } from "./directoryLocationFilter";
+import { DIRECTORY_PREFETCH_NEXT_PAGE } from "./directorySearchConfig";
 import { directoryTypeLabel, usdaRadiusMiles } from "./types";
 import { fetchUsdaListings, usdaSearchLocationFromState } from "./usdaClient";
 import type { NormalizedDirectoryListing } from "./types";
@@ -57,6 +62,8 @@ export type DirectorySearchResult = {
   summary: string | null;
   mapPins: { id: string; name: string; latitude: number; longitude: number }[];
   searchScope: "state" | "zip" | null;
+  stateRadius: DiscoverStateRadius | null;
+  servedFromCache: boolean;
 };
 
 function matchesQuery(row: DirectorySearchRow, query: string): boolean {
@@ -128,11 +135,12 @@ function buildSummary(params: {
   zip: string | null;
   radiusMiles: number | null;
 }): string | null {
-  if (params.stateAbbrev && params.city && params.stateRadius) {
+  if (params.stateAbbrev && params.stateRadius) {
+    const city = params.city?.trim() ?? "";
     if (isDiscoverStateRadiusAnywhere(params.stateRadius)) {
-      return `Anywhere in ${params.stateAbbrev} (from ${params.city})`;
+      return city ? `Anywhere in ${params.stateAbbrev} (near ${city})` : `Anywhere in ${params.stateAbbrev}`;
     }
-    return `Within ${params.stateRadius} mi of ${params.city}, ${params.stateAbbrev}`;
+    if (city) return `Within ${params.stateRadius} mi of ${city}, ${params.stateAbbrev}`;
   }
   if (params.zip && params.radiusMiles) {
     return `Within ${params.radiusMiles} mi of ${params.zip}`;
@@ -190,6 +198,28 @@ function filterUsdaToLocation(
   return filterDirectoryByLocation(rows, locationFilterInput(params));
 }
 
+function textQueryWhere(query: string): Prisma.DirectoryListingWhereInput | undefined {
+  const q = query.trim();
+  if (!q) return undefined;
+  return {
+    OR: [
+      { name: { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
+      { city: { contains: q, mode: "insensitive" } },
+      { addressLine1: { contains: q, mode: "insensitive" } },
+      { zip: { contains: q, mode: "insensitive" } },
+    ],
+  };
+}
+
+function baseStateWhere(stateAbbrev: string): Prisma.DirectoryListingWhereInput {
+  return {
+    ...publicDirectoryWhere,
+    source: DIRECTORY_SOURCE.USDA,
+    state: stateAbbrev,
+  };
+}
+
 async function loadRowsByExternalIds(externalIds: string[]): Promise<DirectorySearchRow[]> {
   if (externalIds.length === 0) return [];
   return withPrismaRetry(async (client) => {
@@ -209,12 +239,165 @@ async function loadRowsByExternalIds(externalIds: string[]): Promise<DirectorySe
   });
 }
 
-function dbLocationWhere(stateAbbrev: string | null): Prisma.DirectoryListingWhereInput {
-  if (stateAbbrev) return { state: stateAbbrev };
-  return {};
+function buildResult(params: {
+  items: DirectorySearchRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  summary: string | null;
+  searchScope: DirectorySearchResult["searchScope"];
+  stateRadius: DiscoverStateRadius | null;
+  servedFromCache: boolean;
+}): DirectorySearchResult {
+  return {
+    items: params.items,
+    total: params.total,
+    page: params.page,
+    pageSize: params.pageSize,
+    summary: params.summary,
+    mapPins: mapPinsFromRows(params.items),
+    searchScope: params.searchScope,
+    stateRadius: params.stateRadius,
+    servedFromCache: params.servedFromCache,
+  };
 }
 
-async function searchDirectoryFromDb(params: {
+/** Fast path for statewide Anywhere — paginate directly in Postgres. */
+async function searchAnywhereFromDb(params: {
+  stateAbbrev: string;
+  query: string;
+  page: number;
+  pageSize: number;
+  summary: string | null;
+}): Promise<DirectorySearchResult> {
+  const skip = (params.page - 1) * params.pageSize;
+  const textWhere = textQueryWhere(params.query);
+  const where: Prisma.DirectoryListingWhereInput = textWhere
+    ? { AND: [baseStateWhere(params.stateAbbrev), textWhere] }
+    : baseStateWhere(params.stateAbbrev);
+
+  const [total, rows] = await withPrismaRetry(async (client) => {
+    return Promise.all([
+      client.directoryListing.count({ where }),
+      client.directoryListing.findMany({
+        where,
+        orderBy: { name: "asc" },
+        skip,
+        take: params.pageSize,
+      }),
+    ]);
+  });
+
+  return buildResult({
+    items: rows.map(toSearchRow),
+    total,
+    page: params.page,
+    pageSize: params.pageSize,
+    summary: params.summary,
+    searchScope: "state",
+    stateRadius: "anywhere",
+    servedFromCache: true,
+  });
+}
+
+async function searchStateRadiusFromDb(params: {
+  stateAbbrev: string;
+  city: string;
+  stateRadius: DiscoverStateRadius;
+  locationCenter: { latitude: number; longitude: number } | null;
+  query: string;
+  page: number;
+  pageSize: number;
+  summary: string | null;
+}): Promise<DirectorySearchResult | null> {
+  const rows = await withPrismaRetry(async (client) => {
+    return client.directoryListing.findMany({
+      where: baseStateWhere(params.stateAbbrev),
+      orderBy: { name: "asc" },
+    });
+  });
+
+  let filtered = rows.map(toSearchRow);
+  filtered = filterDirectoryByLocation(
+    filtered,
+    locationFilterInput({
+      stateAbbrev: params.stateAbbrev,
+      city: params.city,
+      stateRadius: params.stateRadius,
+      zip: "",
+      radiusMiles: null,
+      locationCenter: params.locationCenter,
+    }),
+  );
+  if (params.query) filtered = filtered.filter((row) => matchesQuery(row, params.query));
+  if (filtered.length === 0) return null;
+
+  const start = (params.page - 1) * params.pageSize;
+  const items = filtered.slice(start, start + params.pageSize);
+
+  return buildResult({
+    items,
+    total: filtered.length,
+    page: params.page,
+    pageSize: params.pageSize,
+    summary: params.summary,
+    searchScope: "state",
+    stateRadius: params.stateRadius,
+    servedFromCache: true,
+  });
+}
+
+async function searchZipFromDb(params: {
+  zip: string;
+  radiusMiles: number;
+  locationCenter: { latitude: number; longitude: number };
+  query: string;
+  page: number;
+  pageSize: number;
+  summary: string | null;
+}): Promise<DirectorySearchResult | null> {
+  const rows = await withPrismaRetry(async (client) => {
+    return client.directoryListing.findMany({
+      where: {
+        ...publicDirectoryWhere,
+        source: DIRECTORY_SOURCE.USDA,
+        latitude: { not: null },
+        longitude: { not: null },
+      },
+      orderBy: { name: "asc" },
+    });
+  });
+
+  let filtered = filterDirectoryByLocation(
+    rows.map(toSearchRow),
+    locationFilterInput({
+      stateAbbrev: null,
+      city: "",
+      stateRadius: null,
+      zip: params.zip,
+      radiusMiles: params.radiusMiles,
+      locationCenter: params.locationCenter,
+    }),
+  );
+  if (params.query) filtered = filtered.filter((row) => matchesQuery(row, params.query));
+  if (filtered.length === 0) return null;
+
+  const start = (params.page - 1) * params.pageSize;
+  const items = filtered.slice(start, start + params.pageSize);
+
+  return buildResult({
+    items,
+    total: filtered.length,
+    page: params.page,
+    pageSize: params.pageSize,
+    summary: params.summary,
+    searchScope: "zip",
+    stateRadius: null,
+    servedFromCache: true,
+  });
+}
+
+async function tryFastDirectoryDbSearch(params: {
   stateAbbrev: string | null;
   city: string;
   stateRadius: DiscoverStateRadius | null;
@@ -225,57 +408,71 @@ async function searchDirectoryFromDb(params: {
   query: string;
   page: number;
   pageSize: number;
+  summary: string | null;
 }): Promise<DirectorySearchResult | null> {
-  const { stateAbbrev, hasZipSearch, query, page, pageSize } = params;
+  if (params.stateAbbrev && params.stateRadius) {
+    const meta = await getStateDirectorySyncMeta(params.stateAbbrev);
+    if (!isDirectoryDbFresh(meta)) return null;
+    const minRowsNeeded = params.page * params.pageSize;
+    if (meta.count < minRowsNeeded && !isDiscoverStateRadiusAnywhere(params.stateRadius)) {
+      return null;
+    }
 
-  if (hasZipSearch && !params.locationCenter) return null;
+    if (isDiscoverStateRadiusAnywhere(params.stateRadius)) {
+      return searchAnywhereFromDb({
+        stateAbbrev: params.stateAbbrev,
+        query: params.query,
+        page: params.page,
+        pageSize: params.pageSize,
+        summary: params.summary,
+      });
+    }
 
-  const rows = await withPrismaRetry(async (client) => {
-    return client.directoryListing.findMany({
-      where: {
-        ...publicDirectoryWhere,
-        source: DIRECTORY_SOURCE.USDA,
-        ...dbLocationWhere(stateAbbrev),
-      },
-      orderBy: { name: "asc" },
-    });
-  });
+    if (params.city && params.locationCenter) {
+      const result = await searchStateRadiusFromDb({
+        stateAbbrev: params.stateAbbrev,
+        city: params.city,
+        stateRadius: params.stateRadius,
+        locationCenter: params.locationCenter,
+        query: params.query,
+        page: params.page,
+        pageSize: params.pageSize,
+        summary: params.summary,
+      });
+      if (result && result.total >= minRowsNeeded - params.pageSize + 1) return result;
+    }
+    return null;
+  }
 
-  let filtered = rows.map(toSearchRow);
-  filtered = filterDirectoryByLocation(
-    filtered,
-    locationFilterInput({
-      stateAbbrev,
-      city: params.city,
-      stateRadius: params.stateRadius,
+  if (
+    params.hasZipSearch &&
+    params.locationCenter &&
+    params.radiusMiles &&
+    params.radiusMiles > 0
+  ) {
+    const result = await searchZipFromDb({
       zip: params.zip,
       radiusMiles: params.radiusMiles,
       locationCenter: params.locationCenter,
-    }),
-  );
-  if (query) filtered = filtered.filter((row) => matchesQuery(row, query));
+      query: params.query,
+      page: params.page,
+      pageSize: params.pageSize,
+      summary: params.summary,
+    });
+    if (result && result.total > (params.page - 1) * params.pageSize) return result;
+  }
 
-  if (filtered.length === 0) return null;
+  return null;
+}
 
-  const total = filtered.length;
-  const start = (page - 1) * pageSize;
-  const items = filtered.slice(start, start + pageSize);
-
-  return {
-    items,
-    total,
-    page,
-    pageSize,
-    summary: buildSummary({
-      stateAbbrev,
-      city: params.city,
-      stateRadius: params.stateRadius,
-      zip: hasZipSearch ? params.zip : null,
-      radiusMiles: params.radiusMiles,
-    }),
-    mapPins: mapPinsFromRows(items),
-    searchScope: stateAbbrev ? "state" : hasZipSearch ? "zip" : null,
-  };
+function hasStateSearchInput(
+  stateAbbrev: string | null,
+  city: string,
+  stateRadius: DiscoverStateRadius | null,
+): boolean {
+  if (!stateAbbrev || !stateRadius) return false;
+  if (isDiscoverStateRadiusAnywhere(stateRadius)) return true;
+  return Boolean(city);
 }
 
 export async function searchDirectoryListings(
@@ -296,7 +493,7 @@ export async function searchDirectoryListings(
       : null;
   const locationCenter = params.locationCenter ?? null;
 
-  const hasStateSearch = Boolean(stateAbbrev && city && stateRadius);
+  const hasStateSearch = hasStateSearchInput(stateAbbrev, city, stateRadius);
   const hasZipSearch = /^\d{5}$/.test(zip) && radiusMiles != null && radiusMiles > 0;
   const summary = buildSummary({
     stateAbbrev,
@@ -332,15 +529,33 @@ export async function searchDirectoryListings(
     const total = filtered.length;
     const start = (page - 1) * pageSize;
     const items = filtered.slice(start, start + pageSize);
-    return {
+    return buildResult({
       items,
       total,
       page,
       pageSize,
       summary: null,
-      mapPins: mapPinsFromRows(items),
       searchScope: null,
-    };
+      stateRadius: null,
+      servedFromCache: true,
+    });
+  }
+
+  if (!refresh) {
+    const fast = await tryFastDirectoryDbSearch({
+      stateAbbrev,
+      city,
+      stateRadius,
+      hasZipSearch,
+      zip,
+      radiusMiles,
+      locationCenter,
+      query,
+      page,
+      pageSize,
+      summary,
+    });
+    if (fast) return fast;
   }
 
   const cacheKey = directoryUsdaCacheKey({
@@ -356,24 +571,6 @@ export async function searchDirectoryListings(
   let catalog = cacheKey ? getCachedUsdaListings(cacheKey) : null;
 
   if (!catalog) {
-    if (page > 1) {
-      const fromDb = await searchDirectoryFromDb({
-        stateAbbrev,
-        city,
-        stateRadius,
-        hasZipSearch,
-        zip,
-        radiusMiles,
-        locationCenter,
-        query,
-        page,
-        pageSize,
-      });
-      if (fromDb && fromDb.total > page * pageSize - pageSize) {
-        return fromDb;
-      }
-    }
-
     let location: string;
     let usdaRadius: number;
     if (hasStateSearch && stateRadius) {
@@ -400,18 +597,23 @@ export async function searchDirectoryListings(
   const total = filteredCatalog.length;
   const start = (page - 1) * pageSize;
   const pageSlice = filteredCatalog.slice(start, start + pageSize);
+  const prefetchSlice = DIRECTORY_PREFETCH_NEXT_PAGE
+    ? filteredCatalog.slice(start + pageSize, start + pageSize * 2)
+    : [];
 
-  await upsertNormalizedDirectoryListings(pageSlice);
+  const upsertRows = prefetchSlice.length > 0 ? [...pageSlice, ...prefetchSlice] : pageSlice;
+  await upsertNormalizedDirectoryListings(upsertRows);
 
   const items = await loadRowsByExternalIds(pageSlice.map((row) => row.externalId));
 
-  return {
+  return buildResult({
     items,
     total,
     page,
     pageSize,
     summary,
-    mapPins: mapPinsFromRows(items),
     searchScope,
-  };
+    stateRadius,
+    servedFromCache: Boolean(catalog && !refresh),
+  });
 }

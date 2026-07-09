@@ -25,7 +25,7 @@ type Listing = {
   productUrl: string | null;
 };
 
-export function VendorListingsClient() {
+export function VendorListingsClient({ hideHeader = false }: { hideHeader?: boolean }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,17 +51,19 @@ export function VendorListingsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-fix-heading">My offerings</h2>
-          <p className="mt-1 text-sm text-fix-text-muted">
-            Manage offerings and their public listings.
-          </p>
+      {!hideHeader ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-fix-heading">My offerings</h2>
+            <p className="mt-1 text-sm text-fix-text-muted">
+              Manage offerings and their public listings.
+            </p>
+          </div>
+          <ButtonLink href="/account/vendor/listings/new" variant="cta" size="sm">
+            New offering
+          </ButtonLink>
         </div>
-        <ButtonLink href="/account/vendor/listings/new" variant="cta" size="sm">
-          New offering
-        </ButtonLink>
-      </div>
+      ) : null}
 
       {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
       {loading ? (

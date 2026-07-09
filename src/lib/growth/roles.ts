@@ -1,0 +1,99 @@
+/** Growth contact lifecycle status — stored as strings in PostgreSQL. */
+export const GROWTH_CONTACT_STATUS = {
+  NEW_LEAD: "NEW_LEAD",
+  SUBSCRIBER: "SUBSCRIBER",
+  COMMUNITY_MEMBER: "COMMUNITY_MEMBER",
+  CUSTOMER: "CUSTOMER",
+  RETURNING_CUSTOMER: "RETURNING_CUSTOMER",
+  VIP: "VIP",
+  PARTNER: "PARTNER",
+  SPONSOR: "SPONSOR",
+  INACTIVE: "INACTIVE",
+} as const;
+
+export type GrowthContactStatus =
+  (typeof GROWTH_CONTACT_STATUS)[keyof typeof GROWTH_CONTACT_STATUS];
+
+export const GROWTH_CONTACT_STATUS_LABELS: Record<GrowthContactStatus, string> = {
+  NEW_LEAD: "New Lead",
+  SUBSCRIBER: "Subscriber",
+  COMMUNITY_MEMBER: "Community Member",
+  CUSTOMER: "Customer",
+  RETURNING_CUSTOMER: "Returning Customer",
+  VIP: "VIP",
+  PARTNER: "Partner",
+  SPONSOR: "Sponsor",
+  INACTIVE: "Inactive",
+};
+
+/** Consultation marketing pipeline stages. */
+export const GROWTH_CONSULTATION_STAGE = {
+  LEAD: "LEAD",
+  REQUESTED: "REQUESTED",
+  SCHEDULED: "SCHEDULED",
+  COMPLETED: "COMPLETED",
+  PROPOSAL_SENT: "PROPOSAL_SENT",
+  ACCEPTED: "ACCEPTED",
+  DECLINED: "DECLINED",
+  PROJECT_COMPLETE: "PROJECT_COMPLETE",
+  REVIEW_RECEIVED: "REVIEW_RECEIVED",
+} as const;
+
+export type GrowthConsultationStage =
+  (typeof GROWTH_CONSULTATION_STAGE)[keyof typeof GROWTH_CONSULTATION_STAGE];
+
+export const GROWTH_CONSULTATION_STAGE_LABELS: Record<GrowthConsultationStage, string> = {
+  LEAD: "Lead",
+  REQUESTED: "Consultation Requested",
+  SCHEDULED: "Scheduled",
+  COMPLETED: "Completed",
+  PROPOSAL_SENT: "Proposal Sent",
+  ACCEPTED: "Accepted",
+  DECLINED: "Declined",
+  PROJECT_COMPLETE: "Project Complete",
+  REVIEW_RECEIVED: "Review Received",
+};
+
+export const GROWTH_CAMPAIGN_STATUS = {
+  DRAFT: "DRAFT",
+  SCHEDULED: "SCHEDULED",
+  SENDING: "SENDING",
+  SENT: "SENT",
+  CANCELLED: "CANCELLED",
+} as const;
+
+export type GrowthCampaignStatus =
+  (typeof GROWTH_CAMPAIGN_STATUS)[keyof typeof GROWTH_CAMPAIGN_STATUS];
+
+export const GROWTH_FUNNEL_STEP_TYPE = {
+  LANDING_PAGE: "LANDING_PAGE",
+  LEAD_MAGNET: "LEAD_MAGNET",
+  EMAIL_SEQUENCE: "EMAIL_SEQUENCE",
+  NEWSLETTER: "NEWSLETTER",
+  CTA: "CTA",
+  CONSULTATION: "CONSULTATION",
+  MARKETPLACE: "MARKETPLACE",
+  REFERRAL: "REFERRAL",
+} as const;
+
+export const GROWTH_QR_CAMPAIGN_TYPE = {
+  INVESTFEST: "INVESTFEST",
+  FARMERS_MARKET: "FARMERS_MARKET",
+  WORKSHOP: "WORKSHOP",
+  BOOK: "BOOK",
+  SEED_KIT: "SEED_KIT",
+  DIY_PLAN: "DIY_PLAN",
+  PODCAST: "PODCAST",
+  PRODUCT_PACKAGING: "PRODUCT_PACKAGING",
+  VENDOR_BOOTH: "VENDOR_BOOTH",
+  COMMUNITY_EVENT: "COMMUNITY_EVENT",
+} as const;
+
+export const GROWTH_MARKETING_EVENT_TYPE = {
+  PAGE_VIEW: "PAGE_VIEW",
+  QR_SCAN: "QR_SCAN",
+  EMAIL_OPEN: "EMAIL_OPEN",
+  EMAIL_CLICK: "EMAIL_CLICK",
+  CONVERSION: "CONVERSION",
+  SIGNUP: "SIGNUP",
+} as const;

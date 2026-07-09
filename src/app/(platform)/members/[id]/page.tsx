@@ -2,12 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 
-import { CommunityPostHeader } from "@/components/CommunityPostHeader";
 import { Container } from "@/components/Container";
 import { MessageUserLink } from "@/components/MessageUserLink";
+import { ProfilePulseFeedSection } from "@/components/profile/ProfilePulseFeedSection";
+import { ProfileSectionNav, type ProfileSectionLink } from "@/components/profile/ProfileSectionNav";
 import { UserAvatar } from "@/components/UserAvatar";
-import { Card } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
 import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
@@ -75,6 +74,10 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
   const roleLabel =
     user.role === ROLES.ADMIN ? "Admin" : approvedVendor ? "Vendor" : "Member";
 
+  const profileSections: ProfileSectionLink[] = [
+    { id: "member-pulse-heading", label: "Check The Pulse" },
+  ];
+
   return (
     <Container className="py-10 sm:py-14">
       <div className="mx-auto max-w-3xl">
@@ -125,50 +128,17 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        <section className="mt-10" aria-labelledby="member-posts-heading">
-          <h2 id="member-posts-heading" className="text-lg font-semibold text-fix-heading">
-            Community posts
-          </h2>
-          <p className="mt-1 text-sm text-fix-text-muted">
-            Public updates from {displayName} on the community feed.
-          </p>
-          {posts.length === 0 ? (
-            <div className="mt-6">
-              <EmptyState
-                bordered={false}
-                title="No posts yet"
-                description={
-                  isSelf
-                    ? "Share something on the community feed to introduce yourself."
-                    : `${displayName} hasn't posted on the community feed yet.`
-                }
-                action={
-                  isSelf ? { href: "/community", label: "Go to community", variant: "secondary" } : undefined
-                }
-              />
-            </div>
-          ) : (
-            <ul className="mt-6 space-y-4">
-              {posts.map((p) => (
-                <li key={p.id}>
-                  <Card className="p-5">
-                    <CommunityPostHeader
-                      author={p.author}
-                      roleAtPost={p.roleAtPost}
-                      showVendorBadge={p.showVendorBadge}
-                      createdAt={p.createdAt.toISOString()}
-                      editedAt={p.editedAt?.toISOString() ?? null}
-                      showMessageLink={!isSelf}
-                    />
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-fix-text">
-                      {p.content}
-                    </p>
-                  </Card>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <ProfileSectionNav sections={profileSections} className="mt-8" />
+
+        <ProfilePulseFeedSection
+          headingId="member-pulse-heading"
+          displayName={displayName}
+          posts={posts}
+          messageUserId={user.id}
+          isSelf={isSelf}
+          showMessageLink={!isSelf}
+          className="mt-6"
+        />
       </div>
     </Container>
   );

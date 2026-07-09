@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
+import { PageBody } from "@/components/ui/PageBody";
 import { ROLES } from "@/lib/roles";
 
 type UserRow = {
@@ -54,14 +55,7 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-fix-heading">Users & roles</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">
-          Change member, vendor, or admin roles for platform members.
-        </p>
-      </div>
-
+    <PageBody wide description="Change member, vendor, or admin roles for platform members.">
       {error && <p className="text-sm text-bark">{error}</p>}
 
       {loading ? (
@@ -109,6 +103,6 @@ export default function AdminUsersPage() {
           </div>
         </Card>
       )}
-    </div>
+    </PageBody>
   );
 }

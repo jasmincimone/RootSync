@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendBookingConfirmationEmail, sendBookingCancellationEmail } from "@/lib/email";
 import { refundBookingPayment } from "@/lib/bookingRefund";
+import { hookOrderVerified } from "@/lib/pulse/hooks";
 import { BOOKING_STATUS, FULFILLMENT_METHOD } from "@/lib/roles";
 import { getConnectStripeClient } from "@/lib/stripeConnectDemo";
 import { CALENDAR_PROVIDER } from "@/services/calendar/calendar.constants";
@@ -257,6 +258,7 @@ export async function confirmPaidServiceBookingFromStripeSession(
             : session.payment_intent?.id ?? null,
       },
     });
+    await hookOrderVerified(orderId);
   }
 
   await confirmPaidServiceBooking(bookingId);

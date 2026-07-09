@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { VendorOfferingForm } from "@/components/VendorOfferingForm";
 import type { SerializedOfferingDetails } from "@/lib/offeringDetails";
 import { LISTING_TYPE, OFFERING_STATUS } from "@/lib/roles";
@@ -58,17 +59,24 @@ export default function EditVendorListingPage() {
   }, [load]);
 
   if (loading) {
-    return <p className="text-sm text-fix-text-muted">Loading…</p>;
+    return (
+      <AccountSubpageBody>
+        <p className="text-sm text-fix-text-muted">Loading…</p>
+      </AccountSubpageBody>
+    );
   }
 
   if (error || !initial) {
-    return <p className="text-sm text-bark">{error ?? "Offering not found."}</p>;
+    return (
+      <AccountSubpageBody>
+        <p className="text-sm text-bark">{error ?? "Offering not found."}</p>
+      </AccountSubpageBody>
+    );
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h2 className="text-lg font-semibold text-fix-heading">Edit offering</h2>
+    <AccountSubpageBody description="Update listing details, pricing, and availability.">
       <VendorOfferingForm mode="edit" listingId={id} initial={initial} />
-    </div>
+    </AccountSubpageBody>
   );
 }

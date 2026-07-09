@@ -23,6 +23,8 @@ import {
 import {
   DISCOVER_STATE_RADIUS_OPTIONS,
   DEFAULT_STATE_RADIUS_MILES,
+  isDiscoverStateRadiusAnywhere,
+  parseDiscoverStateRadius,
 } from "@/config/discoverLocation";
 import {
   DISCOVER_PAGE_SIZE_OPTIONS,
@@ -116,6 +118,7 @@ type Props = {
   directoryError: string | null;
   directorySummary: string | null;
   directorySearchScope: "state" | "zip" | null;
+  directoryStateRadius?: string | null;
   locationSummary: string | null;
   pageSize: DiscoverPageSize;
   onPageSizeChange: (size: DiscoverPageSize) => void;
@@ -147,6 +150,7 @@ export function DiscoverBrowse({
   directoryError,
   directorySummary,
   directorySearchScope,
+  directoryStateRadius,
   locationSummary,
   pageSize,
   onPageSizeChange,
@@ -179,6 +183,14 @@ export function DiscoverBrowse({
   }, [searchParams]);
 
   const showListingsFilters = !form.sourceFilter || form.sourceFilter === "listings";
+
+  const formStateRadius = parseDiscoverStateRadius(form.radiusMiles);
+  const isStateAnywhere =
+    form.locationMode === "state" &&
+    formStateRadius !== null &&
+    isDiscoverStateRadiusAnywhere(formStateRadius);
+  const directoryIsAnywhere =
+    directoryStateRadius === "anywhere" || (directoryLoading && isStateAnywhere);
 
   const shouldShowSection = (total: number, loading = false) => {
     if (!isAllView) return true;
@@ -392,8 +404,8 @@ export function DiscoverBrowse({
               Location
             </p>
             <p className="mt-1 text-sm text-fix-text-muted">
-              By state: pick a state, city, and distance. By ZIP: use a ZIP code and radius in miles.
-              Click Search to apply.
+              By state: pick a state and distance — city is optional when you choose Anywhere. By ZIP:
+              use a ZIP code and radius in miles. Click Search to apply.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -462,20 +474,25 @@ export function DiscoverBrowse({
                       className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
                     >
                       City
+                      {isStateAnywhere ? (
+                        <span className="ml-1 font-normal normal-case text-fix-text-muted/80">
+                          (optional)
+                        </span>
+                      ) : null}
                     </label>
                     <input
                       id="discover-location-city"
-                      required
+                      required={!isStateAnywhere}
                       value={form.city}
                       onChange={(e) => patchForm({ city: e.target.value })}
-                      placeholder="Hartford"
+                      placeholder={isStateAnywhere ? "Optional — narrow map focus" : "Hartford"}
                       className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
-                    Distance from city
+                    {isStateAnywhere ? "State coverage" : "Distance from city"}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {DISCOVER_STATE_RADIUS_OPTIONS.map((opt) => (
@@ -662,13 +679,25 @@ export function DiscoverBrowse({
           {directorySearchScope === "state" ? (
             <p className="mt-2 text-sm text-fix-text-muted">
               {directoryLoading
-                ? "Searching directory listings near your city… Use distance presets above to narrow results, or ZIP & radius for a different anchor."
-                : "Results are scoped by city and distance. Try a smaller radius for more local listings, or Anywhere for the full state."}
+                ? directoryIsAnywhere
+                  ? "Loading statewide directory listings… First search may take a moment while we sync USDA data."
+                  : "Searching directory listings near your city… Use distance presets above to narrow results, or Anywhere for the full state."
+                : directoryIsAnywhere
+                  ? "Showing USDA directory listings across the state. Add a city above to focus the map, or switch to a distance preset for a local radius."
+                  : "Results are scoped by city and distance. Try a smaller radius for more local listings, or Anywhere for the full state."}
             </p>
           ) : null}
           {directoryLoading ? (
             <div className="mt-6">
-              <RootSyncLoader label="Searching directory listings…" size="md" block />
+              <RootSyncLoader
+                label={
+                  directoryIsAnywhere
+                    ? "Loading statewide directory listings…"
+                    : "Searching directory listings…"
+                }
+                size="md"
+                block
+              />
             </div>
           ) : directoryError ? (
             <div className="mt-6">

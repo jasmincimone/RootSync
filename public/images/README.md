@@ -22,19 +22,25 @@ Marketing imagery for the public homepage.
 
 Illustrations and icons for RootSync platform pages and marketing UI.
 
-#### `platform/features/`
+#### `platform/explore/`
 
-Icons for the RootSync platform feature explorer (Discover, RootSync AI, Messages, Community).
+Syntha menu cards and icons for the RootSync landing explore menu.
 
 | File | Feature |
 |------|---------|
-| `marketplace.png` | Discover |
-| `rootsync-ai.png` | RootSync AI |
-| `messages.png` | Messages |
-| `community.png` | Community |
-| `courses.png` | Reserved (coming soon) |
-| `downloads.png` | Reserved (coming soon) |
-| `grid-preview.png` | Layout / preview asset |
+| `discover-marketplace-menu-card.png` | Discover Marketplace card |
+| `rootsync-ai-menu-card.png` | RootSync AI card |
+| `stay-synced-menu-card.png` | Stay Synced card |
+| `pulse-menu-card.png` | Pulse card |
+| `icons/discover-marketplace-icon.png` | Discover icon (mobile menu) |
+| `icons/rootsync-ai-icon.png` | RootSync AI icon |
+| `icons/stay-synced-icon.png` | Stay Synced icon |
+
+Icons ship without alpha; run `node scripts/process-brand-icons.mjs` after replacing them.
+
+#### `platform/features/` (legacy)
+
+Superseded by `platform/explore/` for the RootSync landing explorer.
 
 #### `platform/rootsync/`
 

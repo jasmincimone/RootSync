@@ -13,8 +13,16 @@ type Props = {
   href: string;
   label: string;
   icon?: React.ReactNode;
+  suffix?: React.ReactNode;
+  /** Stack label and suffix on two lines — helps long vendor CTAs fit. */
+  contentLayout?: "inline" | "stacked";
+  /** Vertically center the info button when the CTA is taller than the default height. */
+  centerInfoButton?: boolean;
+  /** Optional notice shown at the top of the info popover (e.g. home-page promotions). */
+  infoNotice?: string;
   variant?: "cta" | "secondary";
   className?: string;
+  buttonClassName?: string;
 };
 
 export function RoleCtaButton({
@@ -22,8 +30,13 @@ export function RoleCtaButton({
   href,
   label,
   icon,
+  suffix,
+  contentLayout = "inline",
+  centerInfoButton = false,
+  infoNotice,
   variant = "cta",
   className,
+  buttonClassName,
 }: Props) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -49,20 +62,38 @@ export function RoleCtaButton({
   }, [open]);
 
   return (
-    <div ref={rootRef} className={cn("relative flex items-stretch gap-2", className)}>
+    <div ref={rootRef} className={cn("relative flex w-full gap-2", centerInfoButton ? "items-center" : "items-stretch", className)}>
       <ButtonLink
         href={href}
         variant={variant}
         size="lg"
-        className="min-w-0 flex-1 uppercase tracking-wide"
+        className={cn(
+          "min-w-0 flex-1 uppercase tracking-wide",
+          contentLayout === "stacked" && "h-auto min-h-11 whitespace-normal py-2.5",
+          buttonClassName,
+        )}
       >
-        {icon}
-        {label}
+        {contentLayout === "stacked" ? (
+          <span className="flex flex-col items-center gap-0.5">
+            <span className="inline-flex items-center justify-center gap-2">
+              {icon}
+              <span>{label}</span>
+            </span>
+            {suffix ? <span className="normal-case">{suffix}</span> : null}
+          </span>
+        ) : (
+          <span className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5">
+            {icon}
+            <span>{label}</span>
+            {suffix ? <span className="normal-case">{suffix}</span> : null}
+          </span>
+        )}
       </ButtonLink>
       <button
         type="button"
         className={cn(
-          "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface text-fix-heading shadow-soft transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2",
+          "inline-flex shrink-0 items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface text-fix-heading shadow-soft transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2",
+          centerInfoButton ? "h-11 w-11 self-center" : "h-11 w-11",
           open && "bg-fix-bg-muted ring-2 ring-fix-cta/30",
         )}
         aria-label={`Learn about ${desc.title}`}
@@ -80,6 +111,11 @@ export function RoleCtaButton({
           aria-labelledby={`${panelId}-title`}
           className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,22rem)] p-4 text-left shadow-soft sm:w-80"
         >
+          {infoNotice ? (
+            <p className="mb-3 rounded-lg border border-forest/20 bg-forest/5 px-3 py-2.5 text-xs leading-relaxed text-fix-text-muted">
+              {infoNotice}
+            </p>
+          ) : null}
           <h3 id={`${panelId}-title`} className="text-sm font-semibold text-fix-heading">
             {desc.title}
           </h3>

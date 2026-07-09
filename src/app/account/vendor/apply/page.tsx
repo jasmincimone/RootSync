@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
@@ -47,15 +48,7 @@ export default function VendorApplyPage() {
   }
 
   return (
-    <div className="max-w-lg space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-fix-heading">Become a vendor</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">
-          Tell us about your business. After admin approval, you&apos;ll connect Stripe (or use
-          payment links on listings) and publish offerings on Discover.
-        </p>
-      </div>
-
+    <AccountSubpageBody description="Tell us about your business. After admin approval, you&apos;ll connect Stripe (or use payment links on listings) and publish offerings on Discover.">
       <Card className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormFeedback success={success} error={error} />
@@ -111,6 +104,6 @@ export default function VendorApplyPage() {
           </Button>
         </form>
       </Card>
-    </div>
+    </AccountSubpageBody>
   );
 }

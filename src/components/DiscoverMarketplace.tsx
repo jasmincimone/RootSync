@@ -15,6 +15,9 @@ import {
   paginateSlice,
   type DiscoverPageSize,
 } from "@/config/discoverPagination";
+import {
+  isDiscoverStateRadiusAnywhere,
+} from "@/config/discoverLocation";
 import { directoryToMapPins, vendorsToMapPins, type DiscoverMapPin } from "@/lib/discoverMap";
 import {
   DEFAULT_DISCOVER_SEARCH_FORM,
@@ -28,7 +31,7 @@ import {
   validateDiscoverSearch,
   type AppliedDiscoverSearch,
 } from "@/lib/discoverSearch";
-import { isStateLocationComplete, isValidUsZip } from "@/lib/directory/directoryLocationFilter";
+import { isValidUsZip } from "@/lib/directory/directoryLocationFilter";
 import { normalizeUsState } from "@/lib/usStates";
 
 type Props = {
@@ -44,6 +47,8 @@ type DirectorySearchResponse = {
   summary: string | null;
   mapPins: { id: string; name: string; latitude: number; longitude: number }[];
   searchScope?: "state" | "zip" | null;
+  stateRadius?: string | number | null;
+  servedFromCache?: boolean;
   error?: string;
 };
 
@@ -114,6 +119,7 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
   const [directoryTotal, setDirectoryTotal] = useState(0);
   const [directorySummary, setDirectorySummary] = useState<string | null>(null);
   const [directorySearchScope, setDirectorySearchScope] = useState<"state" | "zip" | null>(null);
+  const [directoryStateRadius, setDirectoryStateRadius] = useState<string | null>(null);
   const [directoryMapPins, setDirectoryMapPins] = useState<
     { id: string; name: string; latitude: number; longitude: number }[]
   >([]);
@@ -136,6 +142,7 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
       setDirectoryTotal(0);
       setDirectorySummary(null);
       setDirectorySearchScope(null);
+      setDirectoryStateRadius(null);
       setDirectoryMapPins([]);
       setDirectoryError(null);
       setDirectoryLoading(false);
@@ -145,7 +152,9 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
     setDirectoryLoading(true);
     setDirectoryError(null);
     setDirectorySearchScope(
-      search.locationMode === "state" && search.state.trim() && (search.city ?? "").trim()
+      search.locationMode === "state" &&
+        search.state.trim() &&
+        parseDiscoverStateRadius(String(search.radiusMiles ?? ""))
         ? "state"
         : search.locationMode === "zip" && isValidUsZip(search.zip)
           ? "zip"
@@ -173,6 +182,9 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
       setDirectoryTotal(body.total);
       setDirectorySummary(body.summary);
       setDirectorySearchScope(body.searchScope ?? null);
+      setDirectoryStateRadius(
+        body.stateRadius != null ? String(body.stateRadius) : null,
+      );
       setDirectoryMapPins(body.mapPins);
       setDirectoryPage(body.page);
     } catch (err) {
@@ -180,6 +192,7 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
       setDirectoryTotal(0);
       setDirectoryMapPins([]);
       setDirectorySearchScope(null);
+      setDirectoryStateRadius(null);
       setDirectoryError(err instanceof Error ? err.message : "Directory search failed.");
     } finally {
       setDirectoryLoading(false);
@@ -203,13 +216,12 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
       }
 
       let nextLocationCenter: { latitude: number; longitude: number } | null = null;
+      const stateRadius = parseDiscoverStateRadius(String(nextApplied.radiusMiles ?? ""));
       if (
         nextApplied.locationMode === "state" &&
-        isStateLocationComplete({
-          state: nextApplied.state,
-          city: nextApplied.city,
-          stateRadius: parseDiscoverStateRadius(nextApplied.radiusMiles),
-        })
+        stateRadius &&
+        !isDiscoverStateRadiusAnywhere(stateRadius) &&
+        (nextApplied.city ?? "").trim()
       ) {
         try {
           nextLocationCenter = await geocodeCityState(nextApplied.city, nextApplied.state);
@@ -373,6 +385,7 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
         directoryError={directoryError}
         directorySummary={directorySummary}
         directorySearchScope={directorySearchScope}
+        directoryStateRadius={directoryStateRadius}
         locationSummary={locationSummary}
         searchError={searchError}
         pageSize={pageSize}

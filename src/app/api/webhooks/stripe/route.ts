@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
 import { prisma } from "@/lib/prisma";
+import { hookOrderVerified } from "@/lib/pulse/hooks";
 import {
   getConnectStripeClient,
   hasStripeSig,
@@ -84,6 +85,8 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
         typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
     },
   });
+
+  await hookOrderVerified(orderId);
 
   if (checkoutType === "service_booking" && bookingId) {
     const { confirmPaidServiceBookingFromStripeSession } = await import("@/lib/confirmBooking");

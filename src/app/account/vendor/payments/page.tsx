@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { VendorStripeConnectSetup } from "@/components/VendorStripeConnectSetup";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
@@ -32,15 +33,8 @@ export default async function VendorPaymentsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-fix-heading">Payment setup</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">
-          Connect Stripe to accept Discover checkout and service bookings, or use payment links
-          per listing.
-        </p>
-      </div>
+    <AccountSubpageBody description="Connect Stripe to accept Discover checkout and service bookings, or use payment links per listing.">
       <VendorStripeConnectSetup showDevControls={process.env.NODE_ENV === "development"} />
-    </div>
+    </AccountSubpageBody>
   );
 }

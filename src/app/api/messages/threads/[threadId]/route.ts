@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
+import { hookMessageSent } from "@/lib/pulse/hooks";
 import { prisma } from "@/lib/prisma";
 import {
   messengerPeerSelect,
@@ -169,6 +170,8 @@ export async function POST(
     console.error("[messages/thread POST create]", e);
     return NextResponse.json({ error: "Could not send message." }, { status: 500 });
   }
+
+  await hookMessageSent(uid, threadId, msg.id);
 
   return NextResponse.json({
     message: {

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { cancelServiceBooking } from "@/lib/confirmBooking";
 import { requireApprovedVendorForBookings, vendorOwnsBooking } from "@/lib/bookingAccess";
+import { hookBookingCompleted } from "@/lib/pulse/hooks";
 import { prisma } from "@/lib/prisma";
 import { BOOKING_STATUS } from "@/lib/roles";
 
@@ -74,6 +75,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       where: { id: bookingId },
       data: { status: BOOKING_STATUS.COMPLETED },
     });
+    await hookBookingCompleted(bookingId);
     return NextResponse.json({ ok: true, status: BOOKING_STATUS.COMPLETED });
   }
 

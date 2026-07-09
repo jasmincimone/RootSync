@@ -1,10 +1,5 @@
-import Link from "next/link";
-import { Suspense } from "react";
-
 import { MenuBackdropClose, MenuCloseButton } from "@/components/MenuCloseButton";
-import { MenuAccountLink } from "@/components/MenuAccountLink";
-import { MenuFeaturedVendors } from "@/components/MenuFeaturedVendors";
-import { PlatformMenuLinks } from "@/components/PlatformMenuLinks";
+import { MenuPanelContent } from "@/components/MenuPanelContent";
 
 export const dynamic = "force-dynamic";
 
@@ -12,25 +7,6 @@ export const metadata = {
   title: "Menu",
   description: "Navigation menu for RootSync",
 };
-
-function AccountLinkFallback() {
-  return (
-    <div
-      className="rounded-xl border border-fix-border/15 bg-fix-bg-muted px-3 py-2.5 text-sm text-fix-text-muted"
-      aria-hidden
-    >
-      …
-    </div>
-  );
-}
-
-function FeaturedVendorsFallback() {
-  return (
-    <div className="mb-6 border-t border-fix-border/15 pt-6 px-1 text-sm text-fix-text-muted">
-      Loading vendors…
-    </div>
-  );
-}
 
 export default function MenuPage() {
   return (
@@ -42,45 +18,9 @@ export default function MenuPage() {
             <MenuCloseButton />
           </div>
 
-          <nav className="mt-6 flex min-h-0 flex-1 flex-col" aria-label="Main navigation">
-            <section className="mb-6">
-              <Suspense fallback={<AccountLinkFallback />}>
-                <MenuAccountLink />
-              </Suspense>
-            </section>
-
-            <section className="mb-6">
-              <Link
-                href="/"
-                className="block rounded-xl border border-fix-border/15 bg-fix-bg-muted px-3 py-2.5 text-sm font-semibold text-fix-heading hover:bg-fix-bg-muted/80"
-              >
-                Home
-              </Link>
-              <Link
-                href="/rootsync"
-                className="mt-2 block rounded-xl border border-fix-border/15 bg-fix-bg-muted px-3 py-2.5 text-sm font-semibold text-fix-heading hover:bg-fix-bg-muted/80"
-              >
-                RootSync
-              </Link>
-            </section>
-
-            <section className="mb-6">
-              <PlatformMenuLinks />
-            </section>
-
-            <Suspense fallback={<FeaturedVendorsFallback />}>
-              <MenuFeaturedVendors />
-            </Suspense>
-
-            <div className="mt-auto border-t border-fix-border/15 pt-6">
-              <Link
-                href="/about"
-                className="block rounded-xl px-3 py-2 text-sm font-medium text-fix-link hover:bg-fix-bg-muted hover:text-fix-link-hover"
-              >
-                About us
-              </Link>
-            </div>
-          </nav>
+          <div className="mt-6 flex min-h-0 flex-1 flex-col">
+            <MenuPanelContent />
+          </div>
         </div>
       </aside>
 

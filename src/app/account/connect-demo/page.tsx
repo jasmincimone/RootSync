@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { ConnectDemoDashboard } from "@/components/ConnectDemoDashboard";
 
 export const metadata = {
@@ -13,14 +14,11 @@ export default async function ConnectDemoPage() {
   if (!session?.user?.id) redirect("/login?callbackUrl=/account/connect-demo");
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-fix-heading">Stripe Connect demo</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">
-          Sample onboarding, product management, storefront, direct charges, and subscription flows.
-        </p>
-      </div>
+    <AccountSubpageBody
+      wide
+      description="Sample onboarding, product management, storefront, direct charges, and subscription flows."
+    >
       <ConnectDemoDashboard />
-    </div>
+    </AccountSubpageBody>
   );
 }

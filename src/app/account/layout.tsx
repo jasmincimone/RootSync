@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 
+import { AccountSubpageChrome } from "@/components/account/AccountSubpageChrome";
 import { Container } from "@/components/Container";
-import { AccountNav } from "@/components/AccountNav";
 import { authOptions } from "@/lib/authOptions";
 import { ROLES } from "@/lib/roles";
 
@@ -25,45 +25,24 @@ export default async function AccountLayout({
     redirect("/login?callbackUrl=/account");
   }
 
-  const roleLabel =
-    session.user.role === ROLES.ADMIN
-      ? "Admin"
-      : session.user.role === ROLES.VENDOR
-        ? "Vendor"
-        : "Member";
-
   return (
-    <Container className="py-8 sm:py-12">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-fix-border/15 pb-4">
+    <Container className="py-6 sm:py-10">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-fix-heading">Account</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">Account</h1>
           <p className="mt-1 text-sm text-fix-text-muted">{session.user?.email}</p>
-          <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-fix-text-muted">
-            {roleLabel}
-          </p>
         </div>
-        <div className="flex gap-3">
-          <Link
-            href="/community"
-            className="text-sm font-medium text-fix-link hover:text-fix-link-hover"
-          >
-            Community
+        <div className="flex items-center gap-4 text-sm font-medium">
+          <Link href="/pulse" className="text-forest hover:text-forest/80">
+            Pulse
           </Link>
-          <Link
-            href="/api/auth/signout"
-            className="text-sm font-medium text-fix-text-muted hover:text-fix-heading"
-          >
+          <Link href="/api/auth/signout" className="text-fix-text-muted hover:text-fix-heading">
             Sign out
           </Link>
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,220px)_1fr]">
-        <aside className="relative z-10 lg:sticky lg:top-28 lg:self-start">
-          <AccountNav />
-        </aside>
-        <div className="relative min-w-0">{children}</div>
-      </div>
+      <AccountSubpageChrome>{children}</AccountSubpageChrome>
     </Container>
   );
 }

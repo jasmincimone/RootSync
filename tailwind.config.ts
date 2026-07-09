@@ -48,6 +48,9 @@ const config: Config = {
         DEFAULT: fixTokens.espresso,
         fix: "var(--focus-ring)",
       },
+      fontFamily: {
+        handwriting: ["var(--font-caveat)", "cursive"],
+      },
     },
   },
   plugins: [],

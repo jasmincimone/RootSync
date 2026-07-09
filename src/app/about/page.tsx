@@ -41,7 +41,11 @@ export default function AboutPage() {
             <ButtonLink href="/rootsync" variant="cta" size="md">
               Enter RootSync
             </ButtonLink>
-            <ButtonLink href="/signup" variant="secondary" size="md">
+            <ButtonLink
+              href={`/signup?callbackUrl=${encodeURIComponent("/about")}`}
+              variant="secondary"
+              size="md"
+            >
               Join now
             </ButtonLink>
             <Link

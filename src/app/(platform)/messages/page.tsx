@@ -11,16 +11,19 @@ function pickWithParam(value: string | string[] | undefined): string | undefined
 }
 
 /** `/messages` forwards to the inbox so bookmarks and deep links keep working. */
-export default function MessagesRedirectPage({
+export default async function MessagesRedirectPage({
   searchParams,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const withV = pickWithParam(searchParams.with);
-  const withU = pickWithParam(searchParams.withUser);
+  const sp = await searchParams;
+  const withV = pickWithParam(sp.with);
+  const withU = pickWithParam(sp.withUser);
+  const from = pickWithParam(sp.from);
   const q = new URLSearchParams();
   if (withV) q.set("with", withV);
   if (withU) q.set("withUser", withU);
+  if (from) q.set("from", from);
   const query = q.toString();
   redirect(query ? `/messages/inbox?${query}` : "/messages/inbox");
 }

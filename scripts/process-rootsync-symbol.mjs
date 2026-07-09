@@ -13,7 +13,10 @@ const src =
     ".cursor/projects/Users-jasmincimone-TheFixCollective/assets/RootSync.Symbol-b64c3c29-d7bf-4e4c-8212-5aa98665869a.png",
   );
 
-const targets = ["public/rootsync-symbol.png"];
+const targets = [
+  "public/rootsync-symbol.png",
+  "public/images/brand/rootsync-platform-symbol.png",
+];
 
 function isEdgeBlack(r, g, b) {
   return r <= 40 && g <= 40 && b <= 40;

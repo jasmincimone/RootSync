@@ -61,8 +61,9 @@ Use it when:
 | Resources (digital) | Listing type Resource | `/discover?type=RESOURCE`, order items `resource` | **Partial** — listings + download gate; Blob signed URLs pending |
 | Services / Consultations | Service type + booking | Full flow: slots, Checkout, Meet, cancel, refund | **Aligned** (MVP) |
 | Events | Listing type Event (classes/workshops) | `/discover?type=EVENT`; vendor form + details | **Partial** — RSVP/tickets not built |
-| Community | Member discussions | `CommunityPost` live | **Aligned** |
-| Messaging | Member ↔ Member / Vendor | `DirectThread` / `DirectMessage` live | **Aligned** |
+| Community | Member discussions | `CommunityPost` live; UI branded **Pulse** | **Partial** — rename complete in nav; table deferred |
+| Pulse (platform service) | Contribution ledger + Individual + Platform Pulse | Phase 1–2 shipped; v2 spec documented | **Partial** — see [22_PULSE_SYSTEM.md](./22_PULSE_SYSTEM.md) |
+| Messaging | Member ↔ Member / Vendor | `DirectThread` / `DirectMessage`; UI **Stay Synced** | **Partial** |
 | AI | RootSync AI assistant | `/rootsync`, `/rootsyncai` live | **Aligned** |
 | Favorites / Follow / Reviews | Glossary + Phase 3 roadmap | Not implemented | **Deferred** |
 | Legacy platform shops | Vendor profile IS the shop | Redirects live; `ShopPage` + admin shops + `/products/` remain | **Legacy** |
@@ -110,15 +111,21 @@ Use it when:
 | Booking | `Booking`, `ServiceAvailabilityRule`, `BookingIntakeAnswer` | **Aligned** | Cancel + full refund; calendar + Meet |
 | Order | `Order`, `OrderItem` | **Aligned** | Supports marketplace + service bookings; `refunded` status |
 
-### Community & messaging
+### Community, Pulse & messaging
 
 | Doc concept | Code artifact | Status |
 |-------------|---------------|--------|
-| Community | `CommunityPost` | **Aligned** |
-| Message | `DirectThread`, `DirectMessage` | **Aligned** |
+| Pulse (feed) | `CommunityPost`, `/pulse` | **Partial** — UI branded; table rename deferred |
+| Pulse Events | `PulseEvent`, `pulse_score_weights` | **Partial** — hooks + backfill live; v2 tiers pending |
+| Individual Pulse | `PulseScore`, `PulseMeter` | **Partial** — 3 tiers in code; 6 tiers in spec |
+| Platform Pulse | `PlatformPulseDaily`, `PublicPulseDashboard` | **Partial** — sum-based v1; weighted index pending |
+| Give a Pulse | `PulseReaction`, `GivePulseButton` | **Aligned** |
+| Stay Synced | `DirectThread`, `DirectMessage` | **Aligned** |
+| Pulse earned toast | — | **Gap** |
+| Vendor Pulse reviews | — | **Deferred** |
 | Follow | — | **Gap** |
 | Favorite | — | **Gap** |
-| Review | — | **Gap** |
+| Review (stars) | — | **Gap** — replace with Pulse ratings |
 
 ### Legacy / parallel systems (technical debt)
 

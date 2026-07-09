@@ -57,14 +57,15 @@ export async function POST(request: NextRequest) {
   }
 
   if (stateAbbrev) {
-    if (!cityTrimmed) {
-      return NextResponse.json({ error: "City is required for state search." }, { status: 400 });
-    }
     if (!stateRadius) {
       return NextResponse.json(
         { error: "Choose a distance preset (5 mi through Anywhere)." },
         { status: 400 },
       );
+    }
+    const cityRequired = stateRadius !== "anywhere";
+    if (cityRequired && !cityTrimmed) {
+      return NextResponse.json({ error: "City is required unless you choose Anywhere." }, { status: 400 });
     }
   }
 

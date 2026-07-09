@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 
 import { isPrismaUnavailableError } from "@/lib/prisma";
 import { updateOfferingAndSyncListing } from "@/lib/offeringListing";
+import { hookOfferingPublishedIfActive } from "@/lib/pulse/hooks";
 import { OFFERING_STATUS } from "@/lib/roles";
 
 /** If a scheduled offering is due, promote it to ACTIVE. Returns true when published. */
@@ -39,7 +40,10 @@ export async function publishDueScheduledOfferings(prisma: PrismaClient) {
   let published = 0;
   for (const row of due) {
     const did = await prisma.$transaction((tx) => publishOfferingIfDue(tx, row.id));
-    if (did) published += 1;
+    if (did) {
+      published += 1;
+      await hookOfferingPublishedIfActive(row.id, OFFERING_STATUS.SCHEDULED);
+    }
   }
 
   return { published, checked: due.length, checkedAt: now.toISOString() };

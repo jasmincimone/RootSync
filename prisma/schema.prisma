@@ -58,6 +58,13 @@ model User {
   directMessages        DirectMessage[]
   passwordResetTokens PasswordResetToken[]
   loginChallenges     LoginChallenge[]
+  pulseEvents           PulseEvent[]
+  pulseReactionsGiven   PulseReaction[] @relation("PulseReactionGiver")
+  pulseScore            PulseScore?
+  vendorPulseReviews    VendorPulseReview[] @relation("VendorPulseReviewAuthor")
+  growthContactsAsMember GrowthContact[] @relation("GrowthContactMember")
+  growthCrmNotesAuthored GrowthCrmNote[] @relation("GrowthCrmNoteAuthor")
+  growthMarketingEvents  GrowthMarketingEvent[] @relation("GrowthMarketingEventUser")
 }
 
 /// One-time password reset link tokens (hashed at rest).
@@ -176,6 +183,18 @@ model VendorProfile {
   listings        Listing[]
   bookings        Booking[]
   claimedDirectoryListing DirectoryListing?
+  growthContacts  GrowthContact[]
+  growthTags      GrowthTag[]
+  growthFunnels     GrowthFunnel[]
+  growthLandingPages GrowthLandingPage[]
+  growthQrCampaigns GrowthQrCampaign[]
+  growthEmailCampaigns GrowthEmailCampaign[]
+  growthEmailSequences GrowthEmailSequence[]
+  growthSegments    GrowthSegment[]
+  growthTasks       GrowthTask[]
+  growthConsultationLeads GrowthConsultationLead[]
+  growthMarketingEvents GrowthMarketingEvent[]
+  vendorPulseReviews    VendorPulseReview[]
 }
 
 /// View-only imported business — not a Vendor; see docs/adr/ADR-006-directory-listings.md
@@ -280,6 +299,7 @@ model Listing {
   updatedAt       DateTime @updatedAt
   orderItems      OrderItem[]
   bookings        Booking[]
+  vendorPulseReviews VendorPulseReview[]
 
   @@index([vendorProfileId])
   @@index([listingType])
@@ -338,6 +358,8 @@ model CommunityPost {
   /// Set when content is edited; used for “Edited” label and sorting with `updatedAt`.
   editedAt         DateTime?
 
+  pulseReactions   PulseReaction[]
+
   @@index([authorId])
   @@index([createdAt])
   @@index([updatedAt])
@@ -370,6 +392,7 @@ model Order {
   user                User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   items               OrderItem[]
   booking             Booking?
+  vendorPulseReview   VendorPulseReview?
 
   @@index([userId])
   @@index([email])
@@ -517,6 +540,8 @@ model Booking {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   intakeAnswers     BookingIntakeAnswer[]
+  growthConsultationLeads GrowthConsultationLead[]
+  vendorPulseReview VendorPulseReview?
 
   @@index([listingId])
   @@index([offeringId])
@@ -555,4 +580,490 @@ model OfferingVariant {
 
   @@index([offeringId])
   @@index([offeringId, sortOrder])
+}
+
+// ─── Growth Workspace (ADR-007) ─────────────────────────────────────────────
+// See docs/20_GROWTH_WORKSPACE_SCHEMA.md
+
+/// Vendor-scoped CRM contact. vendorProfileId null = platform (admin) contact.
+model GrowthContact {
+  id                       String    @id @default(cuid())
+  vendorProfileId          String?
+  vendorProfile            VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  rootSyncUserId           String?
+  rootSyncUser             User?     @relation("GrowthContactMember", fields: [rootSyncUserId], references: [id], onDelete: SetNull)
+  name                     String
+  email                    String
+  phone                    String?
+  /// Member, Vendor, Visitor, etc.
+  accountType              String?
+  /// NEW_LEAD | SUBSCRIBER | COMMUNITY_MEMBER | CUSTOMER | RETURNING_CUSTOMER | VIP | PARTNER | SPONSOR | INACTIVE
+  status                   String    @default("NEW_LEAD")
+  leadSource               String?
+  geographicRegion         String?
+  growingZone              String?
+  interestsJson            Json?
+  funnelId                 String?
+  funnel                   GrowthFunnel? @relation(fields: [funnelId], references: [id], onDelete: SetNull)
+  lastActivityAt           DateTime?
+  communityActivitySummary String?
+  purchaseSummary          String?
+  consultationSummary      String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  tags                     GrowthContactTag[]
+  notes                    GrowthCrmNote[]
+  tasks                    GrowthTask[]
+  consultationLeads        GrowthConsultationLead[]
+  marketingEvents          GrowthMarketingEvent[]
+
+  @@index([vendorProfileId, email])
+  @@index([vendorProfileId, status])
+  @@index([rootSyncUserId])
+  @@index([funnelId])
+  @@map("growth_contacts")
+}
+
+model GrowthTag {
+  id              String   @id @default(cuid())
+  vendorProfileId String?
+  vendorProfile   VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  name            String
+  color           String?
+  createdAt       DateTime @default(now())
+  contacts        GrowthContactTag[]
+
+  @@unique([vendorProfileId, name])
+  @@index([vendorProfileId])
+  @@map("growth_tags")
+}
+
+model GrowthContactTag {
+  contactId String
+  contact   GrowthContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       GrowthTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+  @@map("growth_contact_tags")
+}
+
+model GrowthCrmNote {
+  id           String        @id @default(cuid())
+  contactId    String
+  contact      GrowthContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       User          @relation("GrowthCrmNoteAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  body         String
+  createdAt    DateTime      @default(now())
+
+  @@index([contactId])
+  @@map("growth_crm_notes")
+}
+
+model GrowthTask {
+  id              String         @id @default(cuid())
+  vendorProfileId String?
+  vendorProfile   VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  contactId       String?
+  contact         GrowthContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  title           String
+  dueAt           DateTime?
+  completedAt     DateTime?
+  /// LOW | NORMAL | HIGH
+  priority        String         @default("NORMAL")
+  createdAt       DateTime       @default(now())
+
+  @@index([vendorProfileId, completedAt])
+  @@index([contactId])
+  @@map("growth_tasks")
+}
+
+model GrowthFunnel {
+  id              String         @id @default(cuid())
+  vendorProfileId String?
+  vendorProfile   VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  objective       String?
+  entrySource     String?
+  landingPageId   String?
+  landingPage     GrowthLandingPage? @relation("FunnelLandingPage", fields: [landingPageId], references: [id], onDelete: SetNull)
+  leadMagnet      String?
+  ctaLabel        String?
+  isActive        Boolean        @default(true)
+  metricsJson     Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  steps           GrowthFunnelStep[]
+  contacts        GrowthContact[]
+  qrCampaigns     GrowthQrCampaign[]
+  emailSequences  GrowthEmailSequence[]
+  consultationLeads GrowthConsultationLead[]
+  marketingEvents GrowthMarketingEvent[]
+  landingPages    GrowthLandingPage[] @relation("LandingPageFunnel")
+
+  @@index([vendorProfileId, isActive])
+  @@map("growth_funnels")
+}
+
+model GrowthFunnelStep {
+  id            String       @id @default(cuid())
+  funnelId      String
+  funnel        GrowthFunnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  sortOrder     Int
+  /// LANDING_PAGE | LEAD_MAGNET | EMAIL_SEQUENCE | NEWSLETTER | CTA | CONSULTATION | MARKETPLACE | REFERRAL
+  stepType      String
+  label         String
+  referenceId   String?
+  referenceType String?
+
+  @@unique([funnelId, sortOrder])
+  @@index([funnelId])
+  @@map("growth_funnel_steps")
+}
+
+model GrowthLandingPage {
+  id              String         @id @default(cuid())
+  vendorProfileId String?
+  vendorProfile   VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  funnelId        String?
+  funnel          GrowthFunnel?  @relation("LandingPageFunnel", fields: [funnelId], references: [id], onDelete: SetNull)
+  slug            String
+  title           String
+  headline        String?
+  contentJson     Json?
+  leadMagnetUrl   String?
+  isPublished     Boolean        @default(false)
+  viewCount       Int            @default(0)
+  conversionCount Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  funnelsAsEntry  GrowthFunnel[] @relation("FunnelLandingPage")
+  qrCampaigns     GrowthQrCampaign[]
+  marketingEvents GrowthMarketingEvent[]
+
+  @@unique([vendorProfileId, slug])
+  @@index([vendorProfileId, isPublished])
+  @@map("growth_landing_pages")
+}
+
+model GrowthQrCampaign {
+  id              String         @id @default(cuid())
+  vendorProfileId String?
+  vendorProfile   VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  name            String
+  /// INVESTFEST | FARMERS_MARKET | WORKSHOP | BOOK | SEED_KIT | PODCAST | etc.
+  campaignType    String
+  destinationUrl  String
+  landingPageId   String?
+  landingPage     GrowthLandingPage? @relation(fields: [landingPageId], references: [id], onDelete: SetNull)
+  funnelId        String?
+  funnel          GrowthFunnel?  @relation(fields: [funnelId], references: [id], onDelete: SetNull)
+  scanCount       Int            @default(0)
+  conversionCount Int            @default(0)
+  notes           String?
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  marketingEvents GrowthMarketingEvent[]
+
+  @@index([vendorProfileId, isActive])
+  @@map("growth_qr_campaigns")
+}
+
+model GrowthEmailCampaign {
+  id                String         @id @default(cuid())
+  vendorProfileId   String?
+  vendorProfile     VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  name              String
+  subject           String?
+  bodyHtml          String?
+  /// DRAFT | SCHEDULED | SENDING | SENT | CANCELLED
+  status            String         @default("DRAFT")
+  scheduledAt       DateTime?
+  sentAt            DateTime?
+  segmentId         String?
+  segment           GrowthSegment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  openCount         Int            @default(0)
+  clickCount        Int            @default(0)
+  unsubscribeCount  Int            @default(0)
+  providerMessageId String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  marketingEvents   GrowthMarketingEvent[]
+
+  @@index([vendorProfileId, status])
+  @@map("growth_email_campaigns")
+}
+
+model GrowthEmailSequence {
+  id              String         @id @default(cuid())
+  vendorProfileId String?
+  vendorProfile   VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  name            String
+  /// WELCOME | EDUCATIONAL | SEASONAL | PRODUCT_LAUNCH | COMMUNITY | EVENT
+  sequenceType    String
+  stepsJson       Json
+  isActive        Boolean        @default(false)
+  funnelId        String?
+  funnel          GrowthFunnel?  @relation(fields: [funnelId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([vendorProfileId, isActive])
+  @@map("growth_email_sequences")
+}
+
+model GrowthSegment {
+  id              String         @id @default(cuid())
+  vendorProfileId String?
+  vendorProfile   VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  rulesJson       Json?
+  isDynamic       Boolean        @default(true)
+  memberCount     Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  emailCampaigns  GrowthEmailCampaign[]
+
+  @@index([vendorProfileId])
+  @@map("growth_segments")
+}
+
+model GrowthConsultationLead {
+  id              String        @id @default(cuid())
+  vendorProfileId String
+  vendorProfile   VendorProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  contactId       String
+  contact         GrowthContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  bookingId       String?
+  booking         Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  /// LEAD | REQUESTED | SCHEDULED | COMPLETED | PROPOSAL_SENT | ACCEPTED | DECLINED | PROJECT_COMPLETE | REVIEW_RECEIVED
+  stage           String        @default("LEAD")
+  source          String?
+  funnelId        String?
+  funnel          GrowthFunnel? @relation(fields: [funnelId], references: [id], onDelete: SetNull)
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([vendorProfileId, stage])
+  @@index([contactId])
+  @@index([bookingId])
+  @@map("growth_consultation_leads")
+}
+
+model GrowthMarketingEvent {
+  id              String         @id @default(cuid())
+  vendorProfileId String?
+  vendorProfile   VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  /// PAGE_VIEW | QR_SCAN | EMAIL_OPEN | EMAIL_CLICK | CONVERSION | SIGNUP
+  eventType       String
+  contactId       String?
+  contact         GrowthContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  rootSyncUserId  String?
+  rootSyncUser    User?          @relation("GrowthMarketingEventUser", fields: [rootSyncUserId], references: [id], onDelete: SetNull)
+  funnelId        String?
+  funnel          GrowthFunnel?  @relation(fields: [funnelId], references: [id], onDelete: SetNull)
+  landingPageId   String?
+  landingPage     GrowthLandingPage? @relation(fields: [landingPageId], references: [id], onDelete: SetNull)
+  qrCampaignId    String?
+  qrCampaign      GrowthQrCampaign? @relation(fields: [qrCampaignId], references: [id], onDelete: SetNull)
+  campaignId      String?
+  campaign        GrowthEmailCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  metadataJson    Json?
+  occurredAt      DateTime       @default(now())
+
+  @@index([vendorProfileId, eventType, occurredAt])
+  @@index([landingPageId])
+  @@index([qrCampaignId])
+  @@map("growth_marketing_events")
+}
+
+// --- Pulse ecosystem (ADR-008) ---
+
+model PulseCategory {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  sortOrder Int      @default(0)
+  enabled   Boolean  @default(true)
+  weights   PulseScoreWeight[]
+  events    PulseEvent[]
+
+  @@map("pulse_categories")
+}
+
+model PulseEvent {
+  id                String         @id @default(cuid())
+  userId            String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType         String
+  categoryId        String?
+  category          PulseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  pulseValue        Int
+  relatedEntityType String?
+  relatedEntityId   String?
+  metadataJson      Json?
+  createdAt         DateTime       @default(now())
+
+  @@index([userId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([relatedEntityType, relatedEntityId])
+  @@index([categoryId])
+  @@map("pulse_events")
+}
+
+model PulseReaction {
+  id          String        @id @default(cuid())
+  postId      String
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  giverUserId String
+  giver       User          @relation("PulseReactionGiver", fields: [giverUserId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+
+  @@unique([postId, giverUserId])
+  @@index([postId])
+  @@map("pulse_reactions")
+}
+
+model PulseScore {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalScore    Int      @default(0)
+  /// EMERGING | GROWING | ROOTED | FLOURISHING | CONNECTED | CANOPY
+  status        String   @default("EMERGING")
+  /// INCREASING | STABLE | QUIET | RETURNING
+  activityTrend String?
+  pulseThisWeek Int?
+  /// @deprecated use activityTrend — kept for migration compatibility
+  trend7d       Int?
+  lastEventAt   DateTime?
+  updatedAt     DateTime @updatedAt
+
+  @@map("pulse_scores")
+}
+
+model PulseScoreWeight {
+  id          String         @id @default(cuid())
+  eventType   String         @unique
+  categoryId  String?
+  category    PulseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  pulseValue  Int
+  enabled     Boolean        @default(true)
+  description String?
+  updatedAt   DateTime       @updatedAt
+
+  @@index([categoryId])
+  @@map("pulse_score_weights")
+}
+
+model PulseThreshold {
+  id        String @id @default(cuid())
+  status    String @unique
+  minScore  Int
+  label     String
+  emoji     String?
+  sortOrder Int    @default(0)
+
+  @@map("pulse_thresholds")
+}
+
+model PlatformPulseWeight {
+  id          String   @id @default(cuid())
+  metricKey   String   @unique
+  weight      Float    @default(1)
+  enabled     Boolean  @default(true)
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("platform_pulse_weights")
+}
+
+model PlatformPulseThreshold {
+  id        String @id @default(cuid())
+  status    String @unique
+  minValue  Int
+  label     String
+  emoji     String?
+  sortOrder Int    @default(0)
+
+  @@map("platform_pulse_thresholds")
+}
+
+model PlatformPulseSnapshot {
+  id          String   @id @default(cuid())
+  pulseValue  Int      @default(0)
+  status      String
+  metricsJson Json?
+  computedAt  DateTime @default(now())
+
+  @@index([computedAt])
+  @@map("platform_pulse_snapshots")
+}
+
+model PlatformPulseDaily {
+  id                String   @id @default(cuid())
+  date              DateTime @unique @db.Date
+  totalPulseValue   Int      @default(0)
+  eventCount        Int      @default(0)
+  activeMemberCount Int      @default(0)
+  computedAt        DateTime @default(now())
+
+  @@map("platform_pulse_daily")
+}
+
+model PublicDashboardWidget {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  widgetType  String
+  enabled     Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  configJson  Json?
+  updatedAt   DateTime @updatedAt
+
+  @@map("public_dashboard_widgets")
+}
+
+model PublicDashboardAnnouncement {
+  id        String    @id @default(cuid())
+  title     String
+  body      String?
+  href      String?
+  startsAt  DateTime?
+  endsAt    DateTime?
+  enabled   Boolean   @default(true)
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@map("public_dashboard_announcements")
+}
+
+/// Member Pulse ratings for vendors — replaces star reviews (ADR-008 Phase 7).
+model VendorPulseReview {
+  id              String        @id @default(cuid())
+  vendorProfileId String
+  vendorProfile   VendorProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  reviewerUserId  String
+  reviewer        User          @relation("VendorPulseReviewAuthor", fields: [reviewerUserId], references: [id], onDelete: Cascade)
+  listingId       String?
+  listing         Listing?      @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  orderId         String?       @unique
+  order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  bookingId       String?       @unique
+  booking         Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  /// 1 – 5 Pulse rating
+  pulseRating     Int
+  title           String?
+  body            String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([vendorProfileId, createdAt])
+  @@index([reviewerUserId])
+  @@map("vendor_pulse_reviews")
 }

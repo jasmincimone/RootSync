@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/authOptions";
+import { hookProfileCompleted } from "@/lib/pulse/hooks";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -54,6 +55,7 @@ export async function PATCH(request: NextRequest) {
       data,
       select: { name: true, shopNeighborhoods: true },
     });
+    await hookProfileCompleted(session.user.id);
     return NextResponse.json({
       ok: true,
       name: updated.name,

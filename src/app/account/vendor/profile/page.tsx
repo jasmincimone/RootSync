@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { VendorProfileForm } from "@/components/VendorProfileForm";
@@ -27,18 +28,10 @@ export default async function VendorProfilePage() {
   const canEditCarousel = profile.status === VENDOR_STATUS.APPROVED;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-fix-heading">Vendor profile</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">
-          Marketplace profile and carousel for your public vendor page.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-3">
-          <ButtonLink href={`/discover/vendors/${profile.id}`} variant="secondary" size="sm">
-            View my vendor page
-          </ButtonLink>
-        </div>
-      </div>
+    <AccountSubpageBody description="Marketplace profile and carousel for your public vendor page.">
+      <ButtonLink href={`/discover/vendors/${profile.id}`} variant="secondary" size="sm">
+        View my vendor page
+      </ButtonLink>
       <Card className="p-6">
         <VendorProfileForm
           initial={{
@@ -65,6 +58,6 @@ export default async function VendorProfilePage() {
           }}
         />
       </Card>
-    </div>
+    </AccountSubpageBody>
   );
 }

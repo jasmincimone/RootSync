@@ -2,12 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 
-import { CommunityPostHeader } from "@/components/CommunityPostHeader";
 import { Container } from "@/components/Container";
 import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
-import { MessageUserLink } from "@/components/MessageUserLink";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListingCheckoutActions";
+import { ProfileHeroMetaRow } from "@/components/profile/ProfileHeroMetaRow";
+import { ProfilePulseFeedSection } from "@/components/profile/ProfilePulseFeedSection";
+import { ProfileSectionNav, type ProfileSectionLink } from "@/components/profile/ProfileSectionNav";
+import { PulseRatingBadge } from "@/components/pulse/PulseRatingDisplay";
+import { VendorPulseReviewsSection } from "@/components/pulse/VendorPulseReviewsSection";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
@@ -20,6 +23,7 @@ import { communityAuthorSelect } from "@/lib/userProfileDisplay";
 import { formatPrice } from "@/lib/format";
 import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
+import { loadVendorPulseReviews, loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
 import { VENDOR_STATUS } from "@/lib/roles";
 import { loadVendorCarousel } from "@/lib/vendorCarousel";
 
@@ -121,6 +125,19 @@ export default async function PublicVendorProfilePage({
     },
   });
 
+  const [pulseSummary, pulseReviews] = await Promise.all([
+    loadVendorPulseSummary(vendor.id),
+    loadVendorPulseReviews(vendor.id, 10),
+  ]);
+
+  const profileSections: ProfileSectionLink[] = [
+    ...(vendor.bio ? [{ id: "vendor-about", label: "About" }] : []),
+    ...(hasCoords ? [{ id: "vendor-location-heading", label: "Location" }] : []),
+    { id: "vendor-listings-heading", label: "Listings" },
+    ...(!isOwnerPreview ? [{ id: "vendor-pulse-reviews-heading", label: "Pulse reviews" }] : []),
+    { id: "vendor-pulse-heading", label: "Check The Pulse" },
+  ];
+
   return (
     <div>
       <section className="border-b border-fix-border/15 bg-gradient-to-b from-fix-bg-muted/60 via-fix-bg-muted/30 to-fix-surface">
@@ -154,7 +171,15 @@ export default async function PublicVendorProfilePage({
               <h1 className="text-2xl font-bold tracking-tight text-fix-heading sm:text-3xl md:text-4xl">
                 {vendor.displayName}
               </h1>
-              {!isOwnerPreview ? <VerifiedVendorBadge className="mt-2 justify-center sm:justify-start" /> : null}
+              {!isOwnerPreview ? (
+                <ProfileHeroMetaRow>
+                  <VerifiedVendorBadge />
+                  <PulseRatingBadge
+                    averageRating={pulseSummary.averageRating}
+                    reviewCount={pulseSummary.reviewCount}
+                  />
+                </ProfileHeroMetaRow>
+              ) : null}
               {vendor.pickupLocation ? (
                 <p className="mt-2 text-sm text-fix-text-muted sm:text-base">{vendor.pickupLocation}</p>
               ) : null}
@@ -220,6 +245,8 @@ export default async function PublicVendorProfilePage({
       ) : null}
 
       <Container className="px-4 py-8 sm:px-6 sm:py-12">
+        <ProfileSectionNav sections={profileSections} className="mb-8 sm:mb-10" />
+
         {vendor.bio ? (
           <section aria-labelledby="vendor-about">
             <h2
@@ -324,51 +351,19 @@ export default async function PublicVendorProfilePage({
           )}
         </section>
 
-        <section className="mt-10 sm:mt-12" aria-labelledby="vendor-community-heading">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2
-                id="vendor-community-heading"
-                className="text-base font-semibold tracking-tight text-fix-heading sm:text-lg"
-              >
-                Community posts
-              </h2>
-              <p className="mt-1 text-sm text-fix-text-muted">
-                Public updates from {vendor.displayName} on the{" "}
-                <Link href="/community" className="font-medium text-fix-link hover:text-fix-link-hover">
-                  community feed
-                </Link>
-                .
-              </p>
-            </div>
-            <MessageUserLink targetUserId={vendor.userId} className="shrink-0" />
-          </div>
-          {communityPosts.length === 0 ? (
-            <Card className="mt-6 p-6">
-              <p className="text-sm text-fix-text-muted">No community posts yet.</p>
-            </Card>
-          ) : (
-            <ul className="mt-6 space-y-4">
-              {communityPosts.map((p) => (
-                <li key={p.id}>
-                  <Card className="p-5">
-                    <CommunityPostHeader
-                      author={p.author}
-                      roleAtPost={p.roleAtPost}
-                      showVendorBadge={p.showVendorBadge}
-                      createdAt={p.createdAt.toISOString()}
-                      editedAt={p.editedAt?.toISOString() ?? null}
-                      showMessageLink={false}
-                    />
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-fix-text">
-                      {p.content}
-                    </p>
-                  </Card>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {!isOwnerPreview ? (
+          <section className="mt-10 sm:mt-12">
+            <VendorPulseReviewsSection summary={pulseSummary} reviews={pulseReviews} />
+          </section>
+        ) : null}
+
+        <ProfilePulseFeedSection
+          headingId="vendor-pulse-heading"
+          displayName={vendor.displayName}
+          posts={communityPosts}
+          messageUserId={vendor.userId}
+          className="mt-10 sm:mt-12"
+        />
       </Container>
     </div>
   );

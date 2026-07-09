@@ -15,6 +15,7 @@ import { parseServiceBookingConfigFromBody } from "@/lib/serviceBookingConfig";
 import { parseOfferingVariantsFromBody } from "@/lib/offeringVariants";
 import { publishOfferingIfDue } from "@/lib/publishScheduledOfferings";
 import { normalizePaymentUrl, normalizeProductUrl } from "@/lib/paymentUrl";
+import { hookOfferingPublished } from "@/lib/pulse/hooks";
 import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, OFFERING_STATUS } from "@/lib/roles";
 import { requireApprovedVendorGate } from "@/lib/vendorListingAccess";
@@ -174,6 +175,14 @@ export async function POST(request: NextRequest) {
         include: vendorOfferingInclude,
       });
     });
+
+    if (offering.listing) {
+      await hookOfferingPublished(null, {
+        listingId: offering.listing.id,
+        vendorUserId: session.user.id,
+        currentStatus: offering.status,
+      });
+    }
 
     return NextResponse.json({ listing: serializeVendorOffering(offering) });
   } catch (e) {

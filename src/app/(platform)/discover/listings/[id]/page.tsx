@@ -11,9 +11,11 @@ import {
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
+import { PulseRatingBadge } from "@/components/pulse/PulseRatingDisplay";
 import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurchase";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
 import { LISTING_VISIBILITY, OFFERING_STATUS, VENDOR_STATUS } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
@@ -218,6 +220,8 @@ export default async function DiscoverListingPage({
     event: offering.eventDetails,
   };
 
+  const vendorPulse = !isOwnerPreview ? await loadVendorPulseSummary(v.id) : null;
+
   return (
     <div className="bg-fix-bg-muted/30">
       <section className="border-b border-fix-border/15 bg-fix-surface">
@@ -319,6 +323,13 @@ export default async function DiscoverListingPage({
                   {v.displayName}
                 </Link>
               </p>
+              {vendorPulse ? (
+                <PulseRatingBadge
+                  averageRating={vendorPulse.averageRating}
+                  reviewCount={vendorPulse.reviewCount}
+                  className="mt-2"
+                />
+              ) : null}
               <ListingVendorLocationHint pickupLocation={v.pickupLocation} />
               {v.website ? (
                 <a

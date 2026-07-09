@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
 import { LegalConsentModal } from "@/components/LegalConsentModal";
 import { PASSWORD_POLICY_TEXT } from "@/lib/passwordPolicy";
+import { safeCallbackPath } from "@/lib/safeCallbackPath";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [returnTo, setReturnTo] = useState("/");
   const [legalStepDone, setLegalStepDone] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,6 +24,16 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setReturnTo(safeCallbackPath(params.get("callbackUrl"), "/"));
+  }, []);
+
+  const loginHref =
+    returnTo === "/"
+      ? "/login"
+      : `/login?callbackUrl=${encodeURIComponent(returnTo)}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +67,7 @@ export default function SignupPage() {
       setSuccess("Account created.");
       setLoading(false);
       window.setTimeout(() => {
-        router.push("/login");
+        router.push(loginHref);
         router.refresh();
       }, 800);
     } catch {
@@ -65,8 +77,8 @@ export default function SignupPage() {
   };
 
   const handleDeclineLegal = useCallback(() => {
-    router.push("/");
-  }, [router]);
+    router.push(returnTo);
+  }, [router, returnTo]);
 
   return (
     <Container className="py-12 sm:py-16">
@@ -89,7 +101,7 @@ export default function SignupPage() {
             </p>
             <p className="text-center text-sm text-fix-text-muted">
               Already have an account?{" "}
-              <Link href="/login" className="text-fix-link hover:text-fix-link-hover">
+              <Link href={loginHref} className="text-fix-link hover:text-fix-link-hover">
                 Sign in
               </Link>
             </p>
@@ -196,7 +208,7 @@ export default function SignupPage() {
           </form>
           <p className="mt-4 text-center text-sm text-fix-text-muted">
             Already have an account?{" "}
-            <Link href="/login" className="text-fix-link hover:text-fix-link-hover">
+            <Link href={loginHref} className="text-fix-link hover:text-fix-link-hover">
               Sign in
             </Link>
           </p>

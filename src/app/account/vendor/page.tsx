@@ -2,7 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
+import { VendorHubNav } from "@/components/account/VendorHubNav";
 import { Card } from "@/components/ui/Card";
+import { PageBody } from "@/components/ui/PageBody";
 import { ButtonLink } from "@/components/ui/Button";
 import { VendorOnboardingChecklist } from "@/components/VendorOnboardingChecklist";
 import { discoverVendorPath } from "@/config/discoverPaths";
@@ -23,13 +26,11 @@ export default async function VendorDashboardPage() {
 
   if (!profile) {
     return (
-      <div className="max-w-xl space-y-4">
-        <h2 className="text-lg font-semibold text-fix-heading">Vendor</h2>
-        <p className="text-sm text-fix-text-muted">You don&apos;t have a vendor profile yet.</p>
+      <PageBody description="You don't have a vendor profile yet.">
         <ButtonLink href="/account/vendor/apply" variant="cta" size="sm">
           Apply to become a vendor
         </ButtonLink>
-      </div>
+      </PageBody>
     );
   }
 
@@ -52,12 +53,7 @@ export default async function VendorDashboardPage() {
   const hasAvailability = Boolean(serviceWithAvailability);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-fix-heading">Vendor dashboard</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">{profile.displayName}</p>
-      </div>
-
+    <AccountSubpageBody description={profile.displayName}>
       {profile.status === VENDOR_STATUS.APPROVED ? (
         <VendorOnboardingChecklist
           hasProfile={hasProfile}
@@ -100,27 +96,8 @@ export default async function VendorDashboardPage() {
       ) : null}
 
       {canManageVendorListings(session.user.role ?? "CUSTOMER", profile.status) && (
-        <div className="flex flex-wrap gap-3">
-          <ButtonLink href="/account/vendor/payments" variant="secondary" size="sm">
-            Payment setup
-          </ButtonLink>
-          <ButtonLink href="/account/vendor/listings" variant="secondary" size="sm">
-            My listings
-          </ButtonLink>
-          <ButtonLink href="/account/vendor/bookings" variant="secondary" size="sm">
-            Incoming appointments
-          </ButtonLink>
-          <ButtonLink href="/account/vendor/orders" variant="secondary" size="sm">
-            Vendor orders
-          </ButtonLink>
-          <ButtonLink href="/account/vendor/profile" variant="secondary" size="sm">
-            Edit profile
-          </ButtonLink>
-          <ButtonLink href={discoverVendorPath(profile.id)} variant="secondary" size="sm">
-            View public page
-          </ButtonLink>
-        </div>
+        <VendorHubNav publicPageHref={discoverVendorPath(profile.id)} />
       )}
-    </div>
+    </AccountSubpageBody>
   );
 }

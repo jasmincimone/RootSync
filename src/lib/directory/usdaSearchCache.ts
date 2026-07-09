@@ -19,12 +19,17 @@ export function directoryUsdaCacheKey(params: {
   zip?: string | null;
   radiusMiles?: number | null;
 }): string | null {
-  if (params.state && params.city && params.stateRadius) {
-    const cityKey = params.city.trim().toLowerCase();
+  if (params.state && params.stateRadius) {
     const radiusKey = isDiscoverStateRadiusAnywhere(params.stateRadius)
       ? "anywhere"
       : String(params.stateRadius);
-    return `state:${params.state.toUpperCase()}:${cityKey}:${radiusKey}`;
+    if (isDiscoverStateRadiusAnywhere(params.stateRadius)) {
+      return `state:${params.state.toUpperCase()}:${radiusKey}`;
+    }
+    if (params.city) {
+      const cityKey = params.city.trim().toLowerCase();
+      return `state:${params.state.toUpperCase()}:${cityKey}:${radiusKey}`;
+    }
   }
   if (params.zip && params.radiusMiles) {
     return `zip:${params.zip}:${params.radiusMiles}`;

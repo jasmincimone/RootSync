@@ -84,7 +84,10 @@ export function buildLocationFilter(search: AppliedDiscoverSearch): DiscoverLoca
 }
 
 export function hasLocationFilter(location: DiscoverLocationFilter): boolean {
-  if (location.state && location.city && location.stateRadius) return true;
+  if (location.state && location.stateRadius) {
+    if (isDiscoverStateRadiusAnywhere(location.stateRadius)) return true;
+    return Boolean(location.city);
+  }
   return Boolean(location.zip && location.radiusMiles);
 }
 
@@ -101,11 +104,12 @@ export function validateDiscoverSearch(search: AppliedDiscoverSearch): string | 
   if (search.locationMode === "state") {
     const hasState = Boolean(normalizeUsState(search.state));
     const hasCity = Boolean(searchCity(search));
-    if (!hasState && !hasCity) return null;
+    const stateRadius = parseDiscoverStateRadius(String(search.radiusMiles ?? ""));
+    if (!hasState && !hasCity && !stateRadius) return null;
     if (!hasState) return "Choose a valid US state.";
-    if (!hasCity) return "City is required for state search.";
-    if (!parseDiscoverStateRadius(String(search.radiusMiles ?? ""))) {
-      return "Choose a distance preset (5 mi through Anywhere).";
+    if (!stateRadius) return "Choose a distance preset (5 mi through Anywhere).";
+    if (!isDiscoverStateRadiusAnywhere(stateRadius) && !hasCity) {
+      return "City is required unless you choose Anywhere.";
     }
   }
   if (search.locationMode === "zip") {
@@ -161,11 +165,15 @@ function vendorWithinRadius(
 
 export function locationSummaryFromSearch(search: AppliedDiscoverSearch): string | null {
   const location = buildLocationFilter(search);
-  if (location.state && location.city && location.stateRadius) {
+  if (location.state && location.stateRadius) {
     if (isDiscoverStateRadiusAnywhere(location.stateRadius)) {
-      return `Anywhere in ${location.state} (from ${location.city})`;
+      return location.city
+        ? `Anywhere in ${location.state} (near ${location.city})`
+        : `Anywhere in ${location.state}`;
     }
-    return `Within ${location.stateRadius} mi of ${location.city}, ${location.state}`;
+    if (location.city) {
+      return `Within ${location.stateRadius} mi of ${location.city}, ${location.state}`;
+    }
   }
   if (location.zip && location.radiusMiles) {
     return `Within ${location.radiusMiles} mi of ${location.zip}`;
@@ -254,8 +262,9 @@ export function directoryLocationPayload(search: AppliedDiscoverSearch): {
     const st = normalizeUsState(search.state);
     const city = searchCity(search);
     const stateRadius = parseDiscoverStateRadius(String(search.radiusMiles ?? ""));
-    if (!st || !city || !stateRadius) return {};
-    return { state: st, city, stateRadius };
+    if (!st || !stateRadius) return {};
+    if (!isDiscoverStateRadiusAnywhere(stateRadius) && !city) return {};
+    return city ? { state: st, city, stateRadius } : { state: st, stateRadius };
   }
   const zip = search.zip.trim();
   const radius = Number(search.radiusMiles);

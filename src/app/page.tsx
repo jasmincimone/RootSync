@@ -1,9 +1,13 @@
 import Link from "next/link";
-import { Globe, Leaf, Store, UserPlus } from "lucide-react";
+import Image from "next/image";
+import { Globe, Store, UserPlus } from "lucide-react";
 
 import { Container } from "@/components/Container";
+import { LandingCtaButtonLink, LandingCtaStack } from "@/components/LandingCtaStack";
 import { RoleCtaButton } from "@/components/RoleCtaButton";
+import { MemberPricingSuffix, VendorPricingSuffix, VENDOR_STARTUP_PROMO_NOTICE } from "@/components/RoleCtaPricing";
 import { ButtonLink } from "@/components/ui/Button";
+import { ROOTSYNC_SYMBOL_SRC } from "@/config/platformExploreNav";
 import { discoverVendorPath } from "@/config/discoverPaths";
 import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
@@ -40,32 +44,37 @@ export default async function HomePage() {
             <div className="mt-5 max-w-xl space-y-4 text-base leading-relaxed text-fix-text">
               <p>A platform for self-sufficiency, connection, and local commerce.</p>
               <p>
-                RootSync brings together Discover, community, and messaging — so you can find
-                vendors, book services, and grow with creators near you.
+                RootSync brings together Discover Marketplace, Pulse, and Stay Synced — so you can
+                find vendors, book services, and grow with creators near you.
               </p>
             </div>
-            <div className="mt-8 flex w-full max-w-sm flex-col gap-3">
-              <ButtonLink href="/rootsync" variant="cta" size="lg" className="uppercase tracking-wide">
+            <LandingCtaStack className="mt-8">
+              <LandingCtaButtonLink href="/rootsync" variant="cta">
                 <Globe className="h-5 w-5" aria-hidden />
                 Enter RootSync Platform
-              </ButtonLink>
+              </LandingCtaButtonLink>
               <RoleCtaButton
                 role="member"
                 href="/login?callbackUrl=/account"
                 label="Become a Member"
+                suffix={<MemberPricingSuffix />}
                 icon={<UserPlus className="h-5 w-5" aria-hidden />}
-                variant="secondary"
-                className="uppercase tracking-wide"
+                variant="cta"
+                className="w-full uppercase tracking-wide"
               />
               <RoleCtaButton
                 role="vendor"
                 href="/account/vendor/apply"
                 label="Become a Vendor"
+                suffix={<VendorPricingSuffix asterisk />}
+                contentLayout="stacked"
+                centerInfoButton
+                infoNotice={VENDOR_STARTUP_PROMO_NOTICE}
                 icon={<Store className="h-5 w-5" aria-hidden />}
-                variant="secondary"
-                className="uppercase tracking-wide"
+                variant="cta"
+                className="w-full uppercase tracking-wide"
               />
-            </div>
+            </LandingCtaStack>
           </div>
 
           <div className="mx-auto mt-12 w-full max-w-lg sm:mt-14">
@@ -86,17 +95,20 @@ export default async function HomePage() {
           {featuredVendors.length > 0 ? (
             <div className="mx-auto mt-14 w-full min-w-0 max-w-4xl overflow-hidden rounded-2xl bg-espresso shadow-soft ring-1 ring-fix-border/10 sm:mt-16">
               <div className="flex flex-col items-center px-6 py-10 text-clay sm:py-12">
-                <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-gold/60">
-                  <Leaf className="h-8 w-8 text-gold" aria-hidden />
-                </span>
+                <Image
+                  src={ROOTSYNC_SYMBOL_SRC}
+                  alt="RootSync"
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 rounded-full object-contain"
+                  unoptimized
+                />
                 <div className="mt-4 text-center">
-                  <div className="text-2xl font-bold tracking-tight sm:text-3xl">THE FIX</div>
-                  <div className="mx-auto mt-1 h-px w-12 bg-gold/50" />
-                  <div className="mt-1 text-lg font-medium tracking-wide text-clay/90">COLLECTIVE</div>
+                  <div className="text-2xl font-bold tracking-tight sm:text-3xl">RootSync</div>
                 </div>
                 <p className="mx-auto mt-6 max-w-lg text-center text-sm leading-relaxed text-clay/85 sm:text-base">
-                  Meet vendors on Discover — from urban gardening and self-care to preparedness and
-                  handmade goods.
+                  Meet vendors on Discover Marketplace — from urban gardening and self-care to
+                  preparedness and handmade goods.
                 </p>
               </div>
               <div className="border-t border-clay/10 px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-8">
@@ -131,7 +143,7 @@ export default async function HomePage() {
             <div className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft sm:p-8">
               <h2 className="text-lg font-semibold text-fix-heading">RootSync platform</h2>
               <p className="mt-2 text-sm leading-relaxed text-fix-text-muted">
-                Community, messaging, AI tools, and Discover Marketplace — shop local goods, book
+                Pulse, Stay Synced, RootSync AI, and Discover Marketplace — shop local goods, book
                 services, and connect with makers in your region, all from one place.
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
@@ -139,7 +151,7 @@ export default async function HomePage() {
                   Enter RootSync
                 </ButtonLink>
                 <ButtonLink href="/discover" variant="secondary" size="sm">
-                  Browse Discover
+                  Browse Discover Marketplace
                 </ButtonLink>
               </div>
             </div>

@@ -17,6 +17,7 @@ import { parseServiceBookingConfigFromBody } from "@/lib/serviceBookingConfig";
 import { parseOfferingVariantsFromBody } from "@/lib/offeringVariants";
 import { publishOfferingIfDue } from "@/lib/publishScheduledOfferings";
 import { normalizePaymentUrlPatch, normalizeProductUrlPatch } from "@/lib/paymentUrl";
+import { hookOfferingPublished } from "@/lib/pulse/hooks";
 import { prisma } from "@/lib/prisma";
 import { OFFERING_STATUS, type ListingType } from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
@@ -227,6 +228,8 @@ export async function PATCH(
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
+  const previousStatus = existing.offering.status;
+
   try {
     const { offering } = await prisma.$transaction(async (tx) => {
       const result = await updateOfferingAndSyncListing(tx, existing.offering.id, data, {
@@ -242,6 +245,14 @@ export async function PATCH(
       });
       return { offering: refreshed, listing: result.listing };
     });
+
+    if (offering.listing) {
+      await hookOfferingPublished(previousStatus, {
+        listingId: offering.listing.id,
+        vendorUserId: session.user.id,
+        currentStatus: offering.status,
+      });
+    }
 
     return NextResponse.json({ listing: serializeVendorOffering(offering) });
   } catch (e) {

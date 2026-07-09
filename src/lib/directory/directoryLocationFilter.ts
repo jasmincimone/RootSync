@@ -33,7 +33,10 @@ export function isStateLocationComplete(input: {
   city: string;
   stateRadius: DiscoverStateRadius | null;
 }): boolean {
-  return Boolean(normalizeUsState(input.state) && input.city.trim() && input.stateRadius);
+  const st = normalizeUsState(input.state);
+  if (!st || !input.stateRadius) return false;
+  if (isDiscoverStateRadiusAnywhere(input.stateRadius)) return true;
+  return Boolean(input.city.trim());
 }
 
 export function isDirectoryLocationFilterActive(input: DirectoryLocationFilterInput): boolean {
@@ -55,11 +58,12 @@ export function directoryLocationFilterSummary(input: DirectoryLocationFilterInp
   if (!isDirectoryLocationFilterActive(input)) return null;
   if (input.mode === "state") {
     const st = normalizeUsState(input.state);
+    if (!st || !input.stateRadius) return null;
     const city = input.city.trim();
-    if (!st || !city || !input.stateRadius) return null;
     if (isDiscoverStateRadiusAnywhere(input.stateRadius)) {
-      return `Anywhere in ${st} (from ${city})`;
+      return city ? `Anywhere in ${st} (near ${city})` : `Anywhere in ${st}`;
     }
+    if (!city) return null;
     return `Within ${input.stateRadius} mi of ${city}, ${st}`;
   }
   return `Within ${input.radiusMiles} mi of ${input.zip.trim()}`;

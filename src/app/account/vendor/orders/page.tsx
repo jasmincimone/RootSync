@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { Package } from "lucide-react";
 
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { authOptions } from "@/lib/authOptions";
@@ -43,14 +44,7 @@ export default async function VendorOrdersPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-fix-heading">Vendor orders</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">
-          Line items from Discover checkout that reference your listings.
-        </p>
-      </div>
-
+    <AccountSubpageBody description="Line items from Discover checkout that reference your listings.">
       {items.length === 0 ? (
         <EmptyState
           icon={Package}
@@ -82,6 +76,6 @@ export default async function VendorOrdersPage() {
           ))}
         </ul>
       )}
-    </div>
+    </AccountSubpageBody>
   );
 }

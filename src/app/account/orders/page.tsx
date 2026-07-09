@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OrderStatusBadge } from "@/components/ui/StatusBadge";
 import { Card } from "@/components/ui/Card";
@@ -22,15 +23,17 @@ export default async function AccountOrdersPage() {
   });
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold text-fix-heading">Order history</h2>
-      <p className="mt-1 text-sm text-fix-text-muted">
-        Marketplace purchases and checkout receipts.{" "}
-        <Link href="/account/bookings" className="font-medium text-fix-link hover:text-fix-link-hover">
-          Service bookings
-        </Link>{" "}
-        are listed separately.
-      </p>
+    <AccountSubpageBody
+      description={
+        <>
+          Marketplace purchases and checkout receipts.{" "}
+          <Link href="/account/bookings" className="font-medium text-fix-link hover:text-fix-link-hover">
+            Service bookings
+          </Link>{" "}
+          are listed separately.
+        </>
+      }
+    >
       {orders.length === 0 ? (
         <div className="mt-6">
           <EmptyState
@@ -83,6 +86,6 @@ export default async function AccountOrdersPage() {
           })}
         </ul>
       )}
-    </div>
+    </AccountSubpageBody>
   );
 }

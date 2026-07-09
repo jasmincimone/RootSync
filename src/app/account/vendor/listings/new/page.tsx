@@ -1,10 +1,10 @@
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { VendorOfferingForm } from "@/components/VendorOfferingForm";
 
 export default function NewVendorListingPage() {
   return (
-    <div className="max-w-2xl space-y-6">
-      <h2 className="text-lg font-semibold text-fix-heading">New offering</h2>
+    <AccountSubpageBody description="Create a product, service, resource, or event listing for Discover.">
       <VendorOfferingForm mode="create" />
-    </div>
+    </AccountSubpageBody>
   );
 }

@@ -281,6 +281,64 @@ The scheduling and payment process for **Services** on RootSync.
 
 ---
 
+# Pulse (Platform Service)
+
+## Pulse
+
+The foundational contribution signal and permanent activity ledger of RootSync. Pulse represents **contribution**, not points. Every meaningful member action generates Pulse.
+
+Pulse is the heartbeat of the ecosystem.
+
+---
+
+## Individual Pulse
+
+A member's lifetime contribution score, calculated as the sum of their Pulse Events. Individual Pulse **never decreases**.
+
+---
+
+## Platform Pulse
+
+A living health index (0 – 1,000,000) measuring ecosystem vitality. **Not** the sum of all member scores. Calculated from weighted platform metrics.
+
+---
+
+## Pulse Event
+
+An append-only ledger row recording a meaningful contribution. Source of truth for Individual Pulse.
+
+---
+
+## Give a Pulse
+
+The action of reacting to a Pulse post or vendor — replaces "Like" or star ratings.
+
+---
+
+## Activity Trend
+
+A member's recent participation pattern: Increasing, Stable, Quiet, or Returning. Separate from lifetime Pulse score — does not punish inactivity.
+
+---
+
+## Pulse Status
+
+Individual tier based on lifetime Pulse: Emerging, Growing, Rooted, Flourishing, Connected, Canopy.
+
+---
+
+## Platform Status
+
+Ecosystem tier based on Platform Pulse: Awakening, Growing, Rooted, Flourishing, Thriving, Fully Synced.
+
+---
+
+## Stay Synced
+
+RootSync messaging between members and vendors. Formerly Messages / Messenger.
+
+---
+
 # Product Development
 
 ## RFC (Request for Comments)
@@ -328,6 +386,10 @@ Examples:
 | Download | Resource |
 | Marketplace Item | Listing |
 | Consultation (feature) | Service → Consultation |
+| Community (feed) | Pulse |
+| Like | Give a Pulse |
+| Star rating | Pulse rating |
+| Messages | Stay Synced |
 
 ---
 

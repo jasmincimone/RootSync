@@ -1,0 +1,51 @@
+import { PULSE_EVENT_TYPES, type PulseEventType } from "@/lib/pulse/eventTypes";
+
+/** Pulse event categories — extensible via `pulse_categories` table. */
+export const PULSE_CATEGORY = {
+  COMMUNITY: "COMMUNITY",
+  MARKETPLACE: "MARKETPLACE",
+  LEARNING: "LEARNING",
+  MESSAGING: "MESSAGING",
+  EVENTS: "EVENTS",
+  CONSULTATIONS: "CONSULTATIONS",
+  ORGANIZATIONS: "ORGANIZATIONS",
+  GROWING: "GROWING",
+  VOLUNTEER: "VOLUNTEER",
+  VERIFICATION: "VERIFICATION",
+  ADMINISTRATION: "ADMINISTRATION",
+} as const;
+
+export type PulseCategoryKey = (typeof PULSE_CATEGORY)[keyof typeof PULSE_CATEGORY];
+
+export const DEFAULT_PULSE_CATEGORIES: {
+  key: PulseCategoryKey;
+  label: string;
+  sortOrder: number;
+}[] = [
+  { key: PULSE_CATEGORY.COMMUNITY, label: "Community", sortOrder: 0 },
+  { key: PULSE_CATEGORY.MARKETPLACE, label: "Marketplace", sortOrder: 1 },
+  { key: PULSE_CATEGORY.LEARNING, label: "Learning", sortOrder: 2 },
+  { key: PULSE_CATEGORY.MESSAGING, label: "Messaging", sortOrder: 3 },
+  { key: PULSE_CATEGORY.EVENTS, label: "Events", sortOrder: 4 },
+  { key: PULSE_CATEGORY.CONSULTATIONS, label: "Consultations", sortOrder: 5 },
+  { key: PULSE_CATEGORY.ORGANIZATIONS, label: "Organizations", sortOrder: 6 },
+  { key: PULSE_CATEGORY.GROWING, label: "Growing", sortOrder: 7 },
+  { key: PULSE_CATEGORY.VOLUNTEER, label: "Volunteer", sortOrder: 8 },
+  { key: PULSE_CATEGORY.VERIFICATION, label: "Verification", sortOrder: 9 },
+  { key: PULSE_CATEGORY.ADMINISTRATION, label: "Administration", sortOrder: 10 },
+];
+
+/** Default event type → category mapping. */
+export const EVENT_TYPE_CATEGORY: Record<PulseEventType, PulseCategoryKey> = {
+  [PULSE_EVENT_TYPES.PULSE_CREATED]: PULSE_CATEGORY.COMMUNITY,
+  [PULSE_EVENT_TYPES.PULSE_RECEIVED]: PULSE_CATEGORY.COMMUNITY,
+  [PULSE_EVENT_TYPES.PROFILE_COMPLETED]: PULSE_CATEGORY.COMMUNITY,
+  [PULSE_EVENT_TYPES.DAILY_ACTIVITY]: PULSE_CATEGORY.COMMUNITY,
+  [PULSE_EVENT_TYPES.LISTING_PUBLISHED]: PULSE_CATEGORY.MARKETPLACE,
+  [PULSE_EVENT_TYPES.ORDER_VERIFIED]: PULSE_CATEGORY.MARKETPLACE,
+  [PULSE_EVENT_TYPES.BOOKING_COMPLETED]: PULSE_CATEGORY.CONSULTATIONS,
+  [PULSE_EVENT_TYPES.MESSAGE_SENT]: PULSE_CATEGORY.MESSAGING,
+  [PULSE_EVENT_TYPES.AI_GROW_PLAN_COMPLETED]: PULSE_CATEGORY.LEARNING,
+  [PULSE_EVENT_TYPES.VENDOR_REVIEW_GIVEN]: PULSE_CATEGORY.MARKETPLACE,
+  [PULSE_EVENT_TYPES.VENDOR_PULSE_RECEIVED]: PULSE_CATEGORY.MARKETPLACE,
+};

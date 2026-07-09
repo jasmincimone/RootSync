@@ -13,7 +13,7 @@ function expectedModelDelegates(): string[] {
 }
 
 function clientHasCurrentSchema(client: PrismaClient): boolean {
-  const expected = globalForPrisma.prismaSchemaModels ?? expectedModelDelegates();
+  const expected = expectedModelDelegates();
   const record = client as unknown as Record<string, unknown>;
   return expected.every((delegate) => typeof record[delegate] !== "undefined");
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { MenuAccountLink } from "@/components/MenuAccountLink";
-import { PLATFORM_NAV_LINKS } from "@/config/platformNav";
+import { PlatformMenuLinks } from "@/components/PlatformMenuLinks";
 
 type Props = { onClose: () => void; closeHref?: string };
 
@@ -40,41 +40,7 @@ export function MobileMenuPanel({ onClose, closeHref }: Props) {
           </section>
 
           <section className="mb-6">
-            <Link
-              href="/"
-              onClick={onClose}
-              className="block rounded-xl border border-fix-border/15 bg-fix-bg-muted px-3 py-2.5 text-sm font-semibold text-fix-heading hover:bg-fix-bg-muted/80"
-            >
-              Home
-            </Link>
-            <Link
-              href="/rootsync"
-              onClick={onClose}
-              className="mt-2 block rounded-xl border border-fix-border/15 bg-fix-bg-muted px-3 py-2.5 text-sm font-semibold text-fix-heading hover:bg-fix-bg-muted/80"
-            >
-              RootSync
-            </Link>
-          </section>
-
-          <section className="mb-6">
-            <ul className="grid gap-0.5">
-              {PLATFORM_NAV_LINKS.filter((item) => item.href !== "/rootsync").map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={onClose}
-                    className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm font-medium text-fix-link hover:bg-fix-bg-muted hover:text-fix-link-hover active:bg-fix-bg-muted active:text-fix-link-hover"
-                  >
-                    <span>{item.label}</span>
-                    {item.comingSoon ? (
-                      <span className="rounded-full bg-amber/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-espresso">
-                        Soon
-                      </span>
-                    ) : null}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <PlatformMenuLinks onNavigate={onClose} />
           </section>
         </nav>
       </div>

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
 import { isBlobLike, saveUploadedMedia } from "@/lib/mediaUpload";
+import { hookProfileCompleted } from "@/lib/pulse/hooks";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -70,6 +71,8 @@ export async function POST(request: NextRequest) {
         data: { profileImageUrl: result.url },
       });
     }
+
+    await hookProfileCompleted(session.user.id);
 
     return NextResponse.json({ url: result.url });
   } catch (e) {

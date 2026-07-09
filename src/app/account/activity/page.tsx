@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 
+import { ActivityMoreNav } from "@/components/account/ActivityMoreNav";
+import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { Card } from "@/components/ui/Card";
-import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OrderStatusBadge } from "@/components/ui/StatusBadge";
 import { authOptions } from "@/lib/authOptions";
@@ -38,14 +39,7 @@ export default async function AccountActivityPage() {
   const hasActivity = orders.length > 0 || bookings.length > 0;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold text-fix-heading">Activity</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">
-          Recent orders and service bookings in one place.
-        </p>
-      </div>
-
+    <AccountSubpageBody description="Recent orders and service bookings in one place.">
       {!hasActivity ? (
         <EmptyState
           title="No activity yet"
@@ -121,19 +115,7 @@ export default async function AccountActivityPage() {
         </>
       )}
 
-      <Card className="p-5">
-        <p className="text-sm text-fix-text-muted">
-          Messages and community posts live in their own sections.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <ButtonLink href="/messages/inbox" variant="secondary" size="sm">
-            Messages
-          </ButtonLink>
-          <ButtonLink href="/account/community" variant="secondary" size="sm">
-            My community posts
-          </ButtonLink>
-        </div>
-      </Card>
-    </div>
+      <ActivityMoreNav />
+    </AccountSubpageBody>
   );
 }

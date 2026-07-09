@@ -43,10 +43,10 @@ export async function AccountFtueChecklist() {
     },
     {
       id: "community",
-      label: "Introduce yourself in the community",
+      label: "Share your first Pulse",
       done: hasCommunity,
-      href: "/community",
-      cta: "Community feed",
+      href: "/pulse",
+      cta: "Open Pulse",
     },
   ];
 

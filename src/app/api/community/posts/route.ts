@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
+import { PULSE_EVENT_TYPES } from "@/lib/pulse/eventTypes";
+import { recordPulseEvent } from "@/lib/pulse/recordEvent";
+import { toPulseEarnedPayload } from "@/lib/pulse/toastMessages";
 import { prisma } from "@/lib/prisma";
 import { ROLES, VENDOR_STATUS } from "@/lib/roles";
 
@@ -54,5 +57,18 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ post });
+  let pulseEarned = null;
+  try {
+    const event = await recordPulseEvent({
+      userId: user.id,
+      eventType: PULSE_EVENT_TYPES.PULSE_CREATED,
+      relatedEntityType: "community_post",
+      relatedEntityId: post.id,
+    });
+    pulseEarned = toPulseEarnedPayload(event);
+  } catch (e) {
+    console.warn("[pulse] Failed to record PULSE_CREATED:", e);
+  }
+
+  return NextResponse.json({ post, pulseEarned });
 }

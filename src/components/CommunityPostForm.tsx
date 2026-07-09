@@ -8,10 +8,13 @@ import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormFeedback } from "@/components/ui/FormFeedback";
+import { usePulseToast } from "@/components/pulse/PulseToastProvider";
+import type { PulseEarnedPayload } from "@/lib/pulse/toastMessages";
 
 export function CommunityPostForm() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { showPulseEarned } = usePulseToast();
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -24,9 +27,9 @@ export function CommunityPostForm() {
   if (!session?.user) {
     return (
       <Card className="p-5">
-        <p className="text-sm text-fix-text-muted">Sign in to post in the community.</p>
+        <p className="text-sm text-fix-text-muted">Sign in to create a Pulse.</p>
         <div className="mt-3">
-          <ButtonLink href="/login?callbackUrl=/community" variant="cta" size="sm">
+          <ButtonLink href="/login?callbackUrl=/pulse" variant="cta" size="sm">
             Sign in
           </ButtonLink>
         </div>
@@ -44,13 +47,20 @@ export function CommunityPostForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        pulseEarned?: PulseEarnedPayload | null;
+      };
       if (!res.ok) {
         setError(data.error || "Failed to post");
         setSaving(false);
         return;
       }
+      if (data.pulseEarned) {
+        showPulseEarned(data.pulseEarned);
+      }
       setContent("");
+      setSuccess("Pulse published.");
       router.refresh();
     } catch {
       setError("Something went wrong");
@@ -61,10 +71,10 @@ export function CommunityPostForm() {
 
   return (
     <Card className="p-5">
-      <h2 className="text-sm font-semibold text-fix-heading">New post</h2>
+      <h2 className="text-sm font-semibold text-fix-heading">Create Pulse</h2>
       <p className="mt-2 text-xs leading-relaxed text-fix-text-muted">
-        Posts are public on this feed. Publishing lets other signed-in members start a direct message
-        with you from your post—only your display name and post appear here, not your email.
+        Pulses are public on the feed. Share a harvest, question, event, or community win — meaningful
+        contributions strengthen the ecosystem.
       </p>
       <form onSubmit={submit} className="mt-4 space-y-3">
         <FormFeedback success={success} error={error} />
@@ -82,7 +92,7 @@ export function CommunityPostForm() {
           className="w-full rounded-xl border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm text-fix-text placeholder:text-fix-text-muted/70"
         />
         <Button type="submit" disabled={saving} size="sm" variant="cta">
-          {saving ? "Posting…" : "Post"}
+          {saving ? "Publishing…" : "Publish Pulse"}
         </Button>
       </form>
     </Card>

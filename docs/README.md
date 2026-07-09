@@ -13,7 +13,10 @@ Read in this order:
 11. 10_FEATURE_ROADMAP.md
 12. 18_DOCS_CODE_ALIGNMENT.md — docs vs codebase (update when shipping alignment work)
 13. 19_SERVICE_BOOKINGS.md — service booking flows, env, cancel/refund (when working on bookings)
-14. adr/ADR-005-service-bookings.md — architecture decision for bookings
+14. 22_PULSE_SYSTEM.md — Pulse platform service (contribution ledger, Individual + Platform Pulse)
+15. 21_PULSE_SYSTEM_SCHEMA.md — Pulse database schema
+16. adr/ADR-008-pulse-system.md — architecture decision for Pulse
+17. adr/ADR-005-service-bookings.md — architecture decision for bookings
 
 Then review the appropriate PRD before implementing any feature.
 

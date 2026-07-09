@@ -2,9 +2,14 @@ import Image from "next/image";
 import { Store, UserPlus } from "lucide-react";
 
 import { Container } from "@/components/Container";
+import { LandingCtaButtonLink, LandingCtaStack } from "@/components/LandingCtaStack";
 import { PlatformFeaturesExplorer } from "@/components/PlatformFeaturesExplorer";
 import { RoleCtaButton } from "@/components/RoleCtaButton";
-import { ButtonLink } from "@/components/ui/Button";
+import {
+  MemberPricingSuffix,
+  VendorPricingSuffix,
+  VENDOR_STARTUP_PROMO_NOTICE,
+} from "@/components/RoleCtaPricing";
 
 export const metadata = {
   title: "RootSync",
@@ -37,36 +42,45 @@ export default function RootSyncPlatformPage() {
             Products, Services, Resources, Events, and conversation.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-fix-text-muted">
-            Browse Discover as a visitor. Become a Member to purchase, book Services, and join
-            Community. Verified Vendors publish Listings for the neighborhood.
+            Browse Discover Marketplace as a visitor. Become a Member to purchase, book Services, and
+            join Pulse. Verified Vendors publish Listings for the neighborhood.
           </p>
         </div>
 
-        <div className="mx-auto mt-8 flex w-full max-w-sm flex-col gap-3">
+        <LandingCtaStack className="mt-8">
           <RoleCtaButton
             role="member"
             href="/signup"
             label="Become a Member"
+            suffix={<MemberPricingSuffix />}
             icon={<UserPlus className="h-5 w-5" aria-hidden />}
+            variant="cta"
+            className="w-full uppercase tracking-wide"
           />
           <RoleCtaButton
             role="vendor"
             href="/account/vendor/apply"
             label="Become a Vendor"
+            suffix={<VendorPricingSuffix asterisk />}
+            contentLayout="stacked"
+            centerInfoButton
+            infoNotice={VENDOR_STARTUP_PROMO_NOTICE}
             icon={<Store className="h-5 w-5" aria-hidden />}
+            variant="cta"
+            className="w-full uppercase tracking-wide"
           />
-          <ButtonLink href="/about" variant="secondary" size="lg" className="uppercase tracking-wide">
+          <LandingCtaButtonLink href="/about" variant="cta">
             About us
-          </ButtonLink>
-        </div>
+          </LandingCtaButtonLink>
+        </LandingCtaStack>
 
         <div className="mx-auto mt-10 max-w-2xl text-center">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-fix-text-muted">
             Explore the platform
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-fix-text-muted">
-            Community before commerce — each part of RootSync helps you discover local, support
-            local, learn local, and build local relationships.
+            Pulse before commerce — each part of RootSync helps you discover local, support local,
+            learn local, and build local relationships.
           </p>
         </div>
 

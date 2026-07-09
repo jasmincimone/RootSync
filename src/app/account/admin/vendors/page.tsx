@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { PageBody } from "@/components/ui/PageBody";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -56,12 +57,7 @@ export default function AdminVendorsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-fix-heading">Vendor requests</h2>
-        <p className="mt-1 text-sm text-fix-text-muted">Pending Discover vendor applications.</p>
-      </div>
-
+    <PageBody wide description="Pending Discover vendor applications.">
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
       {loading ? (
@@ -103,6 +99,6 @@ export default function AdminVendorsPage() {
           ))}
         </ul>
       )}
-    </div>
+    </PageBody>
   );
 }

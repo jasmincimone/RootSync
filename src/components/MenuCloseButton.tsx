@@ -29,12 +29,12 @@ export function MenuCloseButton({ className = "" }: Props) {
 }
 
 /** Full-bleed backdrop that closes the menu (same behavior as MenuCloseButton). */
-export function MenuBackdropClose() {
+export function MenuBackdropClose({ className = "" }: { className?: string }) {
   const router = useRouter();
   return (
     <button
       type="button"
-      className="min-h-0 min-w-0 flex-1 cursor-pointer bg-espresso/50"
+      className={`min-h-0 min-w-0 flex-1 cursor-pointer bg-espresso/50 ${className}`.trim()}
       aria-label="Close menu"
       onClick={() => leaveMenu(router)}
     />

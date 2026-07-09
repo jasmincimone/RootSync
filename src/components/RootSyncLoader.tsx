@@ -1,6 +1,7 @@
 import { cn } from "@/lib/cn";
+import { ROOTSYNC_SYMBOL_SRC } from "@/config/platformExploreNav";
 
-const SYMBOL_SRC = "/rootsync-symbol.png?v=4";
+const SYMBOL_SRC = `${ROOTSYNC_SYMBOL_SRC}?v=5`;
 
 const SIZE_PX = {
   sm: 40,
