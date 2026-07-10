@@ -40,7 +40,7 @@ export default function SignupPage() {
     setError("");
     setSuccess("");
     if (!agreeSmsTwoFactorTerms) {
-      setError("You must agree to SMS and two-factor authentication terms to create an account.");
+      setError("You must agree to security sign-in terms to create an account.");
       return;
     }
     setLoading(true);
@@ -90,9 +90,9 @@ export default function SignupPage() {
       <div className="mx-auto max-w-md">
         <h1 className="text-2xl font-semibold tracking-tight text-fix-heading">Create account</h1>
         <p className="mt-1 text-sm text-fix-text-muted">
-          Create an account to view order history and access purchased resources. You can add a phone number later in
-          Account Settings to use SMS verification and SMS two-factor. New accounts use email verification codes at
-          sign in by default.
+          Create an account to view order history and access purchased resources. Sign-in uses an
+          email security code by default. You can add a phone later in Account Settings for SMS
+          options.
         </p>
         {!legalStepDone ? (
           <div className="mt-6 space-y-4">
@@ -155,8 +155,8 @@ export default function SignupPage() {
             <div className="rounded-lg border-2 border-amber/40 bg-amber/5 p-4">
               <p className="text-sm font-semibold text-fix-heading">Security &amp; communications</p>
               <p className="mt-1 text-xs text-fix-text-muted">
-                Two-factor authentication (2FA) is optional—you can enable it in Account Settings after you add a phone.
-                By checking the first box, you agree to the terms for future SMS when you turn those features on.
+                New accounts use email sign-in codes by default. You can add a phone later in Account
+                Settings for SMS verification and SMS two-factor.
               </p>
               <div className="mt-3 space-y-3">
                 <label className="flex cursor-pointer items-start gap-3 text-sm leading-snug text-fix-text">
@@ -171,9 +171,10 @@ export default function SignupPage() {
                     required
                   />
                   <span>
-                    I agree to receive text messages from RootSync for <strong>account security</strong> and{" "}
-                    <strong>two-factor authentication</strong> when I enable those features (including verification and
-                    sign-in codes). Message and data rates may apply.{" "}
+                    I agree to receive <strong>security sign-in codes by email</strong>, and text
+                    messages for <strong>account security</strong> /{" "}
+                    <strong>two-factor authentication</strong> if I enable phone verification later.
+                    Message and data rates may apply for SMS.{" "}
                     <span className="text-bark">(Required)</span>
                   </span>
                 </label>
@@ -201,7 +202,7 @@ export default function SignupPage() {
               disabled={loading || !!success || !agreeSmsTwoFactorTerms}
               className="w-full"
               variant="primary"
-              title={!agreeSmsTwoFactorTerms ? "Agree to SMS and security terms above" : undefined}
+              title={!agreeSmsTwoFactorTerms ? "Agree to security sign-in terms above" : undefined}
             >
               {loading ? "Creating account…" : "Create account"}
             </Button>

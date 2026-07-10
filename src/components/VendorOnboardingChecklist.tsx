@@ -9,6 +9,8 @@ type Props = {
   hasStripe: boolean;
   hasListing: boolean;
   hasAvailability: boolean;
+  /** Deep link to configure booking hours (service edit or new service listing). */
+  availabilityHref?: string;
 };
 
 type Step = {
@@ -24,6 +26,7 @@ export function VendorOnboardingChecklist({
   hasStripe,
   hasListing,
   hasAvailability,
+  availabilityHref = "/account/vendor/listings/new?type=SERVICE&step=details",
 }: Props) {
   const steps: Step[] = [
     {
@@ -35,7 +38,7 @@ export function VendorOnboardingChecklist({
     },
     {
       id: "stripe",
-      label: "Connect Stripe payments",
+      label: "Set up Payment Hub",
       description: "Accept checkout and bookings on Discover.",
       href: "/account/vendor/payments",
       done: hasStripe,
@@ -51,7 +54,7 @@ export function VendorOnboardingChecklist({
       id: "availability",
       label: "Set service availability",
       description: "Configure booking hours for service listings.",
-      href: "/account/vendor/listings",
+      href: availabilityHref,
       done: hasAvailability,
     },
   ];

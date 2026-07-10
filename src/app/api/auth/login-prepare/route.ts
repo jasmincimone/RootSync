@@ -54,15 +54,17 @@ export async function POST(request: NextRequest) {
       );
     }
     const hasEmailOtpConsent =
-      Boolean(user.consentEmailTwoFactorAt) || Boolean(user.consentSmsTwoFactorAt);
+      Boolean(user.consentEmailTwoFactorAt) ||
+      Boolean(user.consentSmsTwoFactorAt) ||
+      // Legacy signups recorded SMS-terms checkbox but not consentEmailTwoFactorAt.
+      Boolean(user.smsTwoFactorSignupConsentAt);
     if (tf === TWO_FACTOR_METHOD.EMAIL && !hasEmailOtpConsent) {
-      return NextResponse.json(
-        {
-          error:
-            "Security sign-in codes by email require consent. Open Account → Settings and agree to receive security codes by email or SMS (either is enough for now), then try again.",
-        },
-        { status: 403 }
-      );
+      // Password already verified — record email OTP consent so the user is not locked out
+      // of Account Settings (chicken-and-egg). They are requesting a code to their own email.
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { consentEmailTwoFactorAt: new Date() },
+      });
     }
     if (tf === TWO_FACTOR_METHOD.EMAIL) {
       const key = process.env.RESEND_API_KEY;

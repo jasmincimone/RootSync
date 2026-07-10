@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { ROLES, VENDOR_STATUS } from "@/lib/roles";
 
 export const metadata = {
-  title: "Vendor payments",
+  title: "Payment Hub",
 };
 
 export default async function VendorPaymentsPage() {
@@ -33,7 +33,10 @@ export default async function VendorPaymentsPage() {
   }
 
   return (
-    <AccountSubpageBody description="Connect Stripe for built-in checkout, or add a payment link for external checkout on your listings.">
+    <AccountSubpageBody
+      wide
+      description="Connect Stripe, manage payment links, create connected-account products, and open your storefront or billing portal."
+    >
       <VendorStripeConnectSetup showDevControls={process.env.NODE_ENV === "development"} />
     </AccountSubpageBody>
   );

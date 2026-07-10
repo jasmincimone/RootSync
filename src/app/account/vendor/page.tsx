@@ -40,17 +40,41 @@ export default async function VendorDashboardPage() {
   });
   const hasStripe = Boolean(user?.stripeConnectAccountId);
 
-  const [listingCount, serviceWithAvailability] = await Promise.all([
-    prisma.listing.count({ where: { vendorProfileId: profile.id } }),
-    prisma.serviceAvailabilityRule.findFirst({
-      where: { offering: { vendorProfileId: profile.id } },
-      select: { id: true },
-    }),
-  ]);
+  const [listingCount, serviceWithAvailability, serviceNeedingAvailability, anyServiceListing] =
+    await Promise.all([
+      prisma.listing.count({ where: { vendorProfileId: profile.id } }),
+      prisma.serviceAvailabilityRule.findFirst({
+        where: { offering: { vendorProfileId: profile.id } },
+        select: { id: true },
+      }),
+      prisma.listing.findFirst({
+        where: {
+          vendorProfileId: profile.id,
+          listingType: LISTING_TYPE.SERVICE,
+          offering: { availabilityRules: { none: {} } },
+        },
+        select: { id: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.listing.findFirst({
+        where: {
+          vendorProfileId: profile.id,
+          listingType: LISTING_TYPE.SERVICE,
+        },
+        select: { id: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+    ]);
 
   const hasProfile = Boolean(profile.bio?.trim() && profile.pickupLocation?.trim());
   const hasListing = listingCount > 0;
   const hasAvailability = Boolean(serviceWithAvailability);
+
+  // Prefer a service listing that still needs hours; else any service; else create a service.
+  const availabilityTargetId = serviceNeedingAvailability?.id ?? anyServiceListing?.id;
+  const availabilityHref = availabilityTargetId
+    ? `/account/vendor/listings/${availabilityTargetId}/edit?step=details`
+    : "/account/vendor/listings/new?type=SERVICE&step=details";
 
   return (
     <AccountSubpageBody description={profile.displayName}>
@@ -60,6 +84,7 @@ export default async function VendorDashboardPage() {
           hasStripe={hasStripe}
           hasListing={hasListing}
           hasAvailability={hasAvailability}
+          availabilityHref={availabilityHref}
         />
       ) : null}
 
@@ -82,14 +107,14 @@ export default async function VendorDashboardPage() {
 
       {profile.status === VENDOR_STATUS.APPROVED && !hasStripe ? (
         <Card className="border-amber/35 bg-fix-bg-muted/50 p-5">
-          <div className="text-sm font-semibold text-fix-heading">Set up payments</div>
+          <div className="text-sm font-semibold text-fix-heading">Open Payment Hub</div>
           <p className="mt-2 text-sm text-fix-text-muted">
             Connect Stripe so members can check out on Discover and book your services. You
-            can also add payment links on individual listings.
+            can also add payment links, products, and a storefront from Payment Hub.
           </p>
           <div className="mt-4">
             <ButtonLink href="/account/vendor/payments" variant="cta" size="sm">
-              Connect Stripe
+              Go to Payment Hub
             </ButtonLink>
           </div>
         </Card>

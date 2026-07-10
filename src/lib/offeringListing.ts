@@ -191,6 +191,8 @@ export function serializeVendorOffering(row: VendorOfferingRow) {
     imageUrl: row.imageUrl,
     paymentUrl: row.paymentUrl,
     productUrl: row.productUrl,
+    stripeProductId: row.stripeProductId,
+    stripePriceId: row.stripePriceId,
     vendorNotes: row.vendorNotes,
     scheduledPublishAt: row.scheduledPublishAt,
     visibility: row.listing?.visibility ?? LISTING_VISIBILITY.HIDDEN,

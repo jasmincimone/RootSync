@@ -37,9 +37,15 @@ import {
   type ServiceKind,
 } from "@/lib/roles";
 
+type WizardStepKey = "basics" | "details" | "options" | "checkout" | "publish";
+
 type Props = {
   mode: "create" | "edit";
   listingId?: string;
+  /** Prefill listing type on create (e.g. SERVICE from onboarding). */
+  defaultListingType?: string;
+  /** Open wizard on this step when the form mounts. */
+  initialWizardStep?: WizardStepKey;
   initial?: {
     title: string;
     description: string;
@@ -76,8 +82,6 @@ function fromDatetimeLocalValue(value: string): string | null {
 const inputClass =
   "mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text";
 
-type WizardStepKey = "basics" | "details" | "options" | "checkout" | "publish";
-
 const WIZARD_STEP_LABELS: Record<WizardStepKey, string> = {
   basics: "Basics",
   details: "Details",
@@ -93,7 +97,13 @@ function visibleWizardSteps(listingType: string): WizardStepKey[] {
   return steps;
 }
 
-export function VendorOfferingForm({ mode, listingId, initial }: Props) {
+export function VendorOfferingForm({
+  mode,
+  listingId,
+  initial,
+  defaultListingType,
+  initialWizardStep,
+}: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -104,13 +114,23 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "");
   const [paymentUrl, setPaymentUrl] = useState(initial?.paymentUrl ?? "");
   const [productUrl, setProductUrl] = useState(initial?.productUrl ?? "");
-  const [listingType, setListingType] = useState(initial?.listingType ?? LISTING_TYPE.PRODUCT);
+  const resolvedDefaultType =
+    initial?.listingType ??
+    (defaultListingType && Object.values(LISTING_TYPE).includes(defaultListingType as never)
+      ? defaultListingType
+      : LISTING_TYPE.PRODUCT);
+  const [listingType, setListingType] = useState(resolvedDefaultType);
   const [vendorNotes, setVendorNotes] = useState(initial?.vendorNotes ?? "");
   const [status, setStatus] = useState(initial?.status ?? OFFERING_STATUS.DRAFT);
   const [scheduledPublishAt, setScheduledPublishAt] = useState(
     toDatetimeLocalValue(initial?.scheduledPublishAt),
   );
-  const [step, setStep] = useState(0);
+
+  const initialSteps = visibleWizardSteps(resolvedDefaultType);
+  const initialStepIndex = initialWizardStep
+    ? Math.max(0, initialSteps.indexOf(initialWizardStep))
+    : 0;
+  const [step, setStep] = useState(initialStepIndex >= 0 ? initialStepIndex : 0);
 
   const wizardSteps = visibleWizardSteps(listingType);
   const currentStepKey = wizardSteps[step] ?? "basics";

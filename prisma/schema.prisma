@@ -263,6 +263,10 @@ model Offering {
   paymentUrl         String?
   /// Optional catalog page when no payment link (or in addition)
   productUrl         String?
+  /// Stripe Product id on the vendor's connected account (`prod_…`)
+  stripeProductId    String?
+  /// Stripe Price id for the current default price (`price_…`)
+  stripePriceId      String?
   /// Internal vendor notes (not shown on public listing)
   vendorNotes        String?
   scheduledPublishAt DateTime?

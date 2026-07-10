@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { hookOrderVerified } from "@/lib/pulse/hooks";
 import {
+  fetchConnectAccountStatus,
   getConnectStripeClient,
   hasStripeSig,
   isSubscriptionEventType,
@@ -11,12 +12,32 @@ import {
   requireEnv,
   toDateOrNull,
 } from "@/lib/stripeConnectDemo";
+import {
+  handleStripeProductWebhookEvent,
+  isStripeProductEventType,
+} from "@/lib/importStripeProduct";
 
 /**
  * Single webhook endpoint handling:
- * - Existing checkout session completion updates
- * - Billing/subscription lifecycle events
- * - Stripe Connect v2 thin events for account requirement/capability updates
+ * 1) Connect Accounts v2 **thin** events (requirements / capability updates)
+ * 2) Standard events: checkout.session.completed, Connect product sync, subscription/billing
+ *
+ * For Dashboard-created products on connected accounts, enable these events on a
+ * Connect webhook destination (events from Connected accounts):
+ *   product.created, product.updated, product.deleted, price.created, price.updated
+ *
+ * Thin events (local CLI example):
+ *   stripe listen --thin-events \
+ *     'v2.core.account[requirements].updated,v2.core.account[.recipient].capability_status_updated,v2.core.account[configuration.merchant].capability_status_updated,v2.core.account[configuration.customer].capability_status_updated' \
+ *     --forward-thin-to localhost:3001/api/webhooks/stripe
+ *
+ * Standard Connect products (local):
+ *   stripe listen --forward-to localhost:3001/api/webhooks/stripe \
+ *     --events product.created,product.updated,product.deleted,price.created,price.updated
+ *
+ * PLACEHOLDER secrets:
+ * - STRIPE_WEBHOOK_SECRET=whsec_... (standard events)
+ * - STRIPE_THIN_WEBHOOK_SECRET=whsec_... (optional; falls back to STRIPE_WEBHOOK_SECRET)
  */
 export async function POST(request: NextRequest) {
   const stripeClient = getConnectStripeClient();
@@ -28,10 +49,10 @@ export async function POST(request: NextRequest) {
   }
 
   // ---- 1) Try Connect v2 thin-event parsing first (for account updates) ----
-  // You can use a dedicated secret for thin events, or reuse STRIPE_WEBHOOK_SECRET.
   const thinSecret = process.env.STRIPE_THIN_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET;
   if (thinSecret) {
     try {
+      // Parse thin envelope, then retrieve the full event payload.
       const thinEvent = parseThinEventOrThrow({
         stripeClient,
         body,
@@ -39,16 +60,18 @@ export async function POST(request: NextRequest) {
         webhookSecret: thinSecret,
       });
 
-      // Retrieve the full event details after parsing thin event envelope.
       const fullEvent = await stripeClient.v2.core.events.retrieve(thinEvent.id);
-      await handleThinConnectV2Event(fullEvent as unknown as { id: string; type: string; data?: { object?: { id?: string } } });
+      await handleThinConnectV2Event(
+        fullEvent as unknown as { id: string; type: string; data?: { object?: { id?: string } } },
+      );
       return NextResponse.json({ received: true, mode: "thin", type: thinEvent.type });
     } catch {
-      // Not a thin event (or parse method unavailable) -> continue to standard webhook parse.
+      // Not a thin event (or parse method unavailable) → continue to standard webhook parse.
     }
   }
 
-  // ---- 2) Parse regular webhook events (subscriptions + existing checkout flow) ----
+  // ---- 2) Parse regular webhook events (subscriptions + checkout) ----
+  // These do NOT use thin events.
   let event: Stripe.Event;
   try {
     const webhookSecret = requireEnv("STRIPE_WEBHOOK_SECRET");
@@ -61,6 +84,8 @@ export async function POST(request: NextRequest) {
 
   if (event.type === "checkout.session.completed") {
     await handleLegacyCheckoutCompleted(event);
+  } else if (isStripeProductEventType(event.type)) {
+    await handleStripeProductWebhookEvent(event);
   } else if (isSubscriptionEventType(event.type)) {
     await handleSubscriptionAndBillingEvent(event);
   }
@@ -82,7 +107,9 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
       status: "paid",
       stripeSessionId: session.id,
       stripePaymentIntent:
-        typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent?.id ?? null,
     },
   });
 
@@ -96,20 +123,23 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
 
 async function handleSubscriptionAndBillingEvent(event: Stripe.Event) {
   /**
-   * V2 account subscriptions can expose `customer_account` as the connected account id (`acct_...`).
-   * We cast to a narrow shape to keep the sample readable.
+   * V2 account subscriptions expose `customer_account` as the connected account id (`acct_...`).
+   * Do not rely on classic `.customer` (cus_…) for this Connect V2 billing path.
    */
   const obj = event.data.object as Stripe.Event.Data.Object & {
     customer_account?: string;
-    items?: { data?: Array<{ price?: { id?: string } }> };
+    items?: { data?: Array<{ price?: { id?: string }; quantity?: number }> };
     status?: string;
     current_period_end?: number | null;
+    cancel_at_period_end?: boolean;
+    pause_collection?: { resumes_at?: number; behavior?: string } | null;
+    default_payment_method?: string | null;
   };
 
-  // For payment method / billing portal / customer profile events we log only in this sample.
+  // Non-subscription billing events: log + TODO for richer DB sync.
   if (event.type !== "customer.subscription.updated" && event.type !== "customer.subscription.deleted") {
     console.info("[stripe webhook]", event.type, "received");
-    // TODO: Write customer billing profile/payment method updates to DB as needed.
+    // TODO: Persist payment_method / customer / tax_id / billing_portal updates if needed.
     return;
   }
 
@@ -120,11 +150,22 @@ async function handleSubscriptionAndBillingEvent(event: Stripe.Event) {
   }
 
   const priceId = obj.items?.data?.[0]?.price?.id ?? null;
+  const quantity = obj.items?.data?.[0]?.quantity ?? null;
   const status = event.type === "customer.subscription.deleted" ? "canceled" : obj.status ?? "unknown";
   const periodEnd = toDateOrNull(obj.current_period_end ?? null);
 
-  // Store sample subscription state against the mapped user.
-  // If no user mapping exists yet, keep this as a harmless no-op.
+  console.info("[stripe webhook] subscription", {
+    type: event.type,
+    accountId,
+    status,
+    priceId,
+    quantity,
+    cancelAtPeriodEnd: obj.cancel_at_period_end,
+    pauseCollection: obj.pause_collection ?? null,
+  });
+
+  // Store subscription state against the mapped user (PostgreSQL source of truth).
+  // If no user mapping exists yet, this is a harmless no-op.
   await prisma.user.updateMany({
     where: { stripeConnectAccountId: accountId },
     data: {
@@ -141,17 +182,40 @@ async function handleThinConnectV2Event(event: {
   data?: { object?: { id?: string } };
 }) {
   const accountId = event.data?.object?.id;
+
   switch (event.type) {
-    case "v2.core.account[requirements].updated":
+    case "v2.core.account[requirements].updated": {
       console.info("[thin] requirements changed for account", accountId || "(unknown)");
-      // TODO: notify the account owner in-app/email that they should revisit onboarding.
+      if (accountId?.startsWith("acct_")) {
+        try {
+          // Re-fetch live readiness so logs reflect current Stripe state.
+          const status = await fetchConnectAccountStatus(accountId);
+          console.info("[thin] live onboarding status", status);
+          // TODO: notify the account owner in-app/email to revisit Payment Hub onboarding.
+        } catch (err) {
+          console.warn("[thin] could not refresh account status", err);
+        }
+      }
       break;
+    }
     case "v2.core.account[configuration.merchant].capability_status_updated":
     case "v2.core.account[configuration.customer].capability_status_updated":
-    case "v2.core.account[.recipient].capability_status_updated":
-      console.info("[thin] capability status changed for account", accountId || "(unknown)");
-      // TODO: refresh account readiness state in DB if you need cached status.
+    case "v2.core.account[.recipient].capability_status_updated": {
+      console.info("[thin] capability status changed for account", accountId || "(unknown)", event.type);
+      if (accountId?.startsWith("acct_")) {
+        try {
+          const status = await fetchConnectAccountStatus(accountId);
+          console.info("[thin] live capability snapshot", {
+            cardPayments: status.cardPaymentsStatus,
+            ready: status.readyToProcessPayments,
+          });
+          // TODO: cache readiness on User/VendorProfile if you need offline checks.
+        } catch (err) {
+          console.warn("[thin] could not refresh capability status", err);
+        }
+      }
       break;
+    }
     default:
       console.info("[thin] unhandled v2 event type", event.type);
   }

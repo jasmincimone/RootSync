@@ -15,6 +15,12 @@ export const runtime = "nodejs";
 
 /**
  * GET: returns current user's connected account mapping + live onboarding status from Stripe.
+ *
+ * Step-by-step:
+ * 1. Auth the signed-in user.
+ * 2. Read `User.stripeConnectAccountId` from PostgreSQL (user → connected account mapping).
+ * 3. If mapped, call Accounts v2 retrieve with merchant + requirements includes.
+ *    Status is always fetched live from Stripe — we do not cache readiness in the DB.
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -23,20 +29,40 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, name: true, stripeConnectAccountId: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      stripeConnectAccountId: true,
+      stripeSubscriptionStatus: true,
+      stripeSubscriptionPriceId: true,
+      stripeSubscriptionCurrentPeriodEnd: true,
+    },
   });
   if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
+
+  const subscription = {
+    status: user.stripeSubscriptionStatus,
+    priceId: user.stripeSubscriptionPriceId,
+    currentPeriodEnd: user.stripeSubscriptionCurrentPeriodEnd?.toISOString() ?? null,
+  };
+
   if (!user.stripeConnectAccountId) {
     return NextResponse.json({
       accountId: null,
       onboarding: null,
+      subscription,
       message: "No connected account yet. Use POST /api/connect/account to create one.",
     });
   }
 
   try {
     const onboarding = await fetchConnectAccountStatus(user.stripeConnectAccountId);
-    return NextResponse.json({ accountId: user.stripeConnectAccountId, onboarding });
+    return NextResponse.json({
+      accountId: user.stripeConnectAccountId,
+      onboarding,
+      subscription,
+    });
   } catch (err) {
     console.error("[connect/account GET] failed:", err);
     return NextResponse.json(
@@ -44,6 +70,7 @@ export async function GET() {
         error: stripeConnectErrorMessage(err),
         hint: stripeConnectForbiddenHint(err),
         accountId: user.stripeConnectAccountId,
+        subscription,
       },
       { status: 502 },
     );
@@ -51,8 +78,12 @@ export async function GET() {
 }
 
 /**
- * POST: creates a v2 connected account and stores the user->account mapping in DB.
- * Uses only the properties requested in your requirements.
+ * POST: creates a Connect Accounts v2 connected account and stores user → accountId in DB.
+ *
+ * IMPORTANT:
+ * - Use ONLY the properties below. Never pass top-level `type: 'express' | 'standard' | 'custom'`.
+ * - `stripeClient` comes from `getConnectStripeClient()` / `STRIPE_SECRET_KEY`.
+ * - PLACEHOLDER: set `STRIPE_SECRET_KEY` in `.env.local` (sk_… or rk_… with Connect permissions).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -98,6 +129,7 @@ export async function POST(request: NextRequest) {
         : user.email;
 
     const stripeClient = getConnectStripeClient();
+    // Accounts v2 create — do not pass classic `type` at the top level.
     const account = await stripeClient.v2.core.accounts.create({
       display_name: displayName,
       contact_email: contactEmail,
@@ -124,6 +156,7 @@ export async function POST(request: NextRequest) {
     });
 
     try {
+      // Persist mapping: RootSync User ↔ Stripe connected account id (`acct_…`).
       await prisma.user.update({
         where: { id: userId },
         data: { stripeConnectAccountId: account.id },

@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
-import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { CardListSkeleton } from "@/components/ui/LoadingSkeleton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
@@ -18,20 +17,34 @@ type OnboardingState = {
   payoutsStatus: string;
 };
 
+type SubscriptionState = {
+  status: string | null;
+  priceId: string | null;
+  currentPeriodEnd: string | null;
+};
+
 type AccountResponse = {
   accountId: string | null;
   onboarding: OnboardingState | null;
+  subscription?: SubscriptionState | null;
   message?: string;
   error?: string;
+  hint?: string;
 };
 
 type Props = {
   /** Stripe onboarding return URL path (without origin). */
   returnPath?: string;
-  /** Hide dev-only controls in production vendor UI. */
+  /** Hide/show developer-only controls. */
   showDevControls?: boolean;
 };
 
+/**
+ * Vendor Payment Hub — Stripe Connect onboarding, external payment links,
+ * connected-account products/storefront, and platform subscription billing.
+ *
+ * Status for Connect onboarding is always loaded live from Stripe (not cached in DB).
+ */
 export function VendorStripeConnectSetup({
   returnPath = "/account/vendor/payments",
   showDevControls = false,
@@ -40,6 +53,7 @@ export function VendorStripeConnectSetup({
   const [saving, setSaving] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [status, setStatus] = useState<OnboardingState | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionState | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -50,12 +64,16 @@ export function VendorStripeConnectSetup({
   const [paymentLinkSaving, setPaymentLinkSaving] = useState(false);
   const [paymentLinkMessage, setPaymentLinkMessage] = useState("");
 
+  const [productName, setProductName] = useState("");
+  const [productDescription, setProductDescription] = useState("");
+  const [productPrice, setProductPrice] = useState("2500");
+  const [productCurrency, setProductCurrency] = useState("usd");
+
   const loadPaymentLink = useCallback(async () => {
     try {
       const res = await fetch("/api/vendor/payments");
       const data = (await res.json().catch(() => ({}))) as {
         paymentLinkUrl?: string | null;
-        error?: string;
       };
       if (res.ok) {
         setPaymentLinkUrl(data.paymentLinkUrl ?? "");
@@ -70,13 +88,14 @@ export function VendorStripeConnectSetup({
     setError("");
     try {
       const res = await fetch("/api/connect/account");
-      const data = (await res.json()) as AccountResponse & { hint?: string };
+      const data = (await res.json()) as AccountResponse;
       if (!res.ok) {
         setError([data.error, data.hint].filter(Boolean).join(" ") || "Could not load payment account.");
         return;
       }
       setAccountId(data.accountId);
       setStatus(data.onboarding);
+      setSubscription(data.subscription ?? null);
       if (data.message) setMessage(data.message);
     } catch {
       setError("Could not load payment account.");
@@ -205,6 +224,109 @@ export function VendorStripeConnectSetup({
     }
   }
 
+  async function syncProductsFromStripe() {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/connect/products/sync", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        imported?: number;
+        updated?: number;
+      };
+      if (!res.ok) {
+        setError(data.error || "Failed to sync products from Stripe.");
+        return;
+      }
+      setMessage(
+        data.message ||
+          `Synced from Stripe Dashboard (${data.imported ?? 0} new, ${data.updated ?? 0} updated).`,
+      );
+    } catch {
+      setError("Failed to sync products from Stripe.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createProduct() {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/connect/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: productName,
+          description: productDescription,
+          priceInCents: Number.parseInt(productPrice, 10),
+          currency: productCurrency,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        product?: { name?: string };
+        listing?: { id?: string; title?: string };
+      };
+      if (!res.ok) {
+        setError(data.error || "Failed to create product.");
+        return;
+      }
+      setMessage(
+        data.listing?.id
+          ? `Created product and listing “${data.listing.title || data.product?.name || "Untitled"}”. Pulse logged when published.`
+          : `Created product: ${data.product?.name || "Untitled"}`,
+      );
+      setProductName("");
+      setProductDescription("");
+    } catch {
+      setError("Failed to create product.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function startSubscriptionCheckout() {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/connect/subscription/checkout", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setError(data.error || "Failed to start subscription checkout.");
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setError("Failed to start subscription checkout.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function openBillingPortal() {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/connect/subscription/portal", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setError(data.error || "Failed to create portal session.");
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setError("Failed to create portal session.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const paymentsReady =
     status?.readyToProcessPayments ||
     status?.onboardingComplete ||
@@ -214,6 +336,7 @@ export function VendorStripeConnectSetup({
     <div className="space-y-4">
       <FormFeedback success={message || null} error={error || null} />
 
+      {/* 1) Connect account + live onboarding status + Stripe Dashboard */}
       <Card className="p-5">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-sm font-semibold text-fix-heading">Stripe Connect</h3>
@@ -226,8 +349,8 @@ export function VendorStripeConnectSetup({
           )}
         </div>
         <p className="mt-2 text-sm text-fix-text-muted">
-          Connect your Stripe account so RootSync can route marketplace checkout and service booking
-          payments to you. Platform fees are handled automatically.
+          Connect Stripe so RootSync can route Discover checkout and service bookings to you.
+          Onboarding status is loaded live from Stripe each time you refresh.
         </p>
 
         {loading ? (
@@ -277,24 +400,42 @@ export function VendorStripeConnectSetup({
           </div>
         ) : (
           <div className="mt-4 space-y-3">
-            <p className="text-xs text-fix-text-muted">
-              Account: <span className="font-mono text-fix-heading">{accountId}</span>
-              {status?.requirementsStatus ? ` · Requirements: ${status.requirementsStatus}` : ""}
-            </p>
+            <div className="space-y-1 text-xs text-fix-text-muted">
+              <p>
+                Account: <span className="font-mono text-fix-heading">{accountId}</span>
+              </p>
+              <p>Onboarding complete: {status?.onboardingComplete ? "Yes" : "No"}</p>
+              <p>Requirements: {status?.requirementsStatus || "n/a"}</p>
+              <p>Card payments: {status?.cardPaymentsStatus || "n/a"}</p>
+            </div>
             <div className="flex flex-wrap gap-2">
-              {!paymentsReady ? (
-                <Button type="button" variant="cta" size="sm" disabled={saving} onClick={() => void beginOnboarding()}>
-                  Complete Stripe onboarding
-                </Button>
-              ) : null}
+              <Button type="button" variant="cta" size="sm" disabled={saving} onClick={() => void beginOnboarding()}>
+                Onboard to collect payments
+              </Button>
               <Button type="button" variant="secondary" size="sm" disabled={saving} onClick={() => void loadAccount()}>
                 Refresh status
               </Button>
+              {/* Full-dashboard Connect accounts manage payouts in Stripe Dashboard after onboarding. */}
+              <a
+                href="https://dashboard.stripe.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface px-4 text-sm font-medium text-fix-link ring-1 ring-inset ring-fix-border/15 hover:bg-fix-bg-muted"
+              >
+                Open Stripe Dashboard
+              </a>
+              <a
+                href={`/connect-store/${accountId}`}
+                className="inline-flex h-9 items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface px-4 text-sm font-medium text-fix-link ring-1 ring-inset ring-fix-border/15 hover:bg-fix-bg-muted"
+              >
+                Open storefront
+              </a>
             </div>
           </div>
         )}
       </Card>
 
+      {/* 2) External payment link (Discover Buy now / Pay Link) */}
       <Card className="p-5">
         <h3 className="text-sm font-semibold text-fix-heading">Payment link</h3>
         <p className="mt-2 text-sm text-fix-text-muted">
@@ -339,6 +480,110 @@ export function VendorStripeConnectSetup({
           {paymentLinkMessage ? (
             <p className="text-xs text-fix-text-muted">{paymentLinkMessage}</p>
           ) : null}
+        </div>
+      </Card>
+
+      {/* 3) Create products on the connected account (Stripe-Account header) */}
+      <Card className="p-5">
+        <h3 className="text-sm font-semibold text-fix-heading">Products on your Stripe account</h3>
+        <p className="mt-2 text-sm text-fix-text-muted">
+          Create a product here (also adds a Discover listing), or create products in the Stripe
+          Dashboard — then sync them into your offerings. Webhooks keep Dashboard changes in sync
+          when configured.
+        </p>
+        <div className="mt-3">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={saving || !accountId}
+            onClick={() => void syncProductsFromStripe()}
+          >
+            Sync products from Stripe Dashboard
+          </Button>
+        </div>
+        <div className="mt-4 grid gap-2 sm:max-w-xl">
+          <input
+            className="rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+            placeholder="Product name"
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            disabled={!accountId}
+          />
+          <textarea
+            className="rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+            placeholder="Product description"
+            value={productDescription}
+            onChange={(e) => setProductDescription(e.target.value)}
+            rows={3}
+            disabled={!accountId}
+          />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input
+              className="rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+              placeholder="Price in cents (e.g. 2500)"
+              value={productPrice}
+              onChange={(e) => setProductPrice(e.target.value)}
+              disabled={!accountId}
+            />
+            <input
+              className="rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+              placeholder="Currency (usd)"
+              value={productCurrency}
+              onChange={(e) => setProductCurrency(e.target.value)}
+              disabled={!accountId}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="cta"
+            size="sm"
+            disabled={saving || !accountId || !productName.trim()}
+            onClick={() => void createProduct()}
+          >
+            Create product on connected account
+          </Button>
+        </div>
+      </Card>
+
+      {/* 4) Platform subscription billed to the connected account (customer_account) */}
+      <Card className="p-5">
+        <h3 className="text-sm font-semibold text-fix-heading">Platform subscription</h3>
+        <p className="mt-2 text-sm text-fix-text-muted">
+          Optional RootSync plan billed to your connected account via{" "}
+          <code className="text-fix-heading">customer_account</code>. Set a real recurring{" "}
+          <code className="text-fix-heading">PRICE_ID</code> in the environment first.
+        </p>
+        {subscription?.status ? (
+          <p className="mt-2 text-xs text-fix-text-muted">
+            Status: <span className="font-medium text-fix-heading">{subscription.status}</span>
+            {subscription.priceId ? ` · Price: ${subscription.priceId}` : ""}
+            {subscription.currentPeriodEnd
+              ? ` · Period ends: ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
+              : ""}
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-fix-text-muted">No subscription on file yet.</p>
+        )}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="cta"
+            size="sm"
+            disabled={saving || !accountId}
+            onClick={() => void startSubscriptionCheckout()}
+          >
+            Start subscription checkout
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={saving || !accountId}
+            onClick={() => void openBillingPortal()}
+          >
+            Open billing portal
+          </Button>
         </div>
       </Card>
 

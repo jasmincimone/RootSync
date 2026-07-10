@@ -31,6 +31,7 @@ export async function hookOfferingPublished(
       eventType: PULSE_EVENT_TYPES.LISTING_PUBLISHED,
       relatedEntityType: "listing",
       relatedEntityId: snapshot.listingId,
+      metadata: { source: "vendor_listing" },
     });
   } catch (e) {
     logPulseHookFailure("LISTING_PUBLISHED", e);

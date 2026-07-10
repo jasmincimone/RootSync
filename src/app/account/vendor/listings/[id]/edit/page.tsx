@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
@@ -15,9 +15,26 @@ const emptyDetails: SerializedOfferingDetails = {
   event: null,
 };
 
+type WizardStepKey = "basics" | "details" | "options" | "checkout" | "publish";
+
+const WIZARD_STEPS = new Set<WizardStepKey>([
+  "basics",
+  "details",
+  "options",
+  "checkout",
+  "publish",
+]);
+
 export default function EditVendorListingPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = typeof params?.id === "string" ? params.id : "";
+  const stepParam = searchParams.get("step");
+  const initialWizardStep =
+    stepParam && WIZARD_STEPS.has(stepParam as WizardStepKey)
+      ? (stepParam as WizardStepKey)
+      : undefined;
+
   const [initial, setInitial] = useState<Parameters<typeof VendorOfferingForm>[0]["initial"]>();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,14 +65,15 @@ export default function EditVendorListingPage() {
         variants: l.variants ?? [],
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
+      setError(e instanceof Error ? e.message : "Failed to load");
+      setInitial(undefined);
     } finally {
       setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   if (loading) {
@@ -66,7 +84,7 @@ export default function EditVendorListingPage() {
     );
   }
 
-  if (error || !initial) {
+  if (!initial) {
     return (
       <AccountSubpageBody>
         <p className="text-sm text-bark">{error ?? "Offering not found."}</p>
@@ -76,7 +94,12 @@ export default function EditVendorListingPage() {
 
   return (
     <AccountSubpageBody description="Update listing details, pricing, and availability.">
-      <VendorOfferingForm mode="edit" listingId={id} initial={initial} />
+      <VendorOfferingForm
+        mode="edit"
+        listingId={id}
+        initial={initial}
+        initialWizardStep={initialWizardStep}
+      />
     </AccountSubpageBody>
   );
 }

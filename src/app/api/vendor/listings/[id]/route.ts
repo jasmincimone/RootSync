@@ -18,6 +18,7 @@ import { parseOfferingVariantsFromBody } from "@/lib/offeringVariants";
 import { publishOfferingIfDue } from "@/lib/publishScheduledOfferings";
 import { normalizePaymentUrlPatch, normalizeProductUrlPatch } from "@/lib/paymentUrl";
 import { hookOfferingPublished } from "@/lib/pulse/hooks";
+import { syncOfferingStripeProduct } from "@/lib/offeringStripeProduct";
 import { prisma } from "@/lib/prisma";
 import { OFFERING_STATUS, type ListingType } from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
@@ -254,7 +255,36 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json({ listing: serializeVendorOffering(offering) });
+    let stripeSync: Awaited<ReturnType<typeof syncOfferingStripeProduct>>;
+    try {
+      stripeSync = await syncOfferingStripeProduct(offering.id);
+    } catch (err) {
+      console.error("[vendor/listings PATCH] stripe sync threw:", err);
+      stripeSync = { ok: false, error: err instanceof Error ? err.message : "Stripe sync failed" };
+    }
+
+    let refreshed = offering;
+    try {
+      refreshed = await prisma.offering.findUniqueOrThrow({
+        where: { id: offering.id },
+        include: vendorOfferingInclude,
+      });
+    } catch (err) {
+      console.warn("[vendor/listings PATCH] refresh after stripe sync failed:", err);
+    }
+
+    return NextResponse.json({
+      listing: serializeVendorOffering(refreshed),
+      stripeSync: stripeSync.ok
+        ? {
+            ok: true,
+            skipped: stripeSync.skipped ?? false,
+            reason: stripeSync.reason,
+            stripeProductId: stripeSync.stripeProductId,
+            stripePriceId: stripeSync.stripePriceId,
+          }
+        : { ok: false, error: stripeSync.error },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to update offering";
     return NextResponse.json({ error: msg }, { status: 500 });

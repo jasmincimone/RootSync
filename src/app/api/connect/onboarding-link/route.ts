@@ -9,7 +9,10 @@ import { appBaseUrl, getConnectStripeClient, stripeConnectErrorMessage } from "@
 export const runtime = "nodejs";
 
 /**
- * Creates a v2 account onboarding link for the signed-in user's connected account.
+ * Creates a v2 Account Link for hosted onboarding.
+ *
+ * UI: Payment Hub "Onboard to collect payments" → this endpoint → Stripe hosted flow → return to Payment Hub.
+ * Status after return is re-fetched via GET /api/connect/account (live from Stripe).
  */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -41,6 +44,7 @@ export async function POST(request: NextRequest) {
 
   const stripeClient = getConnectStripeClient();
   try {
+    // V2 accountLinks — account_onboarding for merchant + customer configurations.
     const accountLink = await stripeClient.v2.core.accountLinks.create({
       account: accountId,
       use_case: {

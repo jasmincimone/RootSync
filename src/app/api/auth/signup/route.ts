@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "You must agree to receive SMS/text messages for account security and two-factor authentication when you enable those features.",
+            "You must agree to receive security sign-in codes by email (and SMS when you enable phone verification).",
         },
         { status: 400 }
       );
@@ -86,9 +86,11 @@ export async function POST(request: NextRequest) {
         passwordHash,
         name: name?.trim() || null,
         role: ROLES.CUSTOMER,
+        // Default sign-in uses email OTP — record email security consent at signup.
         twoFactorMethod: TWO_FACTOR_METHOD.EMAIL,
         termsAcceptedAt: now,
         privacyAcceptedAt: now,
+        consentEmailTwoFactorAt: now,
         smsTwoFactorSignupConsentAt: now,
         marketingOptIn: marketing,
         marketingOptInAt: marketing ? now : null,

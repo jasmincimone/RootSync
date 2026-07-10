@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 
 import { isPrismaUnavailableError } from "@/lib/prisma";
 import { updateOfferingAndSyncListing } from "@/lib/offeringListing";
+import { syncOfferingStripeProduct } from "@/lib/offeringStripeProduct";
 import { hookOfferingPublishedIfActive } from "@/lib/pulse/hooks";
 import { OFFERING_STATUS } from "@/lib/roles";
 
@@ -43,6 +44,7 @@ export async function publishDueScheduledOfferings(prisma: PrismaClient) {
     if (did) {
       published += 1;
       await hookOfferingPublishedIfActive(row.id, OFFERING_STATUS.SCHEDULED);
+      await syncOfferingStripeProduct(row.id);
     }
   }
 

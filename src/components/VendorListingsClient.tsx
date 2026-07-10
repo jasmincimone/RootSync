@@ -4,8 +4,9 @@ import Link from "next/link";
 import { Image as ImageIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { ButtonLink } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { FormFeedback } from "@/components/ui/FormFeedback";
 import { CardListSkeleton } from "@/components/ui/LoadingSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
@@ -23,12 +24,15 @@ type Listing = {
   imageUrl: string | null;
   paymentUrl: string | null;
   productUrl: string | null;
+  stripeProductId?: string | null;
 };
 
 export function VendorListingsClient({ hideHeader = false }: { hideHeader?: boolean }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,8 +50,48 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
+
+  async function syncFromStripe() {
+    setSyncing(true);
+    setError(null);
+    setSyncMessage(null);
+    try {
+      const res = await fetch("/api/connect/products/sync", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok) {
+        setError(data.error || "Failed to sync listings from Stripe.");
+        return;
+      }
+      setSyncMessage(data.message || "Synced listings from Stripe.");
+      await load();
+    } catch {
+      setError("Failed to sync listings from Stripe.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const actions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        disabled={syncing || loading}
+        onClick={() => void syncFromStripe()}
+      >
+        {syncing ? "Syncing…" : "Sync listings from Stripe"}
+      </Button>
+      <ButtonLink href="/account/vendor/listings/new" variant="cta" size="sm">
+        New Listing
+      </ButtonLink>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -56,15 +100,17 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
           <div>
             <h2 className="text-lg font-semibold text-fix-heading">My offerings</h2>
             <p className="mt-1 text-sm text-fix-text-muted">
-              Manage offerings and their public listings.
+              Manage offerings and their public listings. Sync pulls products from your Stripe
+              Dashboard.
             </p>
           </div>
-          <ButtonLink href="/account/vendor/listings/new" variant="cta" size="sm">
-            New offering
-          </ButtonLink>
+          {actions}
         </div>
-      ) : null}
+      ) : (
+        <div className="flex flex-wrap justify-end gap-2">{actions}</div>
+      )}
 
+      <FormFeedback success={syncMessage} error={null} />
       {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
       {loading ? (
         <CardListSkeleton count={3} />
@@ -72,7 +118,7 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
         <EmptyState
           icon={ImageIcon}
           title="No offerings yet"
-          description="Create your first listing to appear on the marketplace — products, services, resources, or events."
+          description="Create a listing here, or sync products you already created in the Stripe Dashboard."
           action={{
             href: "/account/vendor/listings/new",
             label: "Create offering",
@@ -108,11 +154,15 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
                       <OfferingStatusBadge status={l.status} />
                       <span className="text-xs text-fix-text-muted">{formatPrice(l.priceCents)}</span>
                     </div>
-                    {(l.paymentUrl || l.productUrl) && (
+                    {(l.paymentUrl || l.productUrl || l.stripeProductId) && (
                       <div className="mt-0.5 text-xs text-fix-text-muted">
-                        {l.paymentUrl ? "Payment link set" : ""}
-                        {l.paymentUrl && l.productUrl ? " · " : ""}
-                        {l.productUrl ? "Product link set" : ""}
+                        {[
+                          l.stripeProductId ? "Stripe product synced" : null,
+                          l.paymentUrl ? "Payment link set" : null,
+                          l.productUrl ? "Product link set" : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </div>
                     )}
                   </div>

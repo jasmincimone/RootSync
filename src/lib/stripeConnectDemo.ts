@@ -117,7 +117,7 @@ export function appBaseUrl(originFromRequest?: string): string {
 
 export async function fetchConnectAccountStatus(accountId: string): Promise<ConnectAccountStatus> {
   const stripeClient = getConnectStripeClient();
-  // We use include fields recommended for v2 onboarding/readiness checks.
+  // Always fetch live status from Accounts v2 (do not trust a DB cache for this demo).
   const account = await stripeClient.v2.core.accounts.retrieve(accountId, {
     include: ["configuration.merchant", "requirements"],
   });
@@ -128,6 +128,7 @@ export async function fetchConnectAccountStatus(accountId: string): Promise<Conn
     (
       account?.configuration?.merchant?.capabilities?.stripe_balance as unknown as { status?: string } | undefined
     )?.status || "unknown";
+  // requirements.summary.minimum_deadline.status — currently_due / past_due means more info needed.
   const requirementsStatus = account.requirements?.summary?.minimum_deadline?.status || "unknown";
   const onboardingComplete = requirementsStatus !== "currently_due" && requirementsStatus !== "past_due";
   const readyToProcessPayments = cardPaymentsStatus === "active";

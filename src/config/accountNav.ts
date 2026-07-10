@@ -113,8 +113,8 @@ export const ACCOUNT_VENDOR_NAV: AccountNavItem[] = [
   },
   {
     href: "/account/vendor/payments",
-    label: "Payment setup",
-    description: "Payouts & banking",
+    label: "Payment Hub",
+    description: "Connect, payouts & storefront",
     icon: CreditCard,
   },
   {
