@@ -33,7 +33,7 @@ export default async function VendorPaymentsPage() {
   }
 
   return (
-    <AccountSubpageBody description="Connect Stripe to accept Discover checkout and service bookings, or use payment links per listing.">
+    <AccountSubpageBody description="Connect Stripe for built-in checkout, or add a payment link for external checkout on your listings.">
       <VendorStripeConnectSetup showDevControls={process.env.NODE_ENV === "development"} />
     </AccountSubpageBody>
   );

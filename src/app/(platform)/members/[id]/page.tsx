@@ -49,6 +49,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
       vendorProfile: {
         select: {
           id: true,
+          publicSlug: true,
           displayName: true,
           profileImageUrl: true,
           status: true,
@@ -116,7 +117,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
                 <MessageUserLink targetUserId={user.id} variant="primary" size="md" />
               ) : null}
               {approvedVendor ? (
-                <ButtonLink href={discoverVendorPath(approvedVendor.id)} variant="secondary" size="md">
+                <ButtonLink href={discoverVendorPath(approvedVendor)} variant="secondary" size="md">
                   Vendor page
                 </ButtonLink>
               ) : null}

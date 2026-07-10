@@ -10,6 +10,7 @@ import {
   getConnectStripeClient,
   normalizeStripeConnectAccountId,
   stripeConnectErrorMessage,
+  stripeConnectForbiddenHint,
 } from "@/lib/stripeConnectDemo";
 
 export const runtime = "nodejs";
@@ -72,9 +73,11 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const msg = stripeConnectErrorMessage(err);
     const hint =
-      err instanceof Stripe.errors.StripeError
-        ? "If this account was created outside this demo (classic Connect only), v2 retrieve will fail — create/link a v2 account using “Create connected account” here, or the recoverable id returned after a failed save."
-        : undefined;
+      err instanceof Stripe.errors.StripeError && err.statusCode === 403
+        ? stripeConnectForbiddenHint(err)
+        : err instanceof Stripe.errors.StripeError
+          ? "If this account was created outside RootSync (classic Connect only), v2 retrieve will fail — use “Create Stripe account” here, or paste an acct_… created by this app."
+          : undefined;
     if (err instanceof Stripe.errors.StripeError) {
       const code = err.statusCode;
       const status =

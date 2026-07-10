@@ -12,6 +12,7 @@ export type UserProfilePeer = {
     id: string;
     displayName: string;
     profileImageUrl?: string | null;
+    publicSlug?: string | null;
     status: string;
   } | null;
 };
@@ -40,7 +41,10 @@ export function isApprovedVendor(user: UserProfilePeer): boolean {
 /** Public profile URL — approved vendors use Discover vendor page; everyone else uses member profile. */
 export function publicProfileHref(user: UserProfilePeer): string {
   if (isApprovedVendor(user) && user.vendorProfile) {
-    return discoverVendorPath(user.vendorProfile.id);
+    return discoverVendorPath({
+      id: user.vendorProfile.id,
+      publicSlug: user.vendorProfile.publicSlug,
+    });
   }
   return memberProfilePath(user.id);
 }
@@ -58,14 +62,15 @@ export const communityAuthorSelect = {
   email: true,
   role: true,
   imageUrl: true,
-  vendorProfile: {
-    select: {
-      id: true,
-      displayName: true,
-      profileImageUrl: true,
-      status: true,
-    },
-  },
+      vendorProfile: {
+        select: {
+          id: true,
+          publicSlug: true,
+          displayName: true,
+          profileImageUrl: true,
+          status: true,
+        },
+      },
 } as const;
 
 export const messengerPeerSelect = communityAuthorSelect;

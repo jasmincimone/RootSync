@@ -46,15 +46,33 @@ export function VendorStripeConnectSetup({
   const [displayName, setDisplayName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [existingAccountId, setExistingAccountId] = useState("");
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState("");
+  const [paymentLinkSaving, setPaymentLinkSaving] = useState(false);
+  const [paymentLinkMessage, setPaymentLinkMessage] = useState("");
+
+  const loadPaymentLink = useCallback(async () => {
+    try {
+      const res = await fetch("/api/vendor/payments");
+      const data = (await res.json().catch(() => ({}))) as {
+        paymentLinkUrl?: string | null;
+        error?: string;
+      };
+      if (res.ok) {
+        setPaymentLinkUrl(data.paymentLinkUrl ?? "");
+      }
+    } catch {
+      // Non-blocking — Connect UI still works
+    }
+  }, []);
 
   const loadAccount = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const res = await fetch("/api/connect/account");
-      const data = (await res.json()) as AccountResponse;
+      const data = (await res.json()) as AccountResponse & { hint?: string };
       if (!res.ok) {
-        setError(data.error || "Could not load payment account.");
+        setError([data.error, data.hint].filter(Boolean).join(" ") || "Could not load payment account.");
         return;
       }
       setAccountId(data.accountId);
@@ -69,7 +87,8 @@ export function VendorStripeConnectSetup({
 
   useEffect(() => {
     void loadAccount();
-  }, [loadAccount]);
+    void loadPaymentLink();
+  }, [loadAccount, loadPaymentLink]);
 
   async function createConnectedAccount() {
     setSaving(true);
@@ -110,9 +129,13 @@ export function VendorStripeConnectSetup({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accountId: existingAccountId }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        hint?: string;
+        message?: string;
+      };
       if (!res.ok) {
-        setError(data.error || "Could not link account.");
+        setError([data.error, data.hint].filter(Boolean).join(" ") || "Could not link account.");
         return;
       }
       setMessage(data.message || "Account linked.");
@@ -149,6 +172,36 @@ export function VendorStripeConnectSetup({
       setError("Could not start onboarding.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function savePaymentLink(nextUrl?: string) {
+    const trimmed = (nextUrl !== undefined ? nextUrl : paymentLinkUrl).trim();
+    setPaymentLinkSaving(true);
+    setPaymentLinkMessage("");
+    setError("");
+    try {
+      const res = await fetch("/api/vendor/payments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentLinkUrl: trimmed || null }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        paymentLinkUrl?: string | null;
+      };
+      if (!res.ok) {
+        setError(data.error || "Could not save payment link.");
+        return;
+      }
+      setPaymentLinkUrl(data.paymentLinkUrl ?? "");
+      setPaymentLinkMessage(
+        data.paymentLinkUrl ? "Payment link saved." : "Payment link removed.",
+      );
+    } catch {
+      setError("Could not save payment link.");
+    } finally {
+      setPaymentLinkSaving(false);
     }
   }
 
@@ -243,16 +296,50 @@ export function VendorStripeConnectSetup({
       </Card>
 
       <Card className="p-5">
-        <h3 className="text-sm font-semibold text-fix-heading">Payment links (alternative)</h3>
+        <h3 className="text-sm font-semibold text-fix-heading">Payment link</h3>
         <p className="mt-2 text-sm text-fix-text-muted">
-          Prefer not to use Connect yet? Add a Stripe Payment Link or external checkout URL on each
-          offering when you create or edit a listing. Members can still discover you on the
-          marketplace — checkout opens your link instead of built-in RootSync payments.
+          Add a Stripe Payment Link, PayPal checkout, or any external payment URL. When set, listing
+          Buy now opens this link unless you also use Stripe Connect (then members see both options).
+          You can still override per listing when editing an offering.
         </p>
-        <p className="mt-2 text-xs text-fix-text-muted">
-          Built-in checkout (recommended) requires Stripe Connect above. Payment links work without
-          Connect but won&apos;t sync order history automatically.
-        </p>
+        <div className="mt-4 grid gap-3 sm:max-w-xl">
+          <input
+            className="rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+            type="url"
+            inputMode="url"
+            placeholder="https://buy.stripe.com/…"
+            value={paymentLinkUrl}
+            onChange={(e) => setPaymentLinkUrl(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="cta"
+              size="sm"
+              disabled={paymentLinkSaving}
+              onClick={() => void savePaymentLink()}
+            >
+              Save payment link
+            </Button>
+            {paymentLinkUrl.trim() ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={paymentLinkSaving}
+                onClick={() => {
+                  setPaymentLinkUrl("");
+                  void savePaymentLink("");
+                }}
+              >
+                Clear
+              </Button>
+            ) : null}
+          </div>
+          {paymentLinkMessage ? (
+            <p className="text-xs text-fix-text-muted">{paymentLinkMessage}</p>
+          ) : null}
+        </div>
       </Card>
 
       {showDevControls && accountId ? (

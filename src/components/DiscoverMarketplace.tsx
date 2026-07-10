@@ -16,7 +16,7 @@ import {
   paginateSlice,
   type DiscoverPageSize,
 } from "@/config/discoverPagination";
-import { discoverDetailHref } from "@/config/discoverPaths";
+import { discoverDetailHref, discoverDirectoryPath, discoverVendorPath } from "@/config/discoverPaths";
 import {
   isDiscoverStateRadiusAnywhere,
 } from "@/config/discoverLocation";
@@ -371,6 +371,7 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
         )
         .map((v) => ({
           id: v.id,
+          publicSlug: v.publicSlug,
           displayName: v.displayName,
           latitude: v.latitude as number,
           longitude: v.longitude as number,
@@ -465,8 +466,8 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
           buildDetailHref={(pin) =>
             buildDetailHref(
               pin.kind === "vendor"
-                ? `/discover/vendors/${pin.id}`
-                : `/discover/directory/${pin.id}`,
+                ? discoverVendorPath({ id: pin.id, publicSlug: pin.publicSlug })
+                : discoverDirectoryPath(pin.id),
               pin.kind,
               pin.id,
             )

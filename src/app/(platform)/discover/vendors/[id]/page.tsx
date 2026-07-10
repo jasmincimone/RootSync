@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { Container } from "@/components/Container";
@@ -19,7 +19,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { ShopMediaCarousel } from "@/components/ShopMediaCarousel";
 import { UserAvatar } from "@/components/UserAvatar";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
-import { discoverListingPath } from "@/config/discoverPaths";
+import { discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
 import { communityAuthorSelect } from "@/lib/userProfileDisplay";
@@ -30,6 +30,8 @@ import { parsePulsePostMediaJson } from "@/lib/pulsePostMedia";
 import { loadVendorPulseReviews, loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
 import { VENDOR_STATUS, PULSE_POST_STATUS } from "@/lib/roles";
 import { loadVendorCarousel } from "@/lib/vendorCarousel";
+import { findVendorProfileByPublicRef, vendorPublicRefWhere } from "@/lib/vendorPublicResolve";
+import { isVendorCuidRef } from "@/lib/vendorPublicSlug";
 
 import type { Prisma } from "@prisma/client";
 import { vendorsToMapPins } from "@/lib/discoverMap";
@@ -44,25 +46,18 @@ const publicVendorInclude = {
   },
 } satisfies Prisma.VendorProfileInclude;
 
-async function loadVendorForPage(profileId: string, viewerUserId: string | undefined) {
-  const approved = await prisma.vendorProfile.findFirst({
-    where: { id: profileId, status: VENDOR_STATUS.APPROVED },
-    include: publicVendorInclude,
-  });
-  if (approved) {
-    return { vendor: approved, isOwnerPreview: false as const };
-  }
-  if (!viewerUserId) {
+async function loadVendorForPage(publicRef: string, viewerUserId: string | undefined) {
+  const vendor = await findVendorProfileByPublicRef(publicRef, publicVendorInclude);
+  if (!vendor) {
     return null;
   }
-  const own = await prisma.vendorProfile.findFirst({
-    where: { id: profileId, userId: viewerUserId },
-    include: publicVendorInclude,
-  });
-  if (!own) {
-    return null;
+  if (vendor.status === VENDOR_STATUS.APPROVED) {
+    return { vendor, isOwnerPreview: false as const };
   }
-  return { vendor: own, isOwnerPreview: true as const };
+  if (viewerUserId && vendor.userId === viewerUserId) {
+    return { vendor, isOwnerPreview: true as const };
+  }
+  return null;
 }
 
 export const dynamic = "force-dynamic";
@@ -74,7 +69,7 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   const vendor = await prisma.vendorProfile.findFirst({
-    where: { id, status: VENDOR_STATUS.APPROVED },
+    where: { ...vendorPublicRefWhere(id), status: VENDOR_STATUS.APPROVED },
     select: { displayName: true, bio: true },
   });
   if (!vendor) return { title: "Vendor" };
@@ -104,6 +99,13 @@ export default async function PublicVendorProfilePage({
   const loaded = await loadVendorForPage(id, session?.user?.id);
   if (!loaded) notFound();
   const { vendor, isOwnerPreview } = loaded;
+
+  if (vendor.publicSlug && isVendorCuidRef(id)) {
+    const canonical = discoverVendorPath(vendor);
+    permanentRedirect(
+      returnTo ? `${canonical}?returnTo=${encodeURIComponent(returnTo)}` : canonical,
+    );
+  }
 
   const mediaCarousel = await loadVendorCarousel(vendor.id);
 

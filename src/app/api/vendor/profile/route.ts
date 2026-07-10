@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 
 import { authOptions } from "@/lib/authOptions";
 import { normalizeWebsiteUrl } from "@/lib/paymentUrl";
 import { prisma } from "@/lib/prisma";
 import { ROLES, VENDOR_STATUS } from "@/lib/roles";
+import { validateVendorPublicSlug } from "@/lib/vendorPublicSlug";
 
 export async function PATCH(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -95,18 +97,41 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  await prisma.vendorProfile.update({
-    where: { userId: session.user.id },
-    data: {
-      ...(displayName != null && { displayName: displayName.trim() }),
-      ...(bio !== undefined && { bio: bio?.trim() || null }),
-      ...(contactEmail !== undefined && { contactEmail: contactEmail?.trim() || null }),
-      ...(pickupLocation !== undefined && { pickupLocation: pickupLocation?.trim() || null }),
-      ...(latInBody && { latitude: latitudeUpdate }),
-      ...(lngInBody && { longitude: longitudeUpdate }),
-      ...(raw.website !== undefined && { website: websiteUpdate }),
-    },
-  });
+  let publicSlugUpdate: string | null | undefined;
+  if (raw.publicSlug !== undefined) {
+    const parsed =
+      typeof raw.publicSlug === "string"
+        ? validateVendorPublicSlug(raw.publicSlug)
+        : { ok: false as const, error: "Invalid profile URL." };
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    publicSlugUpdate = parsed.slug;
+  }
+
+  try {
+    await prisma.vendorProfile.update({
+      where: { userId: session.user.id },
+      data: {
+        ...(displayName != null && { displayName: displayName.trim() }),
+        ...(bio !== undefined && { bio: bio?.trim() || null }),
+        ...(contactEmail !== undefined && { contactEmail: contactEmail?.trim() || null }),
+        ...(pickupLocation !== undefined && { pickupLocation: pickupLocation?.trim() || null }),
+        ...(latInBody && { latitude: latitudeUpdate }),
+        ...(lngInBody && { longitude: longitudeUpdate }),
+        ...(raw.website !== undefined && { website: websiteUpdate }),
+        ...(raw.publicSlug !== undefined && { publicSlug: publicSlugUpdate }),
+      },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json(
+        { error: "That profile URL is already taken. Choose another." },
+        { status: 409 },
+      );
+    }
+    throw err;
+  }
 
   return NextResponse.json({ ok: true });
 }

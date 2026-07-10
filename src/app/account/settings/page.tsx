@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeft, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 
@@ -65,6 +66,7 @@ type SettingsState = {
 
 export default function AccountSettingsPage() {
   const { update: updateSession } = useSession();
+  const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<SettingsSectionId | null>(null);
   const [data, setData] = useState<SettingsState | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -134,6 +136,13 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const section = searchParams.get("section");
+    if (section === "account" || section === "password" || section === "two-factor") {
+      setActiveSection(section);
+    }
+  }, [searchParams]);
 
   const onSaveNeighborhoods = async (e: React.FormEvent) => {
     e.preventDefault();

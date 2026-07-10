@@ -8,6 +8,7 @@ import {
   getConnectStripeClient,
   getDefaultCountry,
   stripeConnectErrorMessage,
+  stripeConnectForbiddenHint,
 } from "@/lib/stripeConnectDemo";
 
 export const runtime = "nodejs";
@@ -33,8 +34,20 @@ export async function GET() {
     });
   }
 
-  const onboarding = await fetchConnectAccountStatus(user.stripeConnectAccountId);
-  return NextResponse.json({ accountId: user.stripeConnectAccountId, onboarding });
+  try {
+    const onboarding = await fetchConnectAccountStatus(user.stripeConnectAccountId);
+    return NextResponse.json({ accountId: user.stripeConnectAccountId, onboarding });
+  } catch (err) {
+    console.error("[connect/account GET] failed:", err);
+    return NextResponse.json(
+      {
+        error: stripeConnectErrorMessage(err),
+        hint: stripeConnectForbiddenHint(err),
+        accountId: user.stripeConnectAccountId,
+      },
+      { status: 502 },
+    );
+  }
 }
 
 /**

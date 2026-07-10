@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
+import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import {
   canEditShopLandingAsVendor,
@@ -33,7 +34,7 @@ export async function GET() {
       canEdit,
       vendorProfileId: profile.id,
       shopName: profile.displayName,
-      publicUrl: `/discover/vendors/${profile.id}`,
+      publicUrl: discoverVendorPath(profile),
       mediaCarousel,
     });
   } catch (e) {

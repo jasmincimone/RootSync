@@ -51,6 +51,7 @@ export type DiscoverListingRow = {
   imageUrl: string | null;
   vendorProfile: {
     id: string;
+    publicSlug?: string | null;
     displayName: string;
     profileImageUrl: string | null;
   };
@@ -77,6 +78,7 @@ export type DiscoverDirectoryRow = {
 
 export type DiscoverVendorRow = {
   id: string;
+  publicSlug: string | null;
   displayName: string;
   bio: string | null;
   pickupLocation: string | null;
@@ -613,7 +615,7 @@ export function DiscoverBrowse({
                         />
                         <div className="min-w-0 flex-1">
                           <Link
-                            href={buildDetailHref(discoverVendorPath(v.id), "vendor", v.id)}
+                            href={buildDetailHref(discoverVendorPath(v), "vendor", v.id)}
                             onClick={rememberResults}
                             className="text-sm font-semibold text-fix-heading hover:text-fix-link hover:underline"
                           >
@@ -814,7 +816,7 @@ export function DiscoverBrowse({
                         </Link>
                         <Link
                           href={buildDetailHref(
-                            discoverVendorPath(listing.vendorProfile.id),
+                            discoverVendorPath(listing.vendorProfile),
                             "vendor",
                             listing.vendorProfile.id,
                           )}

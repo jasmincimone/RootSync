@@ -3,27 +3,34 @@
 import { useState } from "react";
 
 import { BuyNowButton } from "@/components/BuyNowButton";
+import { BuyNowLink } from "@/components/BuyNowLink";
 import {
   ListingVariantSelector,
   type ListingVariant,
 } from "@/components/ListingVariantSelector";
 import { ButtonLink } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type Props = {
   listingId: string;
   listingType: string;
   variants: ListingVariant[];
-  paymentUrl?: string | null;
+  paymentLinkUrl?: string | null;
   productUrl?: string | null;
+  stripeCheckoutReady?: boolean;
   compact?: boolean;
 };
+
+const secondaryCheckoutClass =
+  "inline-flex items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface font-medium text-fix-link ring-1 ring-inset ring-fix-border/15 hover:bg-fix-bg-muted";
 
 export function MarketplaceListingPurchase({
   listingId,
   listingType,
   variants,
-  paymentUrl,
+  paymentLinkUrl,
   productUrl,
+  stripeCheckoutReady = false,
   compact = false,
 }: Props) {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
@@ -35,6 +42,59 @@ export function MarketplaceListingPurchase({
     selectedVariantId && needsVariant
       ? `/discover/listings/${listingId}/book?variant=${encodeURIComponent(selectedVariantId)}`
       : `/discover/listings/${listingId}/book`;
+
+  const hasPaymentLink = !!paymentLinkUrl?.trim();
+  const hasStripeCheckout = stripeCheckoutReady;
+  const variantBlocked = needsVariant && !selectedVariantId;
+
+  function renderProductCheckout() {
+    if (hasStripeCheckout && hasPaymentLink) {
+      return (
+        <>
+          <BuyNowButton
+            listingId={listingId}
+            variantId={selectedVariantId}
+            size={compact ? "sm" : "md"}
+            fullWidth={compact}
+            disabled={variantBlocked}
+          />
+          <a
+            href={paymentLinkUrl!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              secondaryCheckoutClass,
+              compact ? "h-9 w-full px-3 text-sm" : "h-11 px-5 text-sm",
+            )}
+          >
+            Pay Link
+          </a>
+        </>
+      );
+    }
+
+    if (hasPaymentLink) {
+      return (
+        <BuyNowLink
+          href={paymentLinkUrl!}
+          size={compact ? "sm" : "md"}
+          className={compact ? "w-full" : undefined}
+        >
+          Buy now
+        </BuyNowLink>
+      );
+    }
+
+    return (
+      <BuyNowButton
+        listingId={listingId}
+        variantId={selectedVariantId}
+        size={compact ? "sm" : "md"}
+        fullWidth={compact}
+        disabled={variantBlocked}
+      />
+    );
+  }
 
   return (
     <div className={compact ? "flex flex-col gap-3" : "flex flex-col gap-4"}>
@@ -58,28 +118,8 @@ export function MarketplaceListingPurchase({
             Book now
           </ButtonLink>
         ) : (
-          <BuyNowButton
-            listingId={listingId}
-            variantId={selectedVariantId}
-            size={compact ? "sm" : "md"}
-            fullWidth={compact}
-            disabled={needsVariant && !selectedVariantId}
-          />
+          renderProductCheckout()
         )}
-        {paymentUrl ? (
-          <a
-            href={paymentUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={
-              compact
-                ? "inline-flex w-full items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface px-4 py-2 text-sm font-medium text-fix-link ring-1 ring-inset ring-fix-border/15 hover:bg-fix-bg-muted"
-                : "inline-flex h-11 items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface px-5 text-sm font-medium text-fix-link ring-1 ring-inset ring-fix-border/15 hover:bg-fix-bg-muted"
-            }
-          >
-            Alternate checkout
-          </a>
-        ) : null}
         {productUrl ? (
           <a
             href={productUrl}

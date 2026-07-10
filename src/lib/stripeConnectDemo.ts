@@ -27,6 +27,33 @@ export function stripeConnectErrorMessage(err: unknown): string {
   return "Unknown error.";
 }
 
+/** Actionable hint when Stripe returns 403 on Connect account APIs. */
+export function stripeConnectForbiddenHint(err: unknown): string {
+  const msg = stripeConnectErrorMessage(err).toLowerCase();
+  const usingRestricted =
+    typeof process.env.STRIPE_SECRET_KEY === "string" &&
+    process.env.STRIPE_SECRET_KEY.startsWith("rk_");
+
+  if (usingRestricted) {
+    return (
+      "Your STRIPE_SECRET_KEY looks like a restricted key (rk_…). In Stripe Dashboard → " +
+      "Developers → API keys → edit this key → enable Connect → Accounts (Read and Write). " +
+      "Then restart the dev server. Until then, use a full secret key (sk_…) for Connect setup."
+    );
+  }
+  if (msg.includes("does not have permission to access account")) {
+    return (
+      "This acct_… id is not a connected account under your platform — often it is your main " +
+      "Stripe business account, an account from another platform, or test/live mismatch. " +
+      'Use "Create Stripe account" here instead of pasting your platform account id.'
+    );
+  }
+  return (
+    "Confirm STRIPE_SECRET_KEY is for the same Stripe platform (test vs live) where the account " +
+    "was created, and that this is a Connect connected account from RootSync — not your platform account."
+  );
+}
+
 /**
  * Demo-only defaults.
  * Replace these values in your own implementation once you wire real config.

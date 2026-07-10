@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { discoverVendorPath } from "@/config/discoverPaths";
 import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
 import { VENDOR_STATUS } from "@/lib/roles";
@@ -34,7 +35,7 @@ export async function MenuFeaturedVendors() {
         {featured.map((vendor) => (
           <li key={vendor.id}>
             <Link
-              href={`/discover/vendors/${vendor.id}`}
+              href={discoverVendorPath(vendor)}
               className="block rounded-xl px-3 py-2 text-sm font-medium text-fix-link hover:bg-fix-bg-muted hover:text-fix-link-hover"
             >
               {vendor.displayName}

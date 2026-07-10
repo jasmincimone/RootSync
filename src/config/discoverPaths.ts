@@ -3,8 +3,14 @@ import { withDiscoverReturnTo } from "@/lib/discoverReturn";
 
 export const DISCOVER_BASE = "/discover";
 
-export function discoverVendorPath(vendorId: string) {
-  return `${DISCOVER_BASE}/vendors/${vendorId}`;
+export type DiscoverVendorRef = string | { id: string; publicSlug?: string | null };
+
+export function discoverVendorPath(vendor: DiscoverVendorRef): string {
+  if (typeof vendor === "string") {
+    return `${DISCOVER_BASE}/vendors/${vendor}`;
+  }
+  const segment = vendor.publicSlug?.trim() || vendor.id;
+  return `${DISCOVER_BASE}/vendors/${segment}`;
 }
 
 export function discoverListingPath(listingId: string) {

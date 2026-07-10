@@ -700,7 +700,9 @@ export function VendorOfferingForm({ mode, listingId, initial }: Props) {
             className={inputClass}
           />
           <p className="mt-1 text-xs text-fix-text-muted">
-            Optional alternate checkout. Active listings also get built-in Buy now via Stripe Checkout.
+            Optional per-listing override. When set, Buy now uses this link instead of your default
+            payment link from Payments setup. Active listings with Stripe Connect also show built-in
+            Buy now alongside Pay Link when both are configured.
           </p>
         </div>
 

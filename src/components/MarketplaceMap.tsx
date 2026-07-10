@@ -90,7 +90,9 @@ export function MarketplaceMap({ pins, compact, buildDetailHref }: Props) {
       const name = escapeHtml(pin.label);
       const href =
         buildDetailHref?.(pin) ??
-        (pin.kind === "vendor" ? discoverVendorPath(pin.id) : discoverDirectoryPath(pin.id));
+        (pin.kind === "vendor"
+          ? discoverVendorPath({ id: pin.id, publicSlug: pin.publicSlug })
+          : discoverDirectoryPath(pin.id));
       const subtitle =
         pin.kind === "vendor" ? "Verified vendor" : "Directory listing";
       const subtitleColor = pin.kind === "vendor" ? "#044730" : "#b8860b";

@@ -2,6 +2,7 @@ export type DiscoverMapPin =
   | {
       kind: "vendor";
       id: string;
+      publicSlug?: string | null;
       label: string;
       latitude: number;
       longitude: number;
@@ -23,11 +24,18 @@ export type MarketplaceMapVendor = {
 };
 
 export function vendorsToMapPins(
-  vendors: { id: string; displayName: string; latitude: number; longitude: number }[],
+  vendors: {
+    id: string;
+    publicSlug?: string | null;
+    displayName: string;
+    latitude: number;
+    longitude: number;
+  }[],
 ): DiscoverMapPin[] {
   return vendors.map((v) => ({
     kind: "vendor",
     id: v.id,
+    publicSlug: v.publicSlug,
     label: v.displayName,
     latitude: v.latitude,
     longitude: v.longitude,

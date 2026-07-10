@@ -169,11 +169,15 @@ model VendorProfile {
   pickupLocation  String?
   /// Public website (https), shown on marketplace
   website         String?
+  /// Default external checkout URL (Stripe Payment Link, PayPal, etc.) for listings
+  paymentLinkUrl  String?
   /// WGS84 — set in vendor profile for map pin (optional)
   latitude        Float?
   longitude       Float?
   /// Platform shop this vendor manages (urban-roots | self-care | stitch | survival-kits)
   shopSlug        String?  @unique
+  /// Public Discover URL segment: /discover/vendors/{publicSlug}
+  publicSlug      String?  @unique
   /// Image/video carousel on the public vendor profile
   mediaCarouselJson Json?
   status          String   @default("PENDING") // PENDING | APPROVED | REJECTED | SUSPENDED

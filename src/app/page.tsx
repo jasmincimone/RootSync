@@ -119,7 +119,7 @@ export default async function HomePage() {
                   {featuredVendors.map((vendor) => (
                     <Link
                       key={vendor.id}
-                      href={discoverVendorPath(vendor.id)}
+                      href={discoverVendorPath(vendor)}
                       className="rounded-2xl border border-gold/30 bg-gold/10 px-4 py-4 text-center text-sm font-semibold text-clay-muted transition-all hover:border-gold/50 hover:bg-gold/15"
                     >
                       {vendor.displayName}

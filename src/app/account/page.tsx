@@ -24,6 +24,7 @@ export default async function AccountPage() {
       vendorProfile: {
         select: {
           id: true,
+          publicSlug: true,
           displayName: true,
           profileImageUrl: true,
           status: true,
@@ -36,7 +37,10 @@ export default async function AccountPage() {
     user?.vendorProfile?.displayName ?? user?.name?.trim() ?? session.user.email ?? "Your account";
   const imageUrl = user?.vendorProfile?.profileImageUrl ?? user?.imageUrl;
   const profileHref = user?.vendorProfile?.id
-    ? discoverVendorPath(user.vendorProfile.id)
+    ? discoverVendorPath({
+        id: user.vendorProfile.id,
+        publicSlug: user.vendorProfile.publicSlug,
+      })
     : `/members/${user?.id ?? session.user.id}`;
 
   return (
@@ -45,7 +49,6 @@ export default async function AccountPage() {
         displayName={displayName}
         imageUrl={imageUrl}
         profileHref={profileHref}
-        subtitle="View your profile"
       />
 
       <AccountFtueChecklist />

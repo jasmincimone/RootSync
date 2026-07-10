@@ -96,7 +96,7 @@ export default async function VendorDashboardPage() {
       ) : null}
 
       {canManageVendorListings(session.user.role ?? "CUSTOMER", profile.status) && (
-        <VendorHubNav publicPageHref={discoverVendorPath(profile.id)} />
+        <VendorHubNav publicPageHref={discoverVendorPath(profile)} />
       )}
     </AccountSubpageBody>
   );

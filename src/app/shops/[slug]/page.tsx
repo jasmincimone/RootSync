@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 
-import { resolveVendorIdForShopSlug } from "@/lib/vendorShopRedirect";
+import { resolveVendorDiscoverPathForShopSlug } from "@/lib/vendorShopRedirect";
 
 type PageParams = { params: Promise<{ slug: string }> };
 
 export default async function LegacyShopRedirect({ params }: PageParams) {
   const { slug } = await params;
-  const vendorId = await resolveVendorIdForShopSlug(slug);
-  if (!vendorId) {
+  const path = await resolveVendorDiscoverPathForShopSlug(slug);
+  if (!path) {
     redirect("/discover");
   }
-  redirect(`/discover/vendors/${vendorId}`);
+  redirect(path);
 }

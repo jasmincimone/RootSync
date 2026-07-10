@@ -15,8 +15,10 @@ import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { PulseRatingBadge } from "@/components/pulse/PulseRatingDisplay";
 import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurchase";
+import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
+import { resolveListingCheckoutOptions } from "@/lib/listingCheckoutOptions";
 import { prisma } from "@/lib/prisma";
 import { loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
 import { LISTING_VISIBILITY, OFFERING_STATUS, VENDOR_STATUS } from "@/lib/roles";
@@ -66,11 +68,16 @@ async function loadListingForPage(listingId: string, viewerUserId: string | unde
       vendorProfile: {
         select: {
           id: true,
+          publicSlug: true,
           userId: true,
           displayName: true,
           status: true,
           pickupLocation: true,
           website: true,
+          paymentLinkUrl: true,
+          user: {
+            select: { stripeConnectAccountId: true },
+          },
         },
       },
     },
@@ -116,6 +123,8 @@ function PurchasePanel({
   variants,
   isOwnerPreview,
   vendorId,
+  stripeCheckoutReady,
+  paymentLinkUrl,
   detailProps,
   className,
   returnTo,
@@ -137,6 +146,8 @@ function PurchasePanel({
   }[];
   isOwnerPreview: boolean;
   vendorId: string;
+  stripeCheckoutReady: boolean;
+  paymentLinkUrl: string | null;
   detailProps: Omit<Parameters<typeof ListingDetailHighlights>[0], "priceCents" | "variantCount">;
   className?: string;
   returnTo?: string | null;
@@ -176,8 +187,9 @@ function PurchasePanel({
             listingId={listing.id}
             listingType={listing.listingType}
             variants={variants}
-            paymentUrl={offering.paymentUrl}
+            paymentLinkUrl={paymentLinkUrl}
             productUrl={offering.productUrl}
+            stripeCheckoutReady={stripeCheckoutReady}
           />
         )}
 
@@ -233,6 +245,12 @@ export default async function DiscoverListingPage({
 
   const vendorPulse = !isOwnerPreview ? await loadVendorPulseSummary(v.id) : null;
 
+  const checkoutOptions = await resolveListingCheckoutOptions({
+    offeringPaymentUrl: offering.paymentUrl,
+    vendorPaymentLinkUrl: v.paymentLinkUrl,
+    stripeConnectAccountId: v.user.stripeConnectAccountId,
+  });
+
   return (
     <div className="bg-fix-bg-muted/30">
       <section className="border-b border-fix-border/15 bg-fix-surface">
@@ -244,7 +262,7 @@ export default async function DiscoverListingPage({
             </Link>
             <span className="mx-2">/</span>
             <Link
-              href={`/discover/vendors/${v.id}`}
+              href={discoverVendorPath(v)}
               className="text-fix-link hover:text-fix-link-hover"
             >
               {v.displayName}
@@ -305,6 +323,8 @@ export default async function DiscoverListingPage({
                 variants={variants}
                 isOwnerPreview={isOwnerPreview}
                 vendorId={v.id}
+                stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}
+                paymentLinkUrl={checkoutOptions.paymentLinkUrl}
                 detailProps={detailProps}
                 returnTo={returnTo}
               />
@@ -330,7 +350,7 @@ export default async function DiscoverListingPage({
               </h2>
               <p className="mt-3">
                 <Link
-                  href={`/discover/vendors/${v.id}`}
+                  href={discoverVendorPath(v)}
                   className="text-lg font-medium text-fix-link hover:text-fix-link-hover"
                 >
                   {v.displayName}
@@ -365,6 +385,8 @@ export default async function DiscoverListingPage({
                 variants={variants}
                 isOwnerPreview={isOwnerPreview}
                 vendorId={v.id}
+                stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}
+                paymentLinkUrl={checkoutOptions.paymentLinkUrl}
                 detailProps={detailProps}
                 className="overflow-hidden border-fix-border/15 p-0 shadow-soft"
                 returnTo={returnTo}

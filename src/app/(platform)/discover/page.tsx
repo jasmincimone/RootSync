@@ -33,7 +33,7 @@ export default async function DiscoverPage() {
     prisma.listing.findMany({
       where: publicListingWhere,
       include: {
-        vendorProfile: { select: { id: true, displayName: true, profileImageUrl: true } },
+        vendorProfile: { select: { id: true, publicSlug: true, displayName: true, profileImageUrl: true } },
         offering: {
           select: {
             paymentUrl: true,
@@ -72,6 +72,7 @@ export default async function DiscoverPage() {
         <DiscoverMarketplace
           vendors={featuredVendors.map((v) => ({
             id: v.id,
+            publicSlug: v.publicSlug,
             displayName: v.displayName,
             bio: v.bio,
             pickupLocation: v.pickupLocation,

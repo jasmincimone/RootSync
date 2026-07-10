@@ -9,6 +9,7 @@ import { FormFeedback } from "@/components/ui/FormFeedback";
 
 type Profile = {
   displayName: string;
+  publicSlug: string | null;
   profileImageUrl: string | null;
   bio: string | null;
   contactEmail: string | null;
@@ -21,6 +22,7 @@ type Profile = {
 export function VendorProfileForm({ initial }: { initial: Profile }) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(initial.displayName);
+  const [publicSlug, setPublicSlug] = useState(initial.publicSlug ?? "");
   const [profileImageUrl, setProfileImageUrl] = useState(initial.profileImageUrl ?? "");
   const [bio, setBio] = useState(initial.bio ?? "");
   const [contactEmail, setContactEmail] = useState(initial.contactEmail ?? "");
@@ -85,6 +87,7 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           displayName,
+          publicSlug,
           bio,
           contactEmail,
           pickupLocation,
@@ -111,6 +114,30 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
   return (
     <form onSubmit={handleSubmit} className="max-w-lg space-y-6">
       <FormFeedback success={saveSuccess} error={error} />
+      <div className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 p-4">
+        <label htmlFor="publicSlug" className="block text-sm font-medium text-fix-heading">
+          Profile URL
+        </label>
+        <p className="mt-1 text-xs text-fix-text-muted">
+          Choose a short path for your public vendor page. Leave blank to use the default link.
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <span className="shrink-0 text-sm text-fix-text-muted">/discover/vendors/</span>
+          <input
+            id="publicSlug"
+            value={publicSlug}
+            onChange={(e) => setPublicSlug(e.target.value)}
+            placeholder="thefixurbanroots"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text sm:min-w-0 sm:flex-1"
+          />
+        </div>
+        <p className="mt-2 text-xs text-fix-text-muted">
+          Lowercase letters, numbers, and hyphens only. Example:{" "}
+          <span className="font-medium text-fix-heading">thefixurbanroots</span>
+        </p>
+      </div>
       <VendorProfileImageField
         imageUrl={profileImageUrl}
         displayName={displayName}
