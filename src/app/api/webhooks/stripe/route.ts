@@ -118,6 +118,9 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
   if (checkoutType === "service_booking" && bookingId) {
     const { confirmPaidServiceBookingFromStripeSession } = await import("@/lib/confirmBooking");
     await confirmPaidServiceBookingFromStripeSession(session.id);
+  } else {
+    const { fulfillPaidEventTicketOrder } = await import("@/lib/fulfillEventTicket");
+    await fulfillPaidEventTicketOrder(orderId);
   }
 }
 

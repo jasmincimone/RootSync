@@ -24,7 +24,7 @@ Illustrations and icons for RootSync platform pages and marketing UI.
 
 #### `platform/explore/`
 
-Syntha menu cards and icons for the RootSync landing explore menu.
+Syntha-created menu cards and icons for the RootSync landing explore menu.
 
 | File | Feature |
 |------|---------|

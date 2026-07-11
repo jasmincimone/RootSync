@@ -47,6 +47,9 @@ const offeringDetailSelect = {
       location: true,
       venue: true,
       capacity: true,
+      attendanceMode: true,
+      externalJoinUrl: true,
+      meetUrl: true,
     },
   },
   variants: {

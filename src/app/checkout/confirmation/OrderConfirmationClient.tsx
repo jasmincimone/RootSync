@@ -50,6 +50,19 @@ type OrderFromApi = {
     calendarHtmlLink: string | null;
     serviceTitle: string;
   } | null;
+  eventJoin?: {
+    eventTitle: string;
+    ticketLabel: string;
+    quantity: number;
+    startsAt: string | null;
+    endsAt: string | null;
+    attendanceMode: string;
+    attendanceLabel: string;
+    venue: string | null;
+    location: string | null;
+    meetUrl: string | null;
+    externalJoinUrl: string | null;
+  } | null;
 };
 
 export function OrderConfirmationClient() {
@@ -164,7 +177,11 @@ export function OrderConfirmationClient() {
             </svg>
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-fix-heading">
-            {order.booking ? "Booking confirmed" : "Thank you for your order"}
+            {order.booking
+              ? "Booking confirmed"
+              : order.eventJoin
+                ? "Ticket confirmed"
+                : "Thank you for your order"}
           </h1>
           <p className="mt-2 text-fix-text-muted">
             Order <strong className="text-fix-heading">{order.id}</strong> placed on {date}.
@@ -205,6 +222,68 @@ export function OrderConfirmationClient() {
             <p className="mt-3 text-center">
               <Link href="/account/bookings" className="text-sm text-fix-link hover:text-fix-link-hover">
                 View all bookings
+              </Link>
+            </p>
+          </Card>
+        ) : null}
+
+        {order.eventJoin ? (
+          <Card className="mt-8 p-6">
+            <h2 className="text-lg font-semibold text-fix-heading">Your event</h2>
+            <p className="mt-2 text-fix-heading">{order.eventJoin.eventTitle}</p>
+            <p className="mt-1 text-sm text-fix-text-muted">
+              {order.eventJoin.ticketLabel} × {order.eventJoin.quantity}
+            </p>
+            <p className="mt-2 text-sm text-fix-text-muted">{order.eventJoin.attendanceLabel}</p>
+            {order.eventJoin.startsAt ? (
+              <p className="mt-2 text-sm text-fix-text-muted">
+                {new Intl.DateTimeFormat("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }).format(new Date(order.eventJoin.startsAt))}
+              </p>
+            ) : null}
+            {(order.eventJoin.venue || order.eventJoin.location) &&
+            !order.eventJoin.meetUrl &&
+            !order.eventJoin.externalJoinUrl ? (
+              <p className="mt-3 text-sm text-fix-text">
+                {[order.eventJoin.venue, order.eventJoin.location].filter(Boolean).join(" · ")}
+              </p>
+            ) : null}
+            {order.eventJoin.meetUrl ? (
+              <BookingMeetLink
+                className="mt-4 justify-center"
+                meetLink={order.eventJoin.meetUrl}
+                calendarHtmlLink={null}
+                status="CONFIRMED"
+              />
+            ) : null}
+            {order.eventJoin.externalJoinUrl ? (
+              <p className="mt-4 text-center">
+                <a
+                  href={order.eventJoin.externalJoinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-fix-link hover:text-fix-link-hover"
+                >
+                  Open event space
+                </a>
+              </p>
+            ) : null}
+            <p className="mt-4 text-center text-sm text-fix-text-muted">
+              Join details were emailed to{" "}
+              <strong className="text-fix-heading">{order.email}</strong>.
+            </p>
+            <p className="mt-3 text-center">
+              <Link
+                href={`/account/orders/${order.id}`}
+                className="text-sm text-fix-link hover:text-fix-link-hover"
+              >
+                View order
               </Link>
             </p>
           </Card>

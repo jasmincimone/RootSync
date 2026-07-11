@@ -71,22 +71,28 @@ type Props = {
 export function OfferingVariantEditor({ listingType, variants, onChange, disabled }: Props) {
   const showDuration = listingType === LISTING_TYPE.SERVICE;
   const showSku = listingType === LISTING_TYPE.PRODUCT;
+  const isEvent = listingType === LISTING_TYPE.EVENT;
 
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold text-fix-heading">Options & variations</h3>
+        <h3 className="text-sm font-semibold text-fix-heading">
+          {isEvent ? "Ticket tiers" : "Options & variations"}
+        </h3>
         <p className="mt-1 text-xs text-fix-text-muted">
-          One offering, multiple choices — each with its own name and price
-          {showDuration ? " and session length" : ""}. Shared description, image, and availability
-          apply to all. Describe what each option includes in your listing description above.
+          {isEvent
+            ? "One event, multiple ticket types — General Admission, VIP, Diamond, Platinum, Lifetime, etc. Shared schedule and attendance apply to all."
+            : `One offering, multiple choices — each with its own name and price${
+                showDuration ? " and session length" : ""
+              }. Shared description, image, and availability apply to all. Describe what each option includes in your listing description above.`}
         </p>
       </div>
 
       {variants.length === 0 ? (
         <p className="text-sm text-fix-text-muted">
-          No variations — uses the single price above. Add options for tiers like Seed Session /
-          Garden Blueprint.
+          {isEvent
+            ? "No ticket tiers yet — uses the single price above. Add options for General Admission, VIP, and more."
+            : "No variations — uses the single price above. Add options for tiers like Seed Session / Garden Blueprint."}
         </p>
       ) : (
         <ul className="space-y-3">
@@ -120,7 +126,7 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                       ),
                     )
                   }
-                  placeholder="e.g. Seed Session"
+                  placeholder={isEvent ? "e.g. General Admission" : "e.g. Seed Session"}
                   className={inputClass}
                 />
               </div>
@@ -201,7 +207,7 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
         disabled={disabled}
         onClick={() => onChange([...variants, newDraft()])}
       >
-        Add option
+        {isEvent ? "Add ticket tier" : "Add option"}
       </Button>
     </div>
   );

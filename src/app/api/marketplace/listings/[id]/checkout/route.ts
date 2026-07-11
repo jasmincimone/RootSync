@@ -6,6 +6,7 @@ import {
   createMarketplaceListingCheckout,
   loadListingForCheckout,
 } from "@/lib/marketplaceCheckout";
+import { rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,11 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
+    const limited = rateLimitResponse(request, "checkout", {
+      message: "Too many checkout attempts. Try again shortly.",
+    });
+    if (limited) return limited;
+
     const { id: listingId } = await context.params;
     const session = await getServerSession(authOptions);
 

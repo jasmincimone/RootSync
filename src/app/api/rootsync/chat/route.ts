@@ -7,6 +7,7 @@ import { rootSyncPrismaReady } from "@/lib/ensureRootSyncPrisma";
 import { withPrismaRetry } from "@/lib/prisma";
 import { formatAssistantError } from "@/lib/rootsenseChatErrors";
 import { ROOTSENSE_SYSTEM_PROMPT } from "@/lib/rootsenseSystemPrompt";
+import { rateLimitResponse } from "@/lib/rateLimit";
 
 const MAX_MESSAGES = 24;
 const MAX_CONTENT = 8000;
@@ -77,6 +78,12 @@ export async function POST(request: NextRequest) {
       { status: 401 }
     );
   }
+
+  const limited = rateLimitResponse(request, "rootsenseChat", {
+    userId: session.user.id,
+    message: "Too many chat requests. Try again shortly.",
+  });
+  if (limited) return limited;
 
   if (typeof (body as { message?: unknown }).message !== "string") {
     return NextResponse.json({ error: "Message is required." }, { status: 400 });

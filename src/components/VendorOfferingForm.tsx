@@ -29,14 +29,17 @@ import {
   type SerializedServiceBookingConfig,
 } from "@/lib/serviceBookingConfig";
 import {
+  EVENT_ATTENDANCE_MODE,
   FULFILLMENT_METHOD,
   LISTING_TYPE,
   type ResourceSubtype,
   OFFERING_STATUS,
   SERVICE_KIND,
+  type EventAttendanceMode,
   type FulfillmentMethod,
   type ServiceKind,
 } from "@/lib/roles";
+import { LISTING_DESCRIPTION_MAX_CHARS } from "@/lib/listingLimits";
 
 type WizardStepKey = "basics" | "details" | "options" | "checkout" | "publish";
 
@@ -92,9 +95,7 @@ const WIZARD_STEP_LABELS: Record<WizardStepKey, string> = {
 };
 
 function visibleWizardSteps(listingType: string): WizardStepKey[] {
-  const steps: WizardStepKey[] = ["basics", "details"];
-  if (listingType !== LISTING_TYPE.EVENT) steps.push("options");
-  steps.push("checkout", "publish");
+  const steps: WizardStepKey[] = ["basics", "details", "options", "checkout", "publish"];
   return steps;
 }
 
@@ -196,6 +197,13 @@ export function VendorOfferingForm({
   const [eventCapacity, setEventCapacity] = useState(
     initial?.details.event?.capacity?.toString() ?? "",
   );
+  const [eventAttendanceMode, setEventAttendanceMode] = useState<EventAttendanceMode>(
+    initial?.details.event?.attendanceMode ?? EVENT_ATTENDANCE_MODE.IN_PERSON,
+  );
+  const [eventExternalJoinUrl, setEventExternalJoinUrl] = useState(
+    initial?.details.event?.externalJoinUrl ?? "",
+  );
+  const [eventMeetUrl, setEventMeetUrl] = useState(initial?.details.event?.meetUrl ?? "");
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -244,6 +252,15 @@ export function VendorOfferingForm({
         location: eventLocation.trim() || null,
         venue: eventVenue.trim() || null,
         capacity: eventCapacity.trim() ? Number.parseInt(eventCapacity, 10) : null,
+        attendanceMode: eventAttendanceMode,
+        externalJoinUrl:
+          eventAttendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL
+            ? eventExternalJoinUrl.trim() || null
+            : null,
+        meetUrl:
+          eventAttendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET
+            ? eventMeetUrl.trim() || null
+            : null,
       },
     };
   }
@@ -262,6 +279,10 @@ export function VendorOfferingForm({
 
     if (!title.trim() || !description.trim()) {
       setError("Check title and description.");
+      return;
+    }
+    if (description.trim().length > LISTING_DESCRIPTION_MAX_CHARS) {
+      setError(`Description must be ${LISTING_DESCRIPTION_MAX_CHARS} characters or fewer.`);
       return;
     }
     if (!hasVariants && (cents < 0 || Number.isNaN(cents))) {
@@ -286,6 +307,31 @@ export function VendorOfferingForm({
     if (status === OFFERING_STATUS.SCHEDULED && !scheduledPublishAt.trim()) {
       setError("Scheduled offerings need a publish date and time.");
       return;
+    }
+
+    if (listingType === LISTING_TYPE.EVENT) {
+      if (
+        eventAttendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL &&
+        !eventExternalJoinUrl.trim()
+      ) {
+        setError("Add an external event link (Whova, Cvent, Zoom, etc.).");
+        return;
+      }
+      if (
+        eventAttendanceMode === EVENT_ATTENDANCE_MODE.IN_PERSON &&
+        !eventLocation.trim() &&
+        !eventVenue.trim()
+      ) {
+        setError("Add a venue or location for in-person events.");
+        return;
+      }
+      if (
+        eventAttendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET &&
+        (!eventStartsAt.trim() || !eventEndsAt.trim())
+      ) {
+        setError("Google Meet events need start and end times so we can create the room.");
+        return;
+      }
     }
 
     if (listingType === LISTING_TYPE.SERVICE) {
@@ -448,16 +494,17 @@ export function VendorOfferingForm({
           <textarea
             required
             rows={5}
+            maxLength={LISTING_DESCRIPTION_MAX_CHARS}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className={inputClass}
           />
-          {variantDrafts.length > 0 ? (
-            <p className="mt-1 text-xs text-fix-text-muted">
-              Describe what each option includes here — members see this before they choose a
-              variation.
-            </p>
-          ) : null}
+          <p className="mt-1 text-xs text-fix-text-muted">
+            {description.length}/{LISTING_DESCRIPTION_MAX_CHARS} characters (Stripe product limit)
+            {variantDrafts.length > 0
+              ? " · Describe what each ticket or option includes — members see this before they choose."
+              : ""}
+          </p>
         </div>
 
         <div>
@@ -644,8 +691,29 @@ export function VendorOfferingForm({
         ) : null}
 
         {currentStepKey === "details" && listingType === LISTING_TYPE.EVENT ? (
-          <FormSection title="Event details" description="Schedule and venue">
+          <FormSection
+            title="Event details"
+            description="When it happens, how people attend, and capacity"
+          >
           <fieldset className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-fix-text">Attendance</label>
+              <select
+                value={eventAttendanceMode}
+                onChange={(e) =>
+                  setEventAttendanceMode(e.target.value as EventAttendanceMode)
+                }
+                className={inputClass}
+              >
+                <option value={EVENT_ATTENDANCE_MODE.IN_PERSON}>In person — address / venue</option>
+                <option value={EVENT_ATTENDANCE_MODE.VIRTUAL_MEET}>
+                  Digital — Google Meet (created for you)
+                </option>
+                <option value={EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL}>
+                  Digital — external link (Whova, Cvent, Zoom…)
+                </option>
+              </select>
+            </div>
             <div>
               <label className="block text-sm font-medium text-fix-text">Starts</label>
               <input
@@ -664,20 +732,72 @@ export function VendorOfferingForm({
                 className={inputClass}
               />
             </div>
+            {eventAttendanceMode === EVENT_ATTENDANCE_MODE.IN_PERSON ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-fix-text">Venue</label>
+                  <input
+                    value={eventVenue}
+                    onChange={(e) => setEventVenue(e.target.value)}
+                    placeholder="Community garden, market hall…"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-fix-text">Location / address</label>
+                  <input
+                    value={eventLocation}
+                    onChange={(e) => setEventLocation(e.target.value)}
+                    placeholder="Street, city, state"
+                    className={inputClass}
+                  />
+                </div>
+              </>
+            ) : null}
+            {eventAttendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL ? (
+              <div>
+                <label className="block text-sm font-medium text-fix-text">
+                  External event space URL *
+                </label>
+                <input
+                  type="url"
+                  value={eventExternalJoinUrl}
+                  onChange={(e) => setEventExternalJoinUrl(e.target.value)}
+                  placeholder="https://…"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-fix-text-muted">
+                  Whova, Cvent, Zoom, or any host link. Shown on the listing for attendees.
+                </p>
+              </div>
+            ) : null}
+            {eventAttendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET ? (
+              <div className="rounded-lg border border-fix-border/15 bg-fix-bg-muted/40 px-3 py-2 text-xs text-fix-text-muted">
+                {eventMeetUrl ? (
+                  <>
+                    Meet room ready:{" "}
+                    <a
+                      href={eventMeetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-fix-link hover:text-fix-link-hover"
+                    >
+                      Open Google Meet
+                    </a>
+                    . Ticket holders get join details after checkout.
+                  </>
+                ) : (
+                  <>
+                    Save with start and end times to create a Google Meet room (same calendar setup
+                    as consultations). Join details stay private until after ticket purchase.
+                  </>
+                )}
+              </div>
+            ) : null}
             <div>
-              <label className="block text-sm font-medium text-fix-text">Location</label>
-              <input
-                value={eventLocation}
-                onChange={(e) => setEventLocation(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-fix-text">Venue</label>
-              <input value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} className={inputClass} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-fix-text">Capacity</label>
+              <label className="block text-sm font-medium text-fix-text">
+                Overall capacity (optional)
+              </label>
               <input
                 type="number"
                 min={0}
@@ -685,19 +805,23 @@ export function VendorOfferingForm({
                 onChange={(e) => setEventCapacity(e.target.value)}
                 className={inputClass}
               />
+              <p className="mt-1 text-xs text-fix-text-muted">
+                Total seats across all ticket tiers. Use Options for General Admission, VIP, etc.
+              </p>
             </div>
           </fieldset>
           </FormSection>
         ) : null}
 
-        {currentStepKey === "options" &&
-        (listingType === LISTING_TYPE.PRODUCT ||
-        listingType === LISTING_TYPE.SERVICE ||
-        listingType === LISTING_TYPE.RESOURCE) ? (
+        {currentStepKey === "options" ? (
           <FormSection
-            title="Options & pricing"
-            description="Variations members can choose at checkout"
-            defaultOpen={variantDrafts.length > 0}
+            title={listingType === LISTING_TYPE.EVENT ? "Ticket tiers" : "Options & pricing"}
+            description={
+              listingType === LISTING_TYPE.EVENT
+                ? "General Admission, VIP, Platinum — each with its own price"
+                : "Variations members can choose at checkout"
+            }
+            defaultOpen={variantDrafts.length > 0 || listingType === LISTING_TYPE.EVENT}
           >
           <fieldset className="space-y-3">
             <OfferingVariantEditor
@@ -724,9 +848,10 @@ export function VendorOfferingForm({
             className={inputClass}
           />
           <p className="mt-1 text-xs text-fix-text-muted">
-            Optional per-listing override. When set, Buy now uses this link instead of your default
-            payment link from Payments setup. Active listings with Stripe Connect also show built-in
-            Buy now alongside Pay Link when both are configured.
+            Prefer RootSync Checkout when Payment Hub / Connect is ready — that keeps the platform
+            fee. External pay links still work if you already sell elsewhere; those sales are
+            off-platform and do not include the RootSync fee. Optional per-listing override of your
+            default Payments link.
           </p>
         </div>
 

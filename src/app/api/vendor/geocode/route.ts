@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const limited = rateLimitResponse(request, "geocode", {
+    userId: session.user.id,
+    message: "Too many location lookups. Try again shortly.",
+  });
+  if (limited) return limited;
 
   const profile = await prisma.vendorProfile.findUnique({
     where: { userId: session.user.id },

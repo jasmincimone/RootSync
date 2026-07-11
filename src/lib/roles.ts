@@ -134,6 +134,19 @@ export const FULFILLMENT_METHOD = {
 
 export type FulfillmentMethod = (typeof FULFILLMENT_METHOD)[keyof typeof FULFILLMENT_METHOD];
 
+/**
+ * How an Event is attended — see EventDetails.attendanceMode.
+ * VIRTUAL_MEET uses platform Google Meet; VIRTUAL_EXTERNAL is Whova/Cvent/Zoom/etc.
+ */
+export const EVENT_ATTENDANCE_MODE = {
+  IN_PERSON: "IN_PERSON",
+  VIRTUAL_MEET: "VIRTUAL_MEET",
+  VIRTUAL_EXTERNAL: "VIRTUAL_EXTERNAL",
+} as const;
+
+export type EventAttendanceMode =
+  (typeof EVENT_ATTENDANCE_MODE)[keyof typeof EVENT_ATTENDANCE_MODE];
+
 /** Service booking lifecycle */
 export const BOOKING_STATUS = {
   PENDING_PAYMENT: "PENDING_PAYMENT",

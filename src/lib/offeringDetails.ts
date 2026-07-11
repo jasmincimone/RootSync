@@ -8,10 +8,12 @@ import {
   RESOURCE_SUBTYPE,
   SERVICE_KIND,
   FULFILLMENT_METHOD,
+  EVENT_ATTENDANCE_MODE,
   type ListingType,
   type ResourceSubtype,
   type ServiceKind,
   type FulfillmentMethod,
+  type EventAttendanceMode,
 } from "@/lib/roles";
 
 export type ProductDetailsInput = {
@@ -41,6 +43,10 @@ export type EventDetailsInput = {
   location?: string | null;
   venue?: string | null;
   capacity?: number | null;
+  attendanceMode?: EventAttendanceMode;
+  externalJoinUrl?: string | null;
+  meetUrl?: string | null;
+  googleCalendarEventId?: string | null;
 };
 
 export type OfferingDetailsPayload = {
@@ -164,6 +170,24 @@ export function parseOfferingDetailsFromBody(
   const event = (raw.event ?? raw) as Record<string, unknown>;
   const startsAt = parseOptionalDate(event.startsAt, "start date");
   const endsAt = parseOptionalDate(event.endsAt, "end date");
+  let attendanceMode: EventAttendanceMode | undefined;
+  const am = event.attendanceMode;
+  if (
+    typeof am === "string" &&
+    Object.values(EVENT_ATTENDANCE_MODE).includes(am as EventAttendanceMode)
+  ) {
+    attendanceMode = am as EventAttendanceMode;
+  } else if (am !== undefined && am !== null && am !== "") {
+    throw new Error("Invalid event attendance mode");
+  }
+  let externalJoinUrl: string | null | undefined;
+  if ("externalJoinUrl" in event) {
+    externalJoinUrl = normalizeProductUrl(event.externalJoinUrl);
+  }
+  let meetUrl: string | null | undefined;
+  if ("meetUrl" in event) {
+    meetUrl = normalizeProductUrl(event.meetUrl);
+  }
   return {
     event: {
       ...(startsAt !== undefined
@@ -173,6 +197,9 @@ export function parseOfferingDetailsFromBody(
       location: parseOptionalString(event.location),
       venue: parseOptionalString(event.venue),
       capacity: parseOptionalInt(event.capacity),
+      ...(attendanceMode ? { attendanceMode } : {}),
+      ...(externalJoinUrl !== undefined ? { externalJoinUrl } : {}),
+      ...(meetUrl !== undefined ? { meetUrl } : {}),
     },
   };
 }
@@ -204,6 +231,10 @@ export function serializeOfferingDetails(
       location: string | null;
       venue: string | null;
       capacity: number | null;
+      attendanceMode: string;
+      externalJoinUrl: string | null;
+      meetUrl: string | null;
+      googleCalendarEventId: string | null;
     } | null;
   },
 ): SerializedOfferingDetails {
@@ -239,6 +270,10 @@ export function serializeOfferingDetails(
           location: offering.eventDetails.location,
           venue: offering.eventDetails.venue,
           capacity: offering.eventDetails.capacity,
+          attendanceMode: offering.eventDetails.attendanceMode as EventAttendanceMode,
+          externalJoinUrl: offering.eventDetails.externalJoinUrl,
+          meetUrl: offering.eventDetails.meetUrl,
+          googleCalendarEventId: offering.eventDetails.googleCalendarEventId,
         }
       : null,
   };
@@ -332,6 +367,10 @@ async function createDetailForType(
           location: details?.event?.location ?? null,
           venue: details?.event?.venue ?? null,
           capacity: details?.event?.capacity ?? null,
+          attendanceMode: details?.event?.attendanceMode ?? EVENT_ATTENDANCE_MODE.IN_PERSON,
+          externalJoinUrl: details?.event?.externalJoinUrl ?? null,
+          meetUrl: details?.event?.meetUrl ?? null,
+          googleCalendarEventId: details?.event?.googleCalendarEventId ?? null,
         },
       });
       break;
@@ -429,6 +468,10 @@ export async function upsertOfferingDetails(
           location: details.event.location ?? null,
           venue: details.event.venue ?? null,
           capacity: details.event.capacity ?? null,
+          attendanceMode: details.event.attendanceMode ?? EVENT_ATTENDANCE_MODE.IN_PERSON,
+          externalJoinUrl: details.event.externalJoinUrl ?? null,
+          meetUrl: details.event.meetUrl ?? null,
+          googleCalendarEventId: details.event.googleCalendarEventId ?? null,
         },
         update: {
           ...(details.event.startsAt !== undefined
@@ -442,6 +485,16 @@ export async function upsertOfferingDetails(
           ...(details.event.location !== undefined ? { location: details.event.location } : {}),
           ...(details.event.venue !== undefined ? { venue: details.event.venue } : {}),
           ...(details.event.capacity !== undefined ? { capacity: details.event.capacity } : {}),
+          ...(details.event.attendanceMode !== undefined
+            ? { attendanceMode: details.event.attendanceMode }
+            : {}),
+          ...(details.event.externalJoinUrl !== undefined
+            ? { externalJoinUrl: details.event.externalJoinUrl }
+            : {}),
+          ...(details.event.meetUrl !== undefined ? { meetUrl: details.event.meetUrl } : {}),
+          ...(details.event.googleCalendarEventId !== undefined
+            ? { googleCalendarEventId: details.event.googleCalendarEventId }
+            : {}),
         },
       });
       break;

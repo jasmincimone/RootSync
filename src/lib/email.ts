@@ -274,3 +274,123 @@ export async function sendBookingCancellationEmail(
 
   return { ok: true };
 }
+
+export type EventTicketConfirmationEmailInput = {
+  memberEmail: string;
+  vendorEmail: string | null;
+  eventTitle: string;
+  ticketLabel: string;
+  quantity: number;
+  vendorName: string;
+  memberName: string | null;
+  startsAt: Date | null;
+  endsAt: Date | null;
+  attendanceLabel: string;
+  venue: string | null;
+  location: string | null;
+  meetUrl: string | null;
+  externalJoinUrl: string | null;
+  orderId: string;
+  totalCents: number;
+};
+
+export async function sendEventTicketConfirmationEmail(
+  input: EventTicketConfirmationEmailInput,
+): Promise<{ ok: boolean; error?: string; devBypass?: boolean }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  const when =
+    input.startsAt && input.endsAt
+      ? formatBookingWhen(input.startsAt, input.endsAt, "America/New_York")
+      : input.startsAt
+        ? new Intl.DateTimeFormat("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          }).format(input.startsAt)
+        : null;
+
+  const joinBlock = input.meetUrl
+    ? `<p><strong>Google Meet:</strong> <a href="${input.meetUrl}">${input.meetUrl}</a></p>
+       <p>Join a few minutes early so you can settle in.</p>`
+    : input.externalJoinUrl
+      ? `<p><strong>Event space:</strong> <a href="${input.externalJoinUrl}">${input.externalJoinUrl}</a></p>`
+      : input.venue || input.location
+        ? `<p><strong>Where:</strong> ${[input.venue, input.location].filter(Boolean).join(" · ")}</p>`
+        : "";
+
+  const ordersUrl = `${appOrigin()}/account/orders/${input.orderId}`;
+  const ticketLine = `${input.ticketLabel} × ${input.quantity}`;
+
+  const memberHtml = `
+    <p>Hi${input.memberName ? ` ${input.memberName}` : ""},</p>
+    <p>Your ticket for <strong>${input.eventTitle}</strong> with <strong>${input.vendorName}</strong> is confirmed.</p>
+    <p><strong>Ticket:</strong> ${ticketLine}</p>
+    <p><strong>Attendance:</strong> ${input.attendanceLabel}</p>
+    ${when ? `<p><strong>When:</strong> ${when}</p>` : ""}
+    ${joinBlock}
+    <p><strong>Total:</strong> ${formatPrice(input.totalCents)}</p>
+    <p><a href="${ordersUrl}">View your order</a></p>
+  `;
+
+  const vendorHtml = `
+    <p>New ticket sale for <strong>${input.eventTitle}</strong>.</p>
+    <p><strong>Buyer:</strong> ${input.memberName || input.memberEmail} (${input.memberEmail})</p>
+    <p><strong>Ticket:</strong> ${ticketLine}</p>
+    <p><strong>Attendance:</strong> ${input.attendanceLabel}</p>
+    ${when ? `<p><strong>When:</strong> ${when}</p>` : ""}
+    ${input.meetUrl ? `<p>Buyer received the Google Meet link.</p>` : ""}
+    ${input.externalJoinUrl ? `<p>Buyer received your external event space link.</p>` : ""}
+    <p><a href="${appOrigin()}/account/vendor/orders">View vendor orders</a></p>
+  `;
+
+  if (!key || !from) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[email] event ticket confirmation (dev):", {
+        member: input.memberEmail,
+        vendor: input.vendorEmail,
+        event: input.eventTitle,
+        meet: input.meetUrl,
+        external: input.externalJoinUrl,
+      });
+      return { ok: true, devBypass: true };
+    }
+    return { ok: false, error: "Email is not configured." };
+  }
+
+  const resend = new Resend(key);
+  const subject = `Ticket confirmed: ${input.eventTitle}`;
+
+  const sends = [
+    resend.emails.send({
+      from,
+      to: [input.memberEmail],
+      subject,
+      html: memberHtml,
+    }),
+  ];
+  if (input.vendorEmail) {
+    sends.push(
+      resend.emails.send({
+        from,
+        to: [input.vendorEmail],
+        subject: `Ticket sold: ${input.eventTitle}`,
+        html: vendorHtml,
+      }),
+    );
+  }
+
+  const results = await Promise.all(sends);
+  if (results.some((r) => r.error)) {
+    console.error(
+      "[email] event ticket confirmation error:",
+      results.map((r) => r.error).filter(Boolean),
+    );
+    return { ok: false, error: "Could not send event ticket confirmation email." };
+  }
+
+  return { ok: true };
+}

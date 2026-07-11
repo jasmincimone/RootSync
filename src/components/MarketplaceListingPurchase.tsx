@@ -51,13 +51,8 @@ export function MarketplaceListingPurchase({
   const checkoutUnavailable = !hasStripeCheckout && !hasPaymentLink;
 
   function renderProductCheckout() {
-    if (isEvent) {
-      return (
-        <p className="w-full text-sm text-fix-text-muted">
-          Event details are below. Ticket sales are coming soon — contact the vendor to attend.
-        </p>
-      );
-    }
+    const buyLabel = isEvent ? "Get tickets" : "Buy now";
+    const linkLabel = isEvent ? "Ticket link" : "Pay Link";
 
     if (hasStripeCheckout && hasPaymentLink) {
       return (
@@ -68,6 +63,7 @@ export function MarketplaceListingPurchase({
             size={compact ? "sm" : "md"}
             fullWidth={compact}
             disabled={variantBlocked}
+            label={buyLabel}
           />
           <a
             href={paymentLinkUrl!}
@@ -78,8 +74,12 @@ export function MarketplaceListingPurchase({
               compact ? "h-9 w-full px-3 text-sm" : "h-11 px-5 text-sm",
             )}
           >
-            Pay Link
+            {linkLabel}
           </a>
+          <p className="w-full text-xs text-fix-text-muted">
+            {linkLabel} opens the vendor&apos;s external checkout (off-platform — no RootSync
+            platform fee). Prefer in-app checkout when available.
+          </p>
         </>
       );
     }
@@ -92,19 +92,25 @@ export function MarketplaceListingPurchase({
           size={compact ? "sm" : "md"}
           fullWidth={compact}
           disabled={variantBlocked}
+          label={buyLabel}
         />
       );
     }
 
     if (hasPaymentLink) {
       return (
-        <BuyNowLink
-          href={paymentLinkUrl!}
-          size={compact ? "sm" : "md"}
-          className={compact ? "w-full" : undefined}
-        >
-          Buy now
-        </BuyNowLink>
+        <>
+          <BuyNowLink
+            href={paymentLinkUrl!}
+            size={compact ? "sm" : "md"}
+            className={compact ? "w-full" : undefined}
+          >
+            {buyLabel}
+          </BuyNowLink>
+          <p className="w-full text-xs text-fix-text-muted">
+            External checkout — off-platform payment (no RootSync platform fee).
+          </p>
+        </>
       );
     }
 
@@ -118,7 +124,7 @@ export function MarketplaceListingPurchase({
 
   return (
     <div className={compact ? "flex flex-col gap-3" : "flex flex-col gap-4"}>
-      {needsVariant && !isEvent ? (
+      {needsVariant ? (
         <ListingVariantSelector
           variants={variants}
           selectedId={selectedVariantId}
@@ -164,9 +170,11 @@ export function MarketplaceListingPurchase({
           <p className="w-full text-xs text-fix-text-muted">
             Sign in to complete booking. Choose an option above, then continue to payment.
           </p>
-        ) : !isEvent && !isService && variants.length > 0 && !checkoutUnavailable ? (
+        ) : !isService && variants.length > 0 && !checkoutUnavailable ? (
           <p className="w-full text-xs text-fix-text-muted">
-            Choose an option above, then continue to checkout.
+            {isEvent
+              ? "Choose a ticket tier above, then continue to checkout."
+              : "Choose an option above, then continue to checkout."}
           </p>
         ) : null}
       </div>

@@ -43,8 +43,11 @@ Run against **staging** first, then production. Check each box only after a real
 
 ## Discover honesty
 
-- [ ] Event cards say **View event** (not Buy now)
+- [ ] Event cards say **Get tickets** (detail supports ticket tiers + checkout)
+- [ ] Paid Google Meet event: confirmation page + email include Meet link
+- [ ] Paid external-link event: confirmation + email include event space URL
 - [ ] GrowSpace hub copy says coming soon; module nav limited to Overview
+- [ ] External Pay Link copy notes off-platform (no RootSync fee)
 
 ## Observability
 

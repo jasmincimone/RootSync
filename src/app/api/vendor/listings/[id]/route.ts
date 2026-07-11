@@ -17,11 +17,14 @@ import { parseServiceBookingConfigFromBody } from "@/lib/serviceBookingConfig";
 import { parseOfferingVariantsFromBody } from "@/lib/offeringVariants";
 import { publishOfferingIfDue } from "@/lib/publishScheduledOfferings";
 import { normalizePaymentUrlPatch, normalizeProductUrlPatch } from "@/lib/paymentUrl";
+import { assertListingDescription } from "@/lib/listingLimits";
+import { provisionEventMeetIfNeeded } from "@/lib/eventMeetProvision";
 import { hookOfferingPublished } from "@/lib/pulse/hooks";
 import { syncOfferingStripeProduct } from "@/lib/offeringStripeProduct";
 import { prisma } from "@/lib/prisma";
-import { OFFERING_STATUS, type ListingType } from "@/lib/roles";
+import { LISTING_TYPE, OFFERING_STATUS, type ListingType } from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
+import { rateLimitResponse } from "@/lib/rateLimit";
 
 async function getVendorOfferingByListingId(userId: string, listingId: string) {
   const user = await prisma.user.findUnique({
@@ -69,6 +72,12 @@ export async function PATCH(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const limited = rateLimitResponse(request, "upload", {
+    userId: session.user.id,
+    scope: "vendor-listing-write",
+    message: "Too many listing saves. Try again shortly.",
+  });
+  if (limited) return limited;
   const { id } = await params;
   const existing = await getVendorOfferingByListingId(session.user.id, id);
   if (!existing) {
@@ -87,7 +96,16 @@ export async function PATCH(
 
   const data: Prisma.OfferingUpdateInput = {};
   if (typeof title === "string") data.title = title.trim();
-  if (typeof description === "string") data.description = description.trim();
+  if (typeof description === "string") {
+    try {
+      data.description = assertListingDescription(description);
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Invalid description" },
+        { status: 400 },
+      );
+    }
+  }
   if (typeof priceCents === "number" && priceCents >= 0 && !Number.isNaN(priceCents)) {
     data.priceCents = Math.round(priceCents);
   }
@@ -261,6 +279,10 @@ export async function PATCH(
     } catch (err) {
       console.error("[vendor/listings PATCH] stripe sync threw:", err);
       stripeSync = { ok: false, error: err instanceof Error ? err.message : "Stripe sync failed" };
+    }
+
+    if (nextListingType === LISTING_TYPE.EVENT) {
+      await provisionEventMeetIfNeeded(offering.id);
     }
 
     let refreshed = offering;

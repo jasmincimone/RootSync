@@ -4,10 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { hashResetToken } from "@/lib/auth-tokens";
 import { validateStrongPassword } from "@/lib/passwordPolicy";
+import { rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimitResponse(request, "passwordReset", {
+    message: "Too many password reset attempts. Try again shortly.",
+  });
+  if (limited) return limited;
   try {
     const body = await request.json();
     const token = typeof body?.token === "string" ? body.token.trim() : "";

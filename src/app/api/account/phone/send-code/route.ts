@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizePhoneForSms } from "@/lib/phone";
 import { isSmsSendAvailable, sendSms } from "@/lib/sms";
 import { CHALLENGE_CHANNEL, CHALLENGE_PURPOSE } from "@/lib/twoFactor";
+import { rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const limited = rateLimitResponse(request, "otpSend", {
+    userId: session.user.id,
+    message: "Too many verification texts. Try again shortly.",
+  });
+  if (limited) return limited;
   try {
     const body = await request.json();
     if (body?.agreeToSmsTwoFactor !== true) {

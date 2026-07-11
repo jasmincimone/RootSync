@@ -187,7 +187,11 @@ Examples:
 
 ## Event
 
-A scheduled activity.
+A scheduled activity with optional ticket tiers (variants) and attendance mode:
+
+- In person (venue / address)
+- Digital via Google Meet (platform calendar)
+- Digital via external host link (Whova, Cvent, Zoom, etc.)
 
 Examples:
 

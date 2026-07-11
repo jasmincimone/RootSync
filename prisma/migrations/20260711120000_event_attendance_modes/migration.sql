@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "EventDetails" ADD COLUMN IF NOT EXISTS "attendanceMode" TEXT NOT NULL DEFAULT 'IN_PERSON';
+ALTER TABLE "EventDetails" ADD COLUMN IF NOT EXISTS "externalJoinUrl" TEXT;
+ALTER TABLE "EventDetails" ADD COLUMN IF NOT EXISTS "meetUrl" TEXT;
+ALTER TABLE "EventDetails" ADD COLUMN IF NOT EXISTS "googleCalendarEventId" TEXT;

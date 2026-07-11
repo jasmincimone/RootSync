@@ -352,6 +352,13 @@ model EventDetails {
   location   String?
   venue      String?
   capacity   Int?
+  /// IN_PERSON | VIRTUAL_MEET | VIRTUAL_EXTERNAL — see EVENT_ATTENDANCE_MODE
+  attendanceMode String @default("IN_PERSON")
+  /// Whova, Cvent, Zoom, etc. when attendanceMode is VIRTUAL_EXTERNAL
+  externalJoinUrl String?
+  /// Google Meet URL when attendanceMode is VIRTUAL_MEET (provisioned via Calendar)
+  meetUrl         String?
+  googleCalendarEventId String?
 }
 
 model CommunityPost {
@@ -400,6 +407,8 @@ model Order {
   trackingCarrier     String?
   trackingNumber      String?
   shippedAt           DateTime?
+  /// When buyer confirmation email (e.g. event join details) was sent — idempotency for webhooks
+  buyerConfirmationEmailedAt DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   user                User?     @relation(fields: [userId], references: [id], onDelete: SetNull)

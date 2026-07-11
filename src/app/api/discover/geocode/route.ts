@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { rateLimitResponse } from "@/lib/rateLimit";
 import { normalizeUsState } from "@/lib/usStates";
 
 export const runtime = "nodejs";
@@ -46,6 +47,11 @@ async function geocodeQuery(
  * Geocode a US ZIP or city + state (public, for Discover filters).
  */
 export async function GET(request: NextRequest) {
+  const limited = rateLimitResponse(request, "geocode", {
+    message: "Too many location lookups. Try again shortly.",
+  });
+  if (limited) return limited;
+
   const zip = request.nextUrl.searchParams.get("zip")?.trim() ?? "";
   const city = request.nextUrl.searchParams.get("city")?.trim() ?? "";
   const state = request.nextUrl.searchParams.get("state")?.trim() ?? "";

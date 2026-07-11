@@ -15,11 +15,14 @@ import { parseServiceBookingConfigFromBody } from "@/lib/serviceBookingConfig";
 import { parseOfferingVariantsFromBody } from "@/lib/offeringVariants";
 import { publishOfferingIfDue } from "@/lib/publishScheduledOfferings";
 import { normalizePaymentUrl, normalizeProductUrl } from "@/lib/paymentUrl";
+import { assertListingDescription } from "@/lib/listingLimits";
+import { provisionEventMeetIfNeeded } from "@/lib/eventMeetProvision";
 import { hookOfferingPublished } from "@/lib/pulse/hooks";
 import { syncOfferingStripeProduct } from "@/lib/offeringStripeProduct";
 import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, OFFERING_STATUS } from "@/lib/roles";
 import { requireApprovedVendorGate } from "@/lib/vendorListingAccess";
+import { rateLimitResponse } from "@/lib/rateLimit";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -44,6 +47,12 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const limited = rateLimitResponse(request, "upload", {
+    userId: session.user.id,
+    scope: "vendor-listing-write",
+    message: "Too many listing saves. Try again shortly.",
+  });
+  if (limited) return limited;
   const gate = await requireApprovedVendorGate(session.user.id);
   if ("error" in gate) {
     return NextResponse.json({ error: gate.error }, { status: 403 });
@@ -64,11 +73,20 @@ export async function POST(request: NextRequest) {
     scheduledPublishAt,
   } = body;
 
+  let descriptionNorm: string;
+  try {
+    if (typeof description !== "string") throw new Error("Description is required.");
+    descriptionNorm = assertListingDescription(description);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Invalid description" },
+      { status: 400 },
+    );
+  }
+
   if (
     typeof title !== "string" ||
     !title.trim() ||
-    typeof description !== "string" ||
-    !description.trim() ||
     typeof priceCents !== "number" ||
     priceCents < 0
   ) {
@@ -158,7 +176,7 @@ export async function POST(request: NextRequest) {
         listingType: type,
         status: resolvedSchedule.status,
         title: title.trim(),
-        description: description.trim(),
+        description: descriptionNorm,
         priceCents: Math.round(priceCents),
         category: typeof category === "string" ? category.trim() || null : null,
         imageUrl: typeof imageUrl === "string" ? imageUrl.trim() || null : null,
@@ -192,6 +210,10 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       console.error("[vendor/listings POST] stripe sync threw:", err);
       stripeSync = { ok: false, error: err instanceof Error ? err.message : "Stripe sync failed" };
+    }
+
+    if (type === LISTING_TYPE.EVENT) {
+      await provisionEventMeetIfNeeded(offering.id);
     }
 
     let refreshed = offering;

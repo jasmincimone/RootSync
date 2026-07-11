@@ -3,7 +3,7 @@ import { BookOpen, Calendar, MapPin, Package, Sparkles, Users } from "lucide-rea
 import { Card } from "@/components/ui/Card";
 import { resourceSubtypeLabel } from "@/config/resourceSubtypes";
 import { listingDisplayPrice, listingTypeLabel } from "@/lib/listingDisplay";
-import { LISTING_TYPE, type FulfillmentMethod, type ServiceKind } from "@/lib/roles";
+import { LISTING_TYPE, EVENT_ATTENDANCE_MODE, type EventAttendanceMode, type FulfillmentMethod, type ServiceKind } from "@/lib/roles";
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -40,6 +40,12 @@ const FULFILLMENT_LABELS: Record<FulfillmentMethod, string> = {
   HYBRID: "Hybrid",
 };
 
+const EVENT_ATTENDANCE_LABELS: Record<EventAttendanceMode, string> = {
+  [EVENT_ATTENDANCE_MODE.IN_PERSON]: "In person",
+  [EVENT_ATTENDANCE_MODE.VIRTUAL_MEET]: "Digital — Google Meet",
+  [EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL]: "Digital — external event space",
+};
+
 type ListingDetailPanelsProps = {
   listingType: string;
   priceCents: number;
@@ -61,6 +67,9 @@ type ListingDetailPanelsProps = {
     location: string | null;
     venue: string | null;
     capacity: number | null;
+    attendanceMode: string;
+    externalJoinUrl: string | null;
+    meetUrl: string | null;
   } | null;
 };
 
@@ -155,6 +164,13 @@ export function ListingTypeDetailCard({
   if (listingType === LISTING_TYPE.EVENT && event) {
     const start = formatEventDate(event.startsAt?.toISOString());
     const end = formatEventDate(event.endsAt?.toISOString());
+    const attendance =
+      EVENT_ATTENDANCE_LABELS[event.attendanceMode as EventAttendanceMode] ??
+      event.attendanceMode;
+    const showExternal =
+      event.attendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL &&
+      !!event.externalJoinUrl?.trim();
+    const showMeetHint = event.attendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET;
     return (
       <Card className="overflow-hidden border-fix-border/15 p-0">
         <div className="border-b border-fix-border/15 bg-fix-bg-muted/50 px-5 py-4">
@@ -163,15 +179,25 @@ export function ListingTypeDetailCard({
             <h2 className="text-sm font-semibold text-fix-heading">Event</h2>
           </div>
           <p className="mt-1 text-sm text-fix-text-muted">
-            Classes, workshops, and gatherings are listed as Events on Discover.
+            Classes, workshops, and gatherings — buy tickets on Discover.
           </p>
         </div>
         <dl className="px-5 py-1">
+          <DetailRow label="Attendance" value={attendance} />
           {start ? <DetailRow label="Starts" value={start} /> : null}
           {end ? <DetailRow label="Ends" value={end} /> : null}
           {event.venue?.trim() ? <DetailRow label="Venue" value={event.venue.trim()} /> : null}
           {event.location?.trim() ? (
             <DetailRow label="Location" value={event.location.trim()} />
+          ) : null}
+          {showExternal ? (
+            <DetailRow label="Event space" value={event.externalJoinUrl!.trim()} />
+          ) : null}
+          {showMeetHint ? (
+            <DetailRow
+              label="Join"
+              value="Google Meet link emailed after ticket purchase"
+            />
           ) : null}
           {event.capacity != null ? (
             <DetailRow label="Capacity" value={String(event.capacity)} />

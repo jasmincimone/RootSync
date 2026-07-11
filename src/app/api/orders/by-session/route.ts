@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { fulfillPaidEventTicketOrder } from "@/lib/fulfillEventTicket";
 import { getStripeClient } from "@/lib/stripe";
 
 /**
  * Confirmation-page lookup. Requires a real Stripe Checkout session id that
  * Stripe reports as paid/complete, then returns the matching RootSync order.
+ * Also fulfills event ticket emails when the webhook is delayed (local/dev).
  */
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("session_id")?.trim();
@@ -21,6 +23,22 @@ export async function GET(request: NextRequest) {
       stripeSession.status === "complete";
     if (!paid) {
       return NextResponse.json({ error: "Checkout session is not paid" }, { status: 404 });
+    }
+
+    // Mirror webhook mark-paid if webhook is delayed
+    const orderId = stripeSession.metadata?.orderId;
+    if (orderId) {
+      await prisma.order.updateMany({
+        where: { id: orderId, status: { not: "paid" } },
+        data: {
+          status: "paid",
+          stripeSessionId: sessionId,
+          stripePaymentIntent:
+            typeof stripeSession.payment_intent === "string"
+              ? stripeSession.payment_intent
+              : stripeSession.payment_intent?.id ?? null,
+        },
+      });
     }
   } catch (err) {
     console.error("[orders/by-session] stripe retrieve failed", err);
@@ -48,6 +66,16 @@ export async function GET(request: NextRequest) {
 
   if (!order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  }
+
+  let eventJoin = null;
+  if (order.status === "paid") {
+    try {
+      const fulfilled = await fulfillPaidEventTicketOrder(order.id);
+      eventJoin = fulfilled.eventJoin;
+    } catch (err) {
+      console.warn("[orders/by-session] event ticket fulfill:", err);
+    }
   }
 
   return NextResponse.json({
@@ -89,5 +117,6 @@ export async function GET(request: NextRequest) {
           serviceTitle: order.booking.listing.title,
         }
       : null,
+    eventJoin,
   });
 }

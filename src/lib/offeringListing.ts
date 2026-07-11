@@ -154,6 +154,10 @@ export type VendorOfferingRow = Offering & {
     location: string | null;
     venue: string | null;
     capacity: number | null;
+    attendanceMode: string;
+    externalJoinUrl: string | null;
+    meetUrl: string | null;
+    googleCalendarEventId: string | null;
   } | null;
   availabilityRules: Array<{
     dayOfWeek: number;

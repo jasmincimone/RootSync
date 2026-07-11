@@ -26,12 +26,12 @@ export function MarketplaceListingCheckoutActions({
   const baseHref = discoverListingPath(listingId);
   const href = returnTo ? withDiscoverReturnTo(baseHref, returnTo) : baseHref;
 
-  const label = isService ? "Book now" : isEvent ? "View event" : "Buy now";
+  const label = isService ? "Book now" : isEvent ? "Get tickets" : "Buy now";
 
   return (
     <ButtonLink
       href={href}
-      variant={isEvent ? "secondary" : "cta"}
+      variant="cta"
       size={compact ? "sm" : "md"}
       className={compact ? "w-full justify-center" : undefined}
     >
