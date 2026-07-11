@@ -10,6 +10,7 @@ import {
 } from "@/components/ListingVariantSelector";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { LISTING_TYPE } from "@/lib/roles";
 
 type Props = {
   listingId: string;
@@ -36,7 +37,8 @@ export function MarketplaceListingPurchase({
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     variants[0]?.id ?? null,
   );
-  const isService = listingType === "SERVICE";
+  const isService = listingType === LISTING_TYPE.SERVICE;
+  const isEvent = listingType === LISTING_TYPE.EVENT;
   const needsVariant = variants.length > 0;
   const bookHref =
     selectedVariantId && needsVariant
@@ -46,8 +48,17 @@ export function MarketplaceListingPurchase({
   const hasPaymentLink = !!paymentLinkUrl?.trim();
   const hasStripeCheckout = stripeCheckoutReady;
   const variantBlocked = needsVariant && !selectedVariantId;
+  const checkoutUnavailable = !hasStripeCheckout && !hasPaymentLink;
 
   function renderProductCheckout() {
+    if (isEvent) {
+      return (
+        <p className="w-full text-sm text-fix-text-muted">
+          Event details are below. Ticket sales are coming soon — contact the vendor to attend.
+        </p>
+      );
+    }
+
     if (hasStripeCheckout && hasPaymentLink) {
       return (
         <>
@@ -73,6 +84,18 @@ export function MarketplaceListingPurchase({
       );
     }
 
+    if (hasStripeCheckout) {
+      return (
+        <BuyNowButton
+          listingId={listingId}
+          variantId={selectedVariantId}
+          size={compact ? "sm" : "md"}
+          fullWidth={compact}
+          disabled={variantBlocked}
+        />
+      );
+    }
+
     if (hasPaymentLink) {
       return (
         <BuyNowLink
@@ -86,19 +109,16 @@ export function MarketplaceListingPurchase({
     }
 
     return (
-      <BuyNowButton
-        listingId={listingId}
-        variantId={selectedVariantId}
-        size={compact ? "sm" : "md"}
-        fullWidth={compact}
-        disabled={variantBlocked}
-      />
+      <p className="w-full rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 px-4 py-3 text-sm text-fix-text-muted">
+        Checkout isn&apos;t available yet for this listing. The vendor still needs to finish payment
+        setup.
+      </p>
     );
   }
 
   return (
     <div className={compact ? "flex flex-col gap-3" : "flex flex-col gap-4"}>
-      {needsVariant ? (
+      {needsVariant && !isEvent ? (
         <ListingVariantSelector
           variants={variants}
           selectedId={selectedVariantId}
@@ -109,14 +129,20 @@ export function MarketplaceListingPurchase({
 
       <div className={compact ? "flex flex-col gap-2" : "flex flex-wrap items-center gap-2"}>
         {isService ? (
-          <ButtonLink
-            href={bookHref}
-            variant="cta"
-            size={compact ? "sm" : "md"}
-            className={compact ? "w-full justify-center" : undefined}
-          >
-            Book now
-          </ButtonLink>
+          hasStripeCheckout || hasPaymentLink ? (
+            <ButtonLink
+              href={bookHref}
+              variant="cta"
+              size={compact ? "sm" : "md"}
+              className={compact ? "w-full justify-center" : undefined}
+            >
+              Book now
+            </ButtonLink>
+          ) : (
+            <p className="w-full rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 px-4 py-3 text-sm text-fix-text-muted">
+              Booking isn&apos;t available yet — this vendor still needs to finish payment setup.
+            </p>
+          )
         ) : (
           renderProductCheckout()
         )}
@@ -134,11 +160,11 @@ export function MarketplaceListingPurchase({
             Product page
           </a>
         ) : null}
-        {isService ? (
+        {isService && !checkoutUnavailable ? (
           <p className="w-full text-xs text-fix-text-muted">
             Sign in to complete booking. Choose an option above, then continue to payment.
           </p>
-        ) : variants.length > 0 ? (
+        ) : !isEvent && !isService && variants.length > 0 && !checkoutUnavailable ? (
           <p className="w-full text-xs text-fix-text-muted">
             Choose an option above, then continue to checkout.
           </p>

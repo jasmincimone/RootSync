@@ -1,26 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 
+import { authOptions } from "@/lib/authOptions";
+import { isAdmin } from "@/lib/permissions";
 import {
   appBaseUrl,
   getApplicationFeeCents,
   getConnectStripeClient,
 } from "@/lib/stripeConnectDemo";
+import { platformApplicationFeeCents } from "@/lib/platformFee";
 
 export const runtime = "nodejs";
 
+function connectDemoEnabled(): boolean {
+  if (process.env.ENABLE_CONNECT_DEMO === "1") return true;
+  return process.env.NODE_ENV === "development";
+}
+
 /**
- * Direct-charge Checkout Session on a connected account.
- *
- * Flow:
- * 1. Retrieve product (+ default_price) with `{ stripeAccount }`.
- * 2. Create Checkout Session on that account with `payment_intent_data.application_fee_amount`
- *    so the platform monetizes the sale.
- * 3. Return the hosted Checkout URL.
- *
- * PLACEHOLDER: `STRIPE_SECRET_KEY` must be set. Optional body.applicationFeeAmount (cents);
- * defaults to 123¢ for the sample.
+ * Direct-charge Checkout Session on a connected account (demo / sample only).
+ * Disabled in production unless ENABLE_CONNECT_DEMO=1. Prefer marketplace listing checkout.
  */
 export async function POST(request: NextRequest) {
+  if (!connectDemoEnabled()) {
+    return NextResponse.json(
+      { error: "Connect demo checkout is disabled in this environment." },
+      { status: 404 },
+    );
+  }
+
+  const session = await getServerSession(authOptions);
+  if (!session?.user || !isAdmin(session)) {
+    return NextResponse.json({ error: "Admin only." }, { status: 403 });
+  }
+
   try {
     const body = await request.json().catch(() => ({}));
     const accountId = typeof body?.accountId === "string" ? body.accountId.trim() : "";
@@ -31,7 +44,6 @@ export async function POST(request: NextRequest) {
         : typeof body?.quantity === "string"
           ? Number.parseInt(body.quantity, 10)
           : 1;
-    const applicationFeeAmount = getApplicationFeeCents(body?.applicationFeeAmount);
 
     if (!accountId.startsWith("acct_")) {
       return NextResponse.json({ error: "Valid accountId is required." }, { status: 400 });
@@ -45,7 +57,6 @@ export async function POST(request: NextRequest) {
 
     const stripeClient = getConnectStripeClient();
 
-    // Load product from the connected account (Stripe-Account header).
     const product = await stripeClient.products.retrieve(
       productId,
       { expand: ["default_price"] },
@@ -66,10 +77,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const lineTotal = defaultPrice.unit_amount * quantity;
+    const applicationFeeAmount =
+      body?.applicationFeeAmount != null
+        ? getApplicationFeeCents(body.applicationFeeAmount)
+        : platformApplicationFeeCents(lineTotal);
+
     const baseUrl = appBaseUrl(request.nextUrl.origin);
 
-    // Direct charge: session is created ON the connected account.
-    const session = await stripeClient.checkout.sessions.create(
+    const checkoutSession = await stripeClient.checkout.sessions.create(
       {
         mode: "payment",
         line_items: [
@@ -86,7 +102,6 @@ export async function POST(request: NextRequest) {
           },
         ],
         payment_intent_data: {
-          // Platform application fee (sample default 123¢ unless overridden).
           application_fee_amount: applicationFeeAmount,
         },
         success_url: `${baseUrl}/connect-store/${accountId}/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -97,7 +112,7 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    return NextResponse.json({ url: session.url, id: session.id });
+    return NextResponse.json({ url: checkoutSession.url, id: checkoutSession.id });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create checkout session.";
     console.error("[connect/checkout]", err);

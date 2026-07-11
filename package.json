@@ -19,11 +19,16 @@
     "calendar:poc": "tsx --env-file=.env.local scripts/calendar-poc.ts",
     "directory:sync": "tsx --env-file=.env.local scripts/sync-usda-directory.ts",
     "directory:benchmark": "tsx --env-file=.env.local scripts/benchmark-directory-state.ts",
-    "test:calendar": "tsx --test src/services/calendar/calendar.test.ts"
+    "test:calendar": "tsx --test src/services/calendar/calendar.test.ts",
+    "test:unit": "tsx --test src/lib/platformFee.test.ts src/lib/auth.test.ts src/services/calendar/calendar.test.ts",
+    "test:booking-slots": "tsx --test src/lib/bookingSlots.test.ts",
+    "test": "npm run test:unit"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
+    "@sentry/nextjs": "^10.65.0",
     "@vercel/blob": "^2.3.2",
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "encoding": "^0.1.13",
     "googleapis": "^173.0.0",
@@ -41,6 +46,7 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/leaflet": "^1.9.12",
     "@types/node": "^20.11.30",
     "@types/react": "^18.2.79",

@@ -25,7 +25,7 @@ export default function RootSyncPlatformPage() {
           {/* Native img preserves PNG alpha (same mark as favicon and loader). */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`${ROOTSYNC_SYMBOL_SRC}?v=5`}
+            src={`${ROOTSYNC_SYMBOL_SRC}?v=6`}
             alt="RootSync"
             width={224}
             height={224}

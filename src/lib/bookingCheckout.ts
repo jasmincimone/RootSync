@@ -5,9 +5,9 @@ import { parseSlotSelection, resolveBookingPriceCents, slotIsAvailable } from "@
 import {
   appBaseUrl,
   fetchConnectAccountStatus,
-  getApplicationFeeCents,
   getConnectStripeClient,
 } from "@/lib/stripeConnectDemo";
+import { platformApplicationFeeCents } from "@/lib/platformFee";
 import { BOOKING_STATUS } from "@/lib/roles";
 
 export type IntakeAnswerInput = {
@@ -145,9 +145,15 @@ export async function createServiceBookingCheckout(
     }
   }
 
+  if (!useConnect || !connectAccountId) {
+    throw new Error(
+      "This vendor is not ready to accept card payments on RootSync yet. Complete Stripe Connect in Payment Hub, or share a payment link.",
+    );
+  }
+
   const stripe = getConnectStripeClient();
   const images = listingImageUrl(listing.imageUrl, baseUrl);
-  const applicationFeeCents = getApplicationFeeCents(priceCents);
+  const applicationFeeCents = platformApplicationFeeCents(priceCents);
 
   const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
     mode: "payment",
@@ -177,14 +183,11 @@ export async function createServiceBookingCheckout(
       vendorProfileId: listing.vendorProfileId,
       type: "service_booking",
     },
-  };
-
-  if (useConnect && connectAccountId) {
-    sessionParams.payment_intent_data = {
+    payment_intent_data: {
       application_fee_amount: applicationFeeCents,
       transfer_data: { destination: connectAccountId },
-    };
-  }
+    },
+  };
 
   const session = await stripe.checkout.sessions.create(sessionParams);
 

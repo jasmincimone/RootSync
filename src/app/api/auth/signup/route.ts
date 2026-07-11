@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { ROLES } from "@/lib/roles";
 import { validateStrongPassword } from "@/lib/passwordPolicy";
+import { clientIpFromRequest, rateLimit } from "@/lib/rateLimit";
 import { TWO_FACTOR_METHOD } from "@/lib/twoFactor";
 
 export const runtime = "nodejs";
@@ -38,6 +39,15 @@ function prismaErrorMessage(e: unknown): string | null {
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = clientIpFromRequest(request);
+    const limited = rateLimit({ key: `signup:${ip}`, limit: 10, windowMs: 60 * 60 * 1000 });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: "Too many signup attempts. Try again later." },
+        { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+      );
+    }
+
     const body = await request.json();
     const { email, password, name, agreeSmsTwoFactorTerms, marketingOptIn, agreeTerms, agreePrivacy } = body as {
       email?: string;

@@ -13,6 +13,7 @@ import {
   draftsToPayload,
   type VariantDraft,
 } from "@/components/OfferingVariantEditor";
+import { STICKY_SUBPAGE_BAR_STACK } from "@/components/account/StickySubpageBar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormFeedback } from "@/components/ui/FormFeedback";
@@ -365,8 +366,11 @@ export function VendorOfferingForm({
   }
 
   return (
-    <Card className="p-6">
-      <div className="mb-6">
+    <Card className="overflow-visible p-6">
+      <div
+        className="sticky z-30 -mx-6 mb-6 border-b border-fix-border/10 bg-fix-surface/95 px-6 pb-4 pt-1 backdrop-blur-md supports-[backdrop-filter]:bg-fix-surface/90"
+        style={{ top: `calc(var(--site-chrome-offset) + ${STICKY_SUBPAGE_BAR_STACK})` }}
+      >
         <div className="flex items-center justify-between gap-2 text-xs font-medium text-fix-text-muted">
           <span>
             Step {step + 1} of {wizardSteps.length}

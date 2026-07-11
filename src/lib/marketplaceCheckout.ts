@@ -5,9 +5,9 @@ import { resolveOfferingVariant } from "@/lib/offeringVariants";
 import {
   appBaseUrl,
   fetchConnectAccountStatus,
-  getApplicationFeeCents,
   getConnectStripeClient,
 } from "@/lib/stripeConnectDemo";
+import { platformApplicationFeeCents } from "@/lib/platformFee";
 
 export type MarketplaceListingCheckout = {
   id: string;
@@ -144,9 +144,15 @@ export async function createMarketplaceListingCheckout(args: {
     }
   }
 
+  if (!useConnect || !connectAccountId) {
+    throw new Error(
+      "This vendor is not ready to accept card payments on RootSync yet. Use their payment link if available, or try again later.",
+    );
+  }
+
   const stripe = getConnectStripeClient();
   const images = listingImageUrl(listing.imageUrl, baseUrl);
-  const applicationFeeCents = getApplicationFeeCents(subtotalCents);
+  const applicationFeeCents = platformApplicationFeeCents(subtotalCents);
 
   const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
     mode: "payment",
@@ -173,14 +179,11 @@ export async function createMarketplaceListingCheckout(args: {
       vendorProfileId: listing.vendorProfile.id,
       ...(variant ? { variantId: variant.id } : {}),
     },
-  };
-
-  if (useConnect && connectAccountId) {
-    sessionParams.payment_intent_data = {
+    payment_intent_data: {
       application_fee_amount: applicationFeeCents,
       transfer_data: { destination: connectAccountId },
-    };
-  }
+    },
+  };
 
   const session = await stripe.checkout.sessions.create(sessionParams);
 

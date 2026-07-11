@@ -65,6 +65,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { status: 503 },
       );
     }
+    if (message.includes("not ready to accept card payments")) {
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

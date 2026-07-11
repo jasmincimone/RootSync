@@ -4,16 +4,23 @@ import { getConnectStripeClient } from "@/lib/stripeConnectDemo";
 
 export const runtime = "nodejs";
 
+function connectDemoEnabled(): boolean {
+  if (process.env.ENABLE_CONNECT_DEMO === "1") return true;
+  return process.env.NODE_ENV === "development";
+}
+
 /**
- * Public storefront endpoint: list active products for a connected account.
- *
- * NOTE: This demo uses raw `accountId` in URL. In production, map a stable
- * public slug/handle to account IDs so you do not expose internal identifiers.
+ * Demo: list active products for a connected account.
+ * Disabled in production unless ENABLE_CONNECT_DEMO=1.
  */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ accountId: string }> },
 ) {
+  if (!connectDemoEnabled()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const { accountId: rawAccountId } = await params;
   const accountId = rawAccountId?.trim();
   if (!accountId?.startsWith("acct_")) {
@@ -29,7 +36,7 @@ export async function GET(
     },
     {
       stripeAccount: accountId,
-    }
+    },
   );
 
   return NextResponse.json({ accountId, products: products.data });

@@ -8,6 +8,7 @@ import { DiscoverDetailTopBack } from "@/components/DiscoverDetailTopBack";
 import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListingCheckoutActions";
+import { ListingImage } from "@/components/ListingImage";
 import { ProfileHeroMetaRow } from "@/components/profile/ProfileHeroMetaRow";
 import { ProfilePulseFeedSection } from "@/components/profile/ProfilePulseFeedSection";
 import { ProfileSectionNav, type ProfileSectionLink } from "@/components/profile/ProfileSectionNav";
@@ -21,7 +22,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
 import { discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
-import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
+import { resolveDiscoverBackLink, withDiscoverReturnTo } from "@/lib/discoverReturn";
 import { communityAuthorSelect } from "@/lib/userProfileDisplay";
 import { formatPrice } from "@/lib/format";
 import { publicListingRelationWhere } from "@/lib/offeringListing";
@@ -152,10 +153,10 @@ export default async function PublicVendorProfilePage({
     <div>
       <section className="border-b border-fix-border/15 bg-gradient-to-b from-fix-bg-muted/60 via-fix-bg-muted/30 to-fix-surface">
         <Container className="px-4 py-6 sm:px-6 sm:py-10">
-          <DiscoverDetailTopBack returnTo={returnTo} />
+          <DiscoverDetailTopBack returnTo={returnTo} title={vendor.displayName} />
           <nav className="text-xs text-fix-text-muted sm:text-sm">
             <Link href={discoverBack.href} className="text-fix-link hover:text-fix-link-hover">
-              Discover Marketplace
+              {discoverBack.backLabel}
             </Link>
             <span className="mx-1.5 sm:mx-2">/</span>
             <span className="text-fix-heading">{vendor.displayName}</span>
@@ -310,21 +311,21 @@ export default async function PublicVendorProfilePage({
             />
           ) : (
             <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-              {vendor.listings.map((listing) => (
+              {vendor.listings.map((listing) => {
+                const listingHref = withDiscoverReturnTo(
+                  discoverListingPath(listing.id),
+                  discoverVendorPath(vendor),
+                );
+                return (
                 <li key={listing.id}>
                   <Card className="flex h-full gap-4 overflow-hidden p-4">
                     <Link
-                      href={`/discover/listings/${listing.id}`}
+                      href={listingHref}
                       className="relative block h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-fix-border/15 bg-fix-bg-muted outline-none ring-fix-cta transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
                       aria-label={`View ${listing.title}`}
                     >
                       {listing.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- public uploads or external URLs
-                        <img
-                          src={listing.imageUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
+                        <ListingImage src={listing.imageUrl} alt="" />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center text-[10px] text-fix-text-muted">
                           View
@@ -333,7 +334,7 @@ export default async function PublicVendorProfilePage({
                     </Link>
                     <div className="min-w-0 flex-1">
                       <Link
-                        href={`/discover/listings/${listing.id}`}
+                        href={listingHref}
                         className="font-medium text-fix-heading hover:text-fix-link hover:underline"
                       >
                         {listing.title}
@@ -348,13 +349,15 @@ export default async function PublicVendorProfilePage({
                         <MarketplaceListingCheckoutActions
                           listingId={listing.id}
                           listingType={listing.listingType}
+                          returnTo={discoverVendorPath(vendor)}
                           compact
                         />
                       </div>
                     </div>
                   </Card>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </section>

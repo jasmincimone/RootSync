@@ -41,7 +41,13 @@ export default async function MessagesInboxPage({
   return (
     <Container className="py-6 sm:py-10">
       {showAccountBack ? (
-        <AccountSubpageChrome>
+        <AccountSubpageChrome
+          chrome={{
+            backHref: "/account?hub=member-hub",
+            backLabel: "Member Hub",
+            title: "Stay Synced",
+          }}
+        >
           <div className="space-y-6">
             <p className="text-base text-fix-text-muted">{STAY_SYNCED_INTRO}</p>
             {messenger}

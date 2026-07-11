@@ -17,6 +17,9 @@
   --forest: #044730;
   --amber: #e59a28;
 
+  /* SiteHeader (4rem) + Pulse ticker (~2.25rem) — sticky subheaders sit below this */
+  --site-chrome-offset: 6.25rem;
+
   /* Slightly darker clay for muted backgrounds */
   --clay-muted: #d4bcae;
   /* Subtle tint for surfaces/cards */

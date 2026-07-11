@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
+
 import { isChunkLoadError } from "@/lib/chunkLoadError";
 
 /**
@@ -13,6 +16,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   const chunkFailed = isChunkLoadError(error.message);
   const btn = {
     marginTop: "0.75rem",

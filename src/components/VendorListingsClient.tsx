@@ -11,6 +11,7 @@ import { CardListSkeleton } from "@/components/ui/LoadingSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { OfferingStatusBadge } from "@/components/ui/StatusBadge";
+import { ListingImage } from "@/components/ListingImage";
 import { formatPrice } from "@/lib/format";
 import { listingTypeLabel } from "@/lib/listingDisplay";
 
@@ -133,12 +134,7 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-fix-border/20 bg-fix-bg-muted">
                     {l.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- listing thumb from public or external URL
-                      <img
-                        src={l.imageUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
+                      <ListingImage src={l.imageUrl} alt="" />
                     ) : (
                       <ImageIcon
                         className="h-6 w-6 text-fix-text-muted/60"

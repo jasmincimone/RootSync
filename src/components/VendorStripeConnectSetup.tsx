@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
 import { CardListSkeleton } from "@/components/ui/LoadingSkeleton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { withDiscoverReturnTo } from "@/lib/discoverReturn";
 
 type OnboardingState = {
   accountId: string;
@@ -37,17 +38,20 @@ type Props = {
   returnPath?: string;
   /** Hide/show developer-only controls. */
   showDevControls?: boolean;
+  /** Public Discover vendor page (canonical storefront with listings). */
+  storefrontHref?: string;
 };
 
 /**
  * Vendor Payment Hub — Stripe Connect onboarding, external payment links,
- * connected-account products/storefront, and platform subscription billing.
+ * connected-account products, and platform subscription billing.
  *
  * Status for Connect onboarding is always loaded live from Stripe (not cached in DB).
  */
 export function VendorStripeConnectSetup({
   returnPath = "/account/vendor/payments",
   showDevControls = false,
+  storefrontHref,
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -424,12 +428,14 @@ export function VendorStripeConnectSetup({
               >
                 Open Stripe Dashboard
               </a>
-              <a
-                href={`/connect-store/${accountId}`}
-                className="inline-flex h-9 items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface px-4 text-sm font-medium text-fix-link ring-1 ring-inset ring-fix-border/15 hover:bg-fix-bg-muted"
-              >
-                Open storefront
-              </a>
+              {storefrontHref ? (
+                <a
+                  href={withDiscoverReturnTo(storefrontHref, "/account/vendor/payments")}
+                  className="inline-flex h-9 items-center justify-center rounded-full border border-fix-border/25 bg-fix-surface px-4 text-sm font-medium text-fix-link ring-1 ring-inset ring-fix-border/15 hover:bg-fix-bg-muted"
+                >
+                  Open storefront
+                </a>
+              ) : null}
             </div>
           </div>
         )}

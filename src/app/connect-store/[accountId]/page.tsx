@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import Link from "next/link";
 
 import { Container } from "@/components/Container";
@@ -6,22 +7,25 @@ import { getConnectStripeClient } from "@/lib/stripeConnectDemo";
 
 export const dynamic = "force-dynamic";
 
+function connectDemoEnabled(): boolean {
+  if (process.env.ENABLE_CONNECT_DEMO === "1") return true;
+  return process.env.NODE_ENV === "development";
+}
+
 /**
- * Public storefront for one connected account.
- *
- * NOTE: This demo uses the connected account id (`acct_…`) in the URL for simplicity.
- * In production, map a public seller slug/handle → account id so you do not expose
- * internal Stripe identifiers.
+ * Demo storefront for a connected account (dev / ENABLE_CONNECT_DEMO only).
+ * Production storefront is the Discover vendor page.
  */
 export default async function ConnectedStorefrontPage({
   params,
 }: {
   params: Promise<{ accountId: string }>;
 }) {
+  if (!connectDemoEnabled()) notFound();
+
   const { accountId } = await params;
   const stripeClient = getConnectStripeClient();
 
-  // List products on the connected account via Stripe-Account header.
   const products = await stripeClient.products.list(
     {
       limit: 20,
@@ -36,11 +40,16 @@ export default async function ConnectedStorefrontPage({
   return (
     <Container className="py-10 sm:py-14">
       <h1 className="text-3xl font-semibold tracking-tight text-fix-heading">
-        Connected account storefront
+        Connected account storefront (demo)
       </h1>
       <p className="mt-2 max-w-3xl text-sm text-fix-text-muted">
-        Account: <code>{accountId}</code>. This demo intentionally uses the connected account ID in
-        the URL; for production, map public seller handles/slugs to account IDs.
+        Dev-only sample. Production storefronts are Discover vendor pages. Account:{" "}
+        <code>{accountId}</code>.
+      </p>
+      <p className="mt-2 text-sm">
+        <Link href="/account/vendor/payments" className="font-medium text-fix-link hover:text-fix-link-hover">
+          Open Payment Hub
+        </Link>
       </p>
       <div className="mt-8">
         <ConnectStorefrontClient
@@ -59,14 +68,6 @@ export default async function ConnectedStorefrontPage({
                 : null,
           }))}
         />
-      </div>
-      <div className="mt-8">
-        <Link
-          href="/account/vendor/payments"
-          className="text-sm font-medium text-fix-link hover:text-fix-link-hover"
-        >
-          Back to Payment Hub
-        </Link>
       </div>
     </Container>
   );

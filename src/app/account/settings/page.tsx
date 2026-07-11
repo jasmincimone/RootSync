@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, KeyRound, ShieldCheck, UserRound } from "lucide-react";
+import { KeyRound, ShieldCheck, UserRound } from "lucide-react";
 
 import { AccountProfileImageField } from "@/components/AccountProfileImageField";
 import {
@@ -12,6 +12,10 @@ import {
   accountSettingsTextareaClass,
 } from "@/components/account/AccountSettingsCard";
 import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
+import {
+  StickySubpageBar,
+  STICKY_SUBPAGE_BAR_STACK,
+} from "@/components/account/StickySubpageBar";
 import { SettingsSectionTile } from "@/components/account/settings/SettingsSectionTile";
 import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
@@ -452,16 +456,15 @@ export default function AccountSettingsPage() {
       }
     >
       {activeSection ? (
-        <div className="space-y-6">
-          <button
-            type="button"
-            onClick={() => setActiveSection(null)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-fix-border/15 bg-fix-surface px-3 py-1.5 text-sm font-medium text-fix-text-muted shadow-soft transition-colors hover:bg-fix-bg-muted hover:text-fix-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Account settings
-          </button>
-
+        <div>
+          <StickySubpageBar
+            backLabel="Account settings"
+            title={activeMeta?.label ?? null}
+            onBack={() => setActiveSection(null)}
+            stackOffset={STICKY_SUBPAGE_BAR_STACK}
+            className="-mx-0 sm:-mx-0"
+          />
+          <div className="space-y-6 pt-6">
           {activeSection === "account" ? (
       <AccountSettingsCard
         id="account-info-heading"
@@ -959,6 +962,7 @@ export default function AccountSettingsPage() {
         <FormFeedback success={tfaMsg || null} error={tfaErr || null} />
       </AccountSettingsCard>
           ) : null}
+          </div>
         </div>
       ) : (
         <div className="space-y-5">

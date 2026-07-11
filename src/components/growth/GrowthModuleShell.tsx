@@ -43,8 +43,8 @@ export function GrowthModuleShell({
       <EmptyState
         bordered
         icon={Icon}
-        title="Module foundation is in place"
-        description="Database tables and navigation are ready. CRUD workflows and integrations ship in the next phase."
+        title="Coming soon"
+        description="This GrowSpace module is foundation-only for launch. Overview metrics are live; CRM, funnels, and campaigns ship in Phase 2."
         action={{ href: "/account/growth", label: "Back to Growth overview", variant: "secondary" }}
         secondaryAction={{ href: ROOTSENSE_AI_HREF, label: "Ask RootSense AI", variant: "secondary" }}
       />

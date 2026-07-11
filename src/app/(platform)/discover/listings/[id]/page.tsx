@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { PulseRatingBadge } from "@/components/pulse/PulseRatingDisplay";
 import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurchase";
+import { ListingImage } from "@/components/ListingImage";
 import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
@@ -128,6 +129,8 @@ function PurchasePanel({
   detailProps,
   className,
   returnTo,
+  profileName,
+  currentVendorPath,
 }: {
   listing: {
     id: string;
@@ -151,6 +154,8 @@ function PurchasePanel({
   detailProps: Omit<Parameters<typeof ListingDetailHighlights>[0], "priceCents" | "variantCount">;
   className?: string;
   returnTo?: string | null;
+  profileName?: string | null;
+  currentVendorPath?: string | null;
 }) {
   return (
     <Card className={className ?? "overflow-hidden border-fix-border/15 p-0 shadow-soft"}>
@@ -207,6 +212,8 @@ function PurchasePanel({
         <div className="mt-4 border-t border-fix-border/15 pt-4">
           <DiscoverDetailBackLink
             returnTo={returnTo}
+            profileName={profileName}
+            currentVendorPath={currentVendorPath}
             variant="button"
             className="w-full justify-center"
           />
@@ -225,7 +232,6 @@ export default async function DiscoverListingPage({
 }) {
   const { id } = await params;
   const { returnTo } = await searchParams;
-  const discoverBack = resolveDiscoverBackLink(returnTo);
   const session = await getServerSession(authOptions);
   const loaded = await loadListingForPage(id, session?.user?.id);
   if (!loaded) notFound();
@@ -251,20 +257,39 @@ export default async function DiscoverListingPage({
     stripeConnectAccountId: v.user.stripeConnectAccountId,
   });
 
+  const vendorPath = discoverVendorPath(v);
+  const backOptions = {
+    profileName: v.displayName,
+    currentVendorPath: vendorPath,
+  };
+  const discoverBack = resolveDiscoverBackLink(returnTo, backOptions);
+  const backPathname = (discoverBack.href.split("#")[0] ?? discoverBack.href).split("?")[0] || discoverBack.href;
+  const vendorPathname = (vendorPath.split("#")[0] ?? vendorPath).split("?")[0] || vendorPath;
+  const backIsCurrentVendor = backPathname === vendorPathname;
+
   return (
     <div className="bg-fix-bg-muted/30">
+      <Container className="pt-3 sm:pt-4">
+        <DiscoverDetailTopBack
+          returnTo={returnTo}
+          title={listing.title}
+          profileName={v.displayName}
+          currentVendorPath={vendorPath}
+        />
+      </Container>
+
       <section className="border-b border-fix-border/15 bg-fix-surface">
-        <Container className="py-6 sm:py-8">
-          <DiscoverDetailTopBack returnTo={returnTo} />
-          <nav className="text-sm text-fix-text-muted">
-            <Link href={discoverBack.href} className="text-fix-link hover:text-fix-link-hover">
-              Discover
-            </Link>
-            <span className="mx-2">/</span>
-            <Link
-              href={discoverVendorPath(v)}
-              className="text-fix-link hover:text-fix-link-hover"
-            >
+        <Container className="py-4 sm:py-6">
+          <nav className="text-sm text-fix-text-muted" aria-label="Breadcrumb">
+            {!backIsCurrentVendor ? (
+              <>
+                <Link href={discoverBack.href} className="text-fix-link hover:text-fix-link-hover">
+                  {discoverBack.backLabel}
+                </Link>
+                <span className="mx-2">/</span>
+              </>
+            ) : null}
+            <Link href={vendorPath} className="text-fix-link hover:text-fix-link-hover">
               {v.displayName}
             </Link>
             <span className="mx-2">/</span>
@@ -301,12 +326,7 @@ export default async function DiscoverListingPage({
             <div className="overflow-hidden rounded-2xl border border-fix-border/15 bg-fix-surface shadow-soft">
               <div className="aspect-[16/10] bg-fix-bg-muted sm:aspect-[5/3]">
                 {listing.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- vendor uploads or external URLs
-                  <img
-                    src={listing.imageUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+                  <ListingImage src={listing.imageUrl} alt="" />
                 ) : (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-fix-text-muted">
                     <span className="text-4xl font-light text-fix-border">◇</span>
@@ -327,6 +347,8 @@ export default async function DiscoverListingPage({
                 paymentLinkUrl={checkoutOptions.paymentLinkUrl}
                 detailProps={detailProps}
                 returnTo={returnTo}
+                profileName={v.displayName}
+                currentVendorPath={vendorPath}
               />
             </div>
 
@@ -390,6 +412,8 @@ export default async function DiscoverListingPage({
                 detailProps={detailProps}
                 className="overflow-hidden border-fix-border/15 p-0 shadow-soft"
                 returnTo={returnTo}
+                profileName={v.displayName}
+                currentVendorPath={vendorPath}
               />
             </div>
           </div>

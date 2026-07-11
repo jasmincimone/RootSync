@@ -1,10 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 
+import { prisma } from "@/lib/prisma";
+import { getStripeClient } from "@/lib/stripe";
+
+/**
+ * Confirmation-page lookup. Requires a real Stripe Checkout session id that
+ * Stripe reports as paid/complete, then returns the matching RootSync order.
+ */
 export async function GET(request: NextRequest) {
-  const sessionId = request.nextUrl.searchParams.get("session_id");
-  if (!sessionId) {
-    return NextResponse.json({ error: "Missing session_id" }, { status: 400 });
+  const sessionId = request.nextUrl.searchParams.get("session_id")?.trim();
+  if (!sessionId || !sessionId.startsWith("cs_")) {
+    return NextResponse.json({ error: "Missing or invalid session_id" }, { status: 400 });
+  }
+
+  try {
+    const stripe = getStripeClient();
+    const stripeSession = await stripe.checkout.sessions.retrieve(sessionId);
+    const paid =
+      stripeSession.payment_status === "paid" ||
+      stripeSession.status === "complete";
+    if (!paid) {
+      return NextResponse.json({ error: "Checkout session is not paid" }, { status: 404 });
+    }
+  } catch (err) {
+    console.error("[orders/by-session] stripe retrieve failed", err);
+    return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
   const order = await prisma.order.findUnique({

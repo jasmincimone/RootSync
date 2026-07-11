@@ -8,5 +8,5 @@ export function AdminHubNav() {
     accountNavItemToTile,
   );
 
-  return <NavTileGrid sections={[{ title: "Administration", items }]} />;
+  return <NavTileGrid sections={[{ title: "Admin Hub", items }]} />;
 }

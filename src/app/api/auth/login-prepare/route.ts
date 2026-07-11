@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { responseForPrismaError } from "@/lib/prismaHttpError";
-import { verifyPassword } from "@/lib/auth";
+import { hashPassword, passwordHashNeedsUpgrade, verifyPassword } from "@/lib/auth";
 import { generateOtpDigits, hashOtpCode } from "@/lib/auth-tokens";
 import { sendLoginOtpEmail } from "@/lib/email";
+import { clientIpFromRequest, rateLimit } from "@/lib/rateLimit";
 import { ROLES } from "@/lib/roles";
 import { isSmsSendAvailable, sendSms } from "@/lib/sms";
 import { CHALLENGE_CHANNEL, CHALLENGE_PURPOSE, TWO_FACTOR_METHOD } from "@/lib/twoFactor";
@@ -14,6 +15,15 @@ export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = clientIpFromRequest(request);
+    const limited = rateLimit({ key: `login-prepare:${ip}`, limit: 20, windowMs: 15 * 60 * 1000 });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: "Too many sign-in attempts. Try again shortly." },
+        { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+      );
+    }
+
     const body = await request.json();
     const emailRaw = body?.email as string | undefined;
     const password = typeof body?.password === "string" ? body.password : "";
@@ -27,6 +37,17 @@ export async function POST(request: NextRequest) {
     }
     if (!verifyPassword(password, user.passwordHash)) {
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+    }
+
+    if (passwordHashNeedsUpgrade(user.passwordHash)) {
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash: hashPassword(password) },
+        });
+      } catch (upgradeErr) {
+        console.warn("[login-prepare] password hash upgrade failed", upgradeErr);
+      }
     }
     const storedTf = user.twoFactorMethod || TWO_FACTOR_METHOD.NONE;
     const tf = user.role === ROLES.ADMIN && storedTf === TWO_FACTOR_METHOD.NONE

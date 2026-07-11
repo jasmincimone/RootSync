@@ -2,10 +2,10 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 
+import { AccountSignOutButton } from "@/components/account/AccountSignOutButton";
 import { AccountSubpageChrome } from "@/components/account/AccountSubpageChrome";
 import { Container } from "@/components/Container";
 import { authOptions } from "@/lib/authOptions";
-import { ROLES } from "@/lib/roles";
 
 export default async function AccountLayout({
   children,
@@ -36,9 +36,7 @@ export default async function AccountLayout({
           <Link href="/pulse" className="text-forest hover:text-forest/80">
             Pulse
           </Link>
-          <Link href="/api/auth/signout" className="text-fix-text-muted hover:text-fix-heading">
-            Sign out
-          </Link>
+          <AccountSignOutButton />
         </div>
       </div>
 

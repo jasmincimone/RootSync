@@ -8,8 +8,7 @@ import { isResourceOrderItem } from "@/lib/roles";
 
 /**
  * GET /api/download?orderId=...&itemId=...
- * Verifies a paid resource order line, then streams the file (Blob or local).
- * Legacy external URLs still redirect when no proxy is possible.
+ * Requires a signed-in Member who owns the paid order, then streams the file.
  */
 export async function GET(request: NextRequest) {
   const orderId = request.nextUrl.searchParams.get("orderId");
@@ -19,6 +18,13 @@ export async function GET(request: NextRequest) {
   }
 
   const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "Sign in to download this resource.", code: "AUTH_REQUIRED" },
+      { status: 401 },
+    );
+  }
+
   const order = await prisma.order.findFirst({
     where: { id: orderId },
     include: {
@@ -41,13 +47,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Order not paid" }, { status: 403 });
   }
 
+  const ownsOrder =
+    order.userId === session.user.id ||
+    (!!session.user.email &&
+      !!order.email &&
+      order.email.toLowerCase() === session.user.email.toLowerCase());
+  if (!ownsOrder) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   const item = order.items.find((i) => i.id === itemId);
   if (!item || !isResourceOrderItem(item.type)) {
     return NextResponse.json({ error: "Item not found or not a resource" }, { status: 404 });
-  }
-
-  if (session?.user?.email && order.email !== session.user.email && order.userId !== session.user.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
   const fileRef = item.listing?.offering.resourceDetails?.fileUrl?.trim();

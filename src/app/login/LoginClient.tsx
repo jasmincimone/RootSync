@@ -9,6 +9,7 @@ import { Container } from "@/components/Container";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
+import { safeCallbackPath } from "@/lib/safeCallbackPath";
 
 type PrepareOk =
   | { skipTwoFactor: true }
@@ -22,7 +23,7 @@ type PrepareOk =
 export function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/account";
+  const callbackUrl = safeCallbackPath(searchParams.get("callbackUrl"), "/account");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

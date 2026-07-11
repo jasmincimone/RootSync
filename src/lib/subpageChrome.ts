@@ -25,7 +25,7 @@ export function subpageChromeForPath(pathname: string): SubpageChromeConfig | nu
     if (path.startsWith("/account/admin/") && path !== "/account/admin") {
       return {
         backHref: "/account/admin",
-        backLabel: "Admin",
+        backLabel: "Admin Hub",
         title: accountNavTitleForPath(path),
       };
     }

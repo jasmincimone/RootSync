@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Globe, Store, UserPlus } from "lucide-react";
 
 import { Container } from "@/components/Container";
@@ -95,13 +94,15 @@ export default async function HomePage() {
           {featuredVendors.length > 0 ? (
             <div className="mx-auto mt-14 w-full min-w-0 max-w-4xl overflow-hidden rounded-2xl bg-warm-brown shadow-soft ring-1 ring-fix-border/10 sm:mt-16">
               <div className="flex flex-col items-center px-6 py-10 text-clay-muted sm:py-12">
-                <Image
-                  src={ROOTSYNC_SYMBOL_SRC}
+                {/* Native img preserves PNG alpha in the infinity loops. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`${ROOTSYNC_SYMBOL_SRC}?v=6`}
                   alt="RootSync"
                   width={56}
                   height={56}
-                  className="h-14 w-14 rounded-full object-contain"
-                  unoptimized
+                  className="h-14 w-14 object-contain"
+                  decoding="async"
                 />
                 <div className="mt-4 text-center">
                   <div className="text-2xl font-bold tracking-tight sm:text-3xl">RootSync</div>

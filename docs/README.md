@@ -17,6 +17,7 @@ Read in this order:
 15. 21_PULSE_SYSTEM_SCHEMA.md — Pulse database schema
 16. adr/ADR-008-pulse-system.md — architecture decision for Pulse
 17. adr/ADR-005-service-bookings.md — architecture decision for bookings
+18. SENTRY.md — production error monitoring (DSN, verify, optional source maps)
 
 Then review the appropriate PRD before implementing any feature.
 

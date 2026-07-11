@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, Loader2 } from "lucide-react";
 
 import { FormFeedback } from "@/components/ui/FormFeedback";
+import { ListingImage } from "@/components/ListingImage";
 
 type Props = {
   imageUrl: string;
@@ -176,8 +177,7 @@ export function VendorListingImageField({
 
         {imageUrl ? (
           <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-fix-border/20 bg-fix-surface">
-            {/* eslint-disable-next-line @next/next/no-img-element -- user/vendor uploads from public/ */}
-            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            <ListingImage src={imageUrl} alt="" />
           </div>
         ) : null}
       </div>

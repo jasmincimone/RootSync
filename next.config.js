@@ -22,5 +22,17 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+const { withSentryConfig } = require("@sentry/nextjs");
 
+module.exports = withSentryConfig(nextConfig, {
+  // Used for source-map upload during CI/Vercel builds (optional until you set these).
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  // Tunnel through our domain so ad blockers don't drop error reports.
+  tunnelRoute: "/monitoring-tunnel",
+  disableLogger: true,
+  automaticVercelMonitors: true,
+});

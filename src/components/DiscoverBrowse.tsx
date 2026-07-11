@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { Search } from "lucide-react";
 
 import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListingCheckoutActions";
+import { ListingImage } from "@/components/ListingImage";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
 import { UserAvatar } from "@/components/UserAvatar";
 import { DirectoryListingBadge } from "@/components/DirectoryListingBadge";
@@ -792,8 +793,7 @@ export function DiscoverBrowse({
                         aria-label={`View ${listing.title}`}
                       >
                         {listing.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={listing.imageUrl} alt="" className="h-full w-full object-cover" />
+                          <ListingImage src={listing.imageUrl} alt="" />
                         ) : (
                           <span className="flex h-full w-full items-center justify-center text-[10px] text-fix-text-muted">
                             View

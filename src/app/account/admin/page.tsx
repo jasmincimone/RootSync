@@ -5,14 +5,19 @@ import { PageBody } from "@/components/ui/PageBody";
 
 export default function AdminHomePage() {
   return (
-    <PageBody description="Manage vendor applications and user roles.">
+    <PageBody description="Platform administration — users, vendor requests, and Pulse configuration.">
       <AdminHubNav />
       <p className="text-xs text-fix-text-muted">
-        Need the full account hub?{" "}
-        <Link href="/account" className="font-medium text-fix-link hover:text-fix-link-hover">
-          Back to account overview
+        <Link
+          href="/account?hub=admin-hub"
+          className="font-medium text-fix-link hover:text-fix-link-hover"
+        >
+          Back to Admin Hub
         </Link>
-        .
+        {" · "}
+        <Link href="/account" className="font-medium text-fix-link hover:text-fix-link-hover">
+          Account overview
+        </Link>
       </p>
     </PageBody>
   );

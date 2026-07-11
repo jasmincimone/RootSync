@@ -82,10 +82,10 @@ export default async function DiscoverDirectoryPage({
     <div className="bg-fix-bg-muted/30">
       <section className="border-b border-fix-border/15 bg-fix-surface">
         <Container className="py-6 sm:py-8">
-          <DiscoverDetailTopBack returnTo={returnTo} />
+          <DiscoverDetailTopBack returnTo={returnTo} title={listing.name} />
           <nav className="text-sm text-fix-text-muted">
             <Link href={discoverBack.href} className="text-fix-link hover:text-fix-link-hover">
-              Discover
+              {discoverBack.backLabel}
             </Link>
             <span className="mx-2">/</span>
             <span className="text-fix-heading">Directory</span>

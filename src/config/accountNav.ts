@@ -157,7 +157,7 @@ export const ACCOUNT_ADMIN_NAV: AccountNavItem[] = [
   {
     href: "/account/admin",
     label: "Admin overview",
-    description: "Platform administration",
+    description: "Admin Hub home",
     icon: Shield,
   },
   {
@@ -214,6 +214,7 @@ const PATH_TITLE_OVERRIDES: { pattern: RegExp; label: string }[] = [
   { pattern: /^\/account\/pulses$/, label: "My Pulses" },
   { pattern: /^\/account\/vitals$/, label: "Pulse overview" },
   { pattern: /^\/account\/admin\/pulse$/, label: "Pulse manager" },
+  { pattern: /^\/account\/admin\/sentry-test$/, label: "Sentry test" },
   { pattern: /^\/account\/community$/, label: "My Pulses" },
 ];
 

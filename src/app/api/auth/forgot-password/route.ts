@@ -4,11 +4,21 @@ import { prisma } from "@/lib/prisma";
 import { responseForPrismaError } from "@/lib/prismaHttpError";
 import { generateResetToken, hashResetToken } from "@/lib/auth-tokens";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { clientIpFromRequest, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = clientIpFromRequest(request);
+    const limited = rateLimit({ key: `forgot-password:${ip}`, limit: 10, windowMs: 60 * 60 * 1000 });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: "Too many reset requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+      );
+    }
+
     const body = await request.json();
     const emailRaw = body?.email as string | undefined;
     const emailNorm = emailRaw?.trim().toLowerCase();
@@ -38,6 +48,6 @@ export async function POST(request: NextRequest) {
     if (mapped) {
       return NextResponse.json({ error: mapped.error }, { status: mapped.status });
     }
-    return NextResponse.json({ error: "Request failed." }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

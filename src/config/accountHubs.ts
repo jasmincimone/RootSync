@@ -1,10 +1,25 @@
-export type AccountHubId = "vitals" | "member-hub" | "vendor-hub" | "growspace";
+export type AccountHubId =
+  | "vitals"
+  | "member-hub"
+  | "vendor-hub"
+  | "growspace"
+  | "admin-hub";
+
+/** Hubs every signed-in member can see (Members only). */
+export const CORE_MEMBER_HUB_IDS: Extract<AccountHubId, "vitals" | "member-hub">[] = [
+  "vitals",
+  "member-hub",
+];
+
+/** @deprecated Use CORE_MEMBER_HUB_IDS — kept for any older imports. */
+export const MEMBER_ACCOUNT_HUB_IDS = CORE_MEMBER_HUB_IDS;
 
 export const ACCOUNT_HUB_IDS: AccountHubId[] = [
   "vitals",
   "member-hub",
   "vendor-hub",
   "growspace",
+  "admin-hub",
 ];
 
 export const ACCOUNT_HUB_LABELS: Record<AccountHubId, string> = {
@@ -12,6 +27,7 @@ export const ACCOUNT_HUB_LABELS: Record<AccountHubId, string> = {
   "member-hub": "Member Hub",
   "vendor-hub": "Vendor Hub",
   growspace: "GrowSpace",
+  "admin-hub": "Admin Hub",
 };
 
 export function accountHubBackHref(hubId: AccountHubId): string {
@@ -39,14 +55,17 @@ export function accountHubForPath(pathname: string): AccountHubId | null {
     return "vitals";
   }
 
+  if (matchesPrefix(path, "/account/admin")) {
+    return "admin-hub";
+  }
+
   if (
     matchesPrefix(path, "/account/settings") ||
     matchesPrefix(path, "/account/activity") ||
     matchesPrefix(path, "/account/orders") ||
     matchesPrefix(path, "/account/bookings") ||
     matchesPrefix(path, "/account/connect-demo") ||
-    matchesPrefix(path, "/account/community") ||
-    matchesPrefix(path, "/account/admin")
+    matchesPrefix(path, "/account/community")
   ) {
     return "member-hub";
   }
