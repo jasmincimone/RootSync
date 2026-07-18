@@ -2,19 +2,23 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Container } from "@/components/Container";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import { DiscoverDetailBackLink } from "@/components/DiscoverDetailBackLink";
 import { DiscoverDetailTopBack } from "@/components/DiscoverDetailTopBack";
 import { DirectoryListingBadge } from "@/components/DirectoryListingBadge";
+import { DirectoryClaimRequest } from "@/components/DirectoryClaimRequest";
 import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
+import { isFavorited } from "@/lib/favorites";
 import { formatDirectoryAddress } from "@/lib/directory/usdaClient";
 import { directoryTypeLabel } from "@/lib/directory/types";
 import { directoryToMapPins } from "@/lib/discoverMap";
 import { publicDirectoryWhere } from "@/lib/directory/syncUsdaDirectory";
 import { prisma } from "@/lib/prisma";
-import { DIRECTORY_CLAIM_STATUS } from "@/lib/roles";
+import { DIRECTORY_CLAIM_STATUS, FAVORITE_TARGET_TYPE } from "@/lib/roles";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 
 export const dynamic = "force-dynamic";
 
@@ -51,12 +55,19 @@ export default async function DiscoverDirectoryPage({
 }) {
   const { id } = await params;
   const { returnTo } = await searchParams;
+  const session = await getServerSession(authOptions);
   const discoverBack = resolveDiscoverBackLink(returnTo);
   const listing = await prisma.directoryListing.findFirst({
     where: { id, ...publicDirectoryWhere },
   });
 
   if (!listing) notFound();
+
+  const favoriteSaved = await isFavorited(
+    session?.user?.id,
+    FAVORITE_TARGET_TYPE.DIRECTORY,
+    listing.id,
+  );
 
   const address = formatDirectoryAddress(listing);
   const hasCoords =
@@ -76,7 +87,7 @@ export default async function DiscoverDirectoryPage({
       ])
     : [];
 
-  const canClaim = listing.claimStatus === DIRECTORY_CLAIM_STATUS.UNCLAIMED;
+  const showClaimRequest = listing.claimStatus !== DIRECTORY_CLAIM_STATUS.CLAIMED;
 
   return (
     <div className="bg-fix-bg-muted/30">
@@ -102,9 +113,18 @@ export default async function DiscoverDirectoryPage({
               <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
                 {directoryTypeLabel(listing.directoryType)}
               </p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">
-                {listing.name}
-              </h1>
+              <div className="mt-2 flex items-start justify-between gap-3">
+                <h1 className="text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">
+                  {listing.name}
+                </h1>
+                <FavoriteButton
+                  targetType={FAVORITE_TARGET_TYPE.DIRECTORY}
+                  targetId={listing.id}
+                  initialSaved={favoriteSaved}
+                  signedIn={Boolean(session?.user?.id)}
+                  size="sm"
+                />
+              </div>
               <DirectoryListingBadge className="mt-3" />
               <p className="mt-4 text-sm leading-relaxed text-fix-text-muted">
                 This business is listed in the USDA Local Food Directory. It is not a RootSync
@@ -197,15 +217,12 @@ export default async function DiscoverDirectoryPage({
                 Directory listings help you discover local food businesses. Verified vendors can
                 sell, message, and book through RootSync.
               </p>
-              {canClaim ? (
-                <div className="mt-4">
-                  <Button type="button" variant="secondary" size="sm" className="w-full" disabled>
-                    Claim this listing (coming soon)
-                  </Button>
-                  <p className="mt-2 text-xs text-fix-text-muted">
-                    Business owners will be able to claim and upgrade to a vendor profile.
-                  </p>
-                </div>
+              {showClaimRequest ? (
+                <DirectoryClaimRequest
+                  directoryListingId={listing.id}
+                  claimStatus={listing.claimStatus}
+                  signedIn={Boolean(session?.user?.id)}
+                />
               ) : null}
               <div className="mt-4 border-t border-fix-border/15 pt-4">
                 <DiscoverDetailBackLink returnTo={returnTo} />

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Messages",
+  title: "Stay Synced",
 };
 
 function pickWithParam(value: string | string[] | undefined): string | undefined {

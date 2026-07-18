@@ -18,6 +18,7 @@ function clearLeafletContainer(el: LeafletElement) {
   if (el._leaflet_id != null) {
     delete el._leaflet_id;
   }
+  el.innerHTML = "";
 }
 
 function escapeHtml(text: string): string {
@@ -36,6 +37,9 @@ type Props = {
 
 export function MarketplaceMap({ pins, compact, buildDetailHref }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const buildDetailHrefRef = useRef(buildDetailHref);
+  buildDetailHrefRef.current = buildDetailHref;
+
   const heightClass = compact ? "h-[280px] max-h-[40vh]" : "h-[420px] max-h-[55vh]";
 
   const vendorIcon = useMemo(
@@ -71,9 +75,18 @@ export function MarketplaceMap({ pins, compact, buildDetailHref }: Props) {
     const el = containerRef.current as LeafletElement | null;
     if (!el) return;
 
+    let cancelled = false;
+    let map: L.Map | null = null;
+    let fitFrame = 0;
+
     clearLeafletContainer(el);
 
-    const map = L.map(el, { scrollWheelZoom: true }).setView([32.8407, -83.6324], 7);
+    try {
+      map = L.map(el, { scrollWheelZoom: true }).setView([32.8407, -83.6324], 7);
+    } catch (err) {
+      console.warn("[MarketplaceMap] failed to create map", err);
+      return;
+    }
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution:
@@ -89,12 +102,11 @@ export function MarketplaceMap({ pins, compact, buildDetailHref }: Props) {
 
       const name = escapeHtml(pin.label);
       const href =
-        buildDetailHref?.(pin) ??
+        buildDetailHrefRef.current?.(pin) ??
         (pin.kind === "vendor"
           ? discoverVendorPath({ id: pin.id, publicSlug: pin.publicSlug })
           : discoverDirectoryPath(pin.id));
-      const subtitle =
-        pin.kind === "vendor" ? "Verified vendor" : "Directory listing";
+      const subtitle = pin.kind === "vendor" ? "Verified vendor" : "Directory listing";
       const subtitleColor = pin.kind === "vendor" ? "#044730" : "#b8860b";
 
       marker.bindPopup(
@@ -106,26 +118,49 @@ export function MarketplaceMap({ pins, compact, buildDetailHref }: Props) {
       );
     }
 
-    if (points.length === 0) {
-      map.setView([32.8407, -83.6324], 7);
-    } else if (points.length === 1) {
-      map.setView(points[0], 11);
-    } else {
+    const activeMap = map;
+    const applyView = () => {
+      if (cancelled || !activeMap || !el.isConnected) return;
       try {
-        if (el.isConnected) {
-          map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 14 });
+        activeMap.invalidateSize(false);
+        if (points.length === 0) {
+          activeMap.setView([32.8407, -83.6324], 7);
+        } else if (points.length === 1) {
+          activeMap.setView(points[0], 11);
+        } else {
+          activeMap.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 14 });
         }
-      } catch {
-        map.setView(points[0], 10);
+      } catch (err) {
+        console.warn("[MarketplaceMap] view update skipped", err);
+        if (points[0]) {
+          try {
+            activeMap.setView(points[0], 10);
+          } catch {
+            /* map already torn down */
+          }
+        }
       }
-    }
+    };
+
+    // Wait a frame so layout has non-zero size — avoids Leaflet `_leaflet_pos` crashes.
+    fitFrame = window.requestAnimationFrame(() => {
+      fitFrame = window.requestAnimationFrame(applyView);
+    });
 
     return () => {
-      map.stop();
-      map.remove();
+      cancelled = true;
+      window.cancelAnimationFrame(fitFrame);
+      try {
+        activeMap.stop();
+        activeMap.remove();
+      } catch {
+        /* already removed */
+      }
       clearLeafletContainer(el);
     };
-  }, [pinKey, vendorIcon, directoryIcon, buildDetailHref]);
+    // buildDetailHref is read via ref so pin/link updates don't remount the map constantly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pins covered by pinKey
+  }, [pinKey, vendorIcon, directoryIcon]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-fix-border/20 shadow-soft">

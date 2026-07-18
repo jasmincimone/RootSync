@@ -5,6 +5,7 @@ import { growthVendorWhere } from "@/lib/growthAccess";
 export type GrowthOverviewMetrics = {
   contacts: number;
   activeFunnels: number;
+  campaigns: number;
   landingPageViews: number;
   qrScans: number;
   newsletterSubscribers: number;
@@ -24,6 +25,7 @@ export async function loadGrowthOverviewMetrics(
   const [
     contacts,
     activeFunnels,
+    campaigns,
     landingPages,
     qrCampaigns,
     newsletterSubscribers,
@@ -35,6 +37,7 @@ export async function loadGrowthOverviewMetrics(
   ] = await Promise.all([
     prisma.growthContact.count({ where: scope }),
     prisma.growthFunnel.count({ where: { ...scope, isActive: true } }),
+    prisma.growthEmailCampaign.count({ where: scope }),
     prisma.growthLandingPage.aggregate({
       where: scope,
       _sum: { viewCount: true },
@@ -86,6 +89,7 @@ export async function loadGrowthOverviewMetrics(
   return {
     contacts,
     activeFunnels,
+    campaigns,
     landingPageViews: landingPages._sum.viewCount ?? 0,
     qrScans: qrCampaigns._sum.scanCount ?? 0,
     newsletterSubscribers,

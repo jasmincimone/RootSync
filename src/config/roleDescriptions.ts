@@ -18,12 +18,12 @@ export const ROLE_DESCRIPTIONS: Record<PlatformRole, RoleDescription> = {
     privileges: [
       "Purchase Products and Resources from verified Vendors on Discover",
       "Book Services — consultations, sessions, and appointments with scheduling and Google Meet links",
-      "Join Community to ask questions, share knowledge, and support one another",
-      "Message Vendors and other Members from Discover or your inbox",
+      "Join Pulse to ask questions, share knowledge, and support one another",
+      "Use Stay Synced to talk with Vendors and other Members",
       "Track orders, bookings, and account settings in one place",
     ],
     footnote:
-      "Visitors can browse public Listings and Vendor profiles. Members can purchase, book, message, and participate in Community.",
+      "Visitors can browse public Listings and Vendor profiles. Members can purchase, book, use Stay Synced, and participate in Pulse.",
   },
   vendor: {
     title: "RootSync Vendor",

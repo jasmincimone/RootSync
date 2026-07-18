@@ -926,7 +926,7 @@ export default function AccountSettingsPage() {
               <div className="max-w-md space-y-3">
                 {phoneVerifyDelivery === "dev_bypass" ? (
                   <p className="rounded-md border border-amber/50 bg-amber/10 px-3 py-2 text-sm text-fix-text">
-                    The code is in your <strong>dev server terminal</strong> (not in Messages). Look for{" "}
+                    The code is in your <strong>dev server terminal</strong> (not in Stay Synced). Look for{" "}
                     <code className="rounded bg-fix-surface px-1 text-xs">[sms] Twilio not configured</code> and the line
                     with your code.
                   </p>

@@ -15,6 +15,7 @@ import { LISTING_TYPE } from "@/lib/roles";
 type Props = {
   listingId: string;
   listingType: string;
+  priceCents?: number;
   variants: ListingVariant[];
   paymentLinkUrl?: string | null;
   productUrl?: string | null;
@@ -28,6 +29,7 @@ const secondaryCheckoutClass =
 export function MarketplaceListingPurchase({
   listingId,
   listingType,
+  priceCents = 0,
   variants,
   paymentLinkUrl,
   productUrl,
@@ -39,7 +41,14 @@ export function MarketplaceListingPurchase({
   );
   const isService = listingType === LISTING_TYPE.SERVICE;
   const isEvent = listingType === LISTING_TYPE.EVENT;
+  const isResource = listingType === LISTING_TYPE.RESOURCE;
   const needsVariant = variants.length > 0;
+  const selectedVariant = selectedVariantId
+    ? variants.find((variant) => variant.id === selectedVariantId)
+    : null;
+  const effectivePriceCents = selectedVariant?.priceCents ?? priceCents;
+  const freeCheckoutUnsupported =
+    (isEvent || isResource) && (!Number.isFinite(effectivePriceCents) || effectivePriceCents <= 0);
   const bookHref =
     selectedVariantId && needsVariant
       ? `/discover/listings/${listingId}/book?variant=${encodeURIComponent(selectedVariantId)}`
@@ -49,8 +58,22 @@ export function MarketplaceListingPurchase({
   const hasStripeCheckout = stripeCheckoutReady;
   const variantBlocked = needsVariant && !selectedVariantId;
   const checkoutUnavailable = !hasStripeCheckout && !hasPaymentLink;
+  const externalFulfillmentNote =
+    isEvent || isResource
+      ? " The Vendor handles access and fulfillment for external purchases."
+      : "";
 
   function renderProductCheckout() {
+    if (freeCheckoutUnsupported) {
+      return (
+        <p className="w-full rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 px-4 py-3 text-sm text-fix-text-muted">
+          {isEvent
+            ? "Free tickets aren't available through RootSync checkout yet. Contact the Vendor through Stay Synced."
+            : "Free Resources aren't available through RootSync checkout yet. Contact the Vendor through Stay Synced."}
+        </p>
+      );
+    }
+
     const buyLabel = isEvent ? "Get tickets" : "Buy now";
     const linkLabel = isEvent ? "Ticket link" : "Pay Link";
 
@@ -79,6 +102,7 @@ export function MarketplaceListingPurchase({
           <p className="w-full text-xs text-fix-text-muted">
             {linkLabel} opens the vendor&apos;s external checkout (off-platform — no RootSync
             platform fee). Prefer in-app checkout when available.
+            {externalFulfillmentNote}
           </p>
         </>
       );
@@ -109,6 +133,7 @@ export function MarketplaceListingPurchase({
           </BuyNowLink>
           <p className="w-full text-xs text-fix-text-muted">
             External checkout — off-platform payment (no RootSync platform fee).
+            {externalFulfillmentNote}
           </p>
         </>
       );

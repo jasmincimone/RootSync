@@ -26,7 +26,7 @@ export function AccountNavGrid() {
   const showGrowspace = canAccessGrowthWorkspace(role, vendorStatus ?? undefined);
 
   const sections = [
-    { id: "vitals", title: "Vitals", items: ACCOUNT_VITALS_NAV.map(accountNavItemToTile) },
+    { id: "vitals", title: "Your Pulse", items: ACCOUNT_VITALS_NAV.map(accountNavItemToTile) },
     { id: "member-hub", title: "Member Hub", items: ACCOUNT_MEMBER_NAV.map(accountNavItemToTile) },
     ...(showVendorHub
       ? [{ id: "vendor-hub", title: "Vendor Hub", items: ACCOUNT_VENDOR_NAV.map(accountNavItemToTile) }]

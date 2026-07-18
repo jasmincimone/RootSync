@@ -3,6 +3,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { Container } from "@/components/Container";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import { DiscoverDetailBackLink } from "@/components/DiscoverDetailBackLink";
 import { DiscoverDetailTopBack } from "@/components/DiscoverDetailTopBack";
 import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
@@ -22,6 +23,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
 import { discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
+import { isFavorited } from "@/lib/favorites";
 import { resolveDiscoverBackLink, withDiscoverReturnTo } from "@/lib/discoverReturn";
 import { communityAuthorSelect } from "@/lib/userProfileDisplay";
 import { formatPrice } from "@/lib/format";
@@ -29,7 +31,7 @@ import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
 import { parsePulsePostMediaJson } from "@/lib/pulsePostMedia";
 import { loadVendorPulseReviews, loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
-import { VENDOR_STATUS, PULSE_POST_STATUS } from "@/lib/roles";
+import { FAVORITE_TARGET_TYPE, VENDOR_STATUS, PULSE_POST_STATUS } from "@/lib/roles";
 import { loadVendorCarousel } from "@/lib/vendorCarousel";
 import { findVendorProfileByPublicRef, vendorPublicRefWhere } from "@/lib/vendorPublicResolve";
 import { isVendorCuidRef } from "@/lib/vendorPublicSlug";
@@ -108,6 +110,12 @@ export default async function PublicVendorProfilePage({
     );
   }
 
+  const favoriteSaved = await isFavorited(
+    session?.user?.id,
+    FAVORITE_TARGET_TYPE.VENDOR,
+    vendor.id,
+  );
+
   const mediaCarousel = await loadVendorCarousel(vendor.id);
 
   const hasCoords =
@@ -180,12 +188,23 @@ export default async function PublicVendorProfilePage({
               className="mx-auto sm:mx-0"
             />
             <div className="min-w-0 flex-1 text-center sm:text-left">
-              <h1 className="text-2xl font-bold tracking-tight text-fix-heading sm:text-3xl md:text-4xl">
-                {vendor.displayName}
-              </h1>
+              <div className="flex items-start justify-center gap-3 sm:justify-start">
+                <h1 className="text-2xl font-bold tracking-tight text-fix-heading sm:text-3xl md:text-4xl">
+                  {vendor.displayName}
+                </h1>
+                {!isOwnerPreview ? (
+                  <FavoriteButton
+                    targetType={FAVORITE_TARGET_TYPE.VENDOR}
+                    targetId={vendor.id}
+                    initialSaved={favoriteSaved}
+                    signedIn={Boolean(session?.user?.id)}
+                    size="sm"
+                  />
+                ) : null}
+              </div>
               {!isOwnerPreview ? (
                 <ProfileHeroMetaRow>
-                  <VerifiedVendorBadge />
+                  <VerifiedVendorBadge explain />
                   <PulseRatingBadge
                     averageRating={pulseSummary.averageRating}
                     reviewCount={pulseSummary.reviewCount}

@@ -44,7 +44,7 @@ export function PendingPulseReviewsPanel() {
 
   return (
     <Card className="p-5 shadow-soft">
-      <h2 className="text-base font-semibold text-fix-heading">Give Pulse to vendors</h2>
+      <h2 className="text-base font-semibold text-fix-heading">Give a Pulse to vendors</h2>
       <p className="mt-1 text-sm text-fix-text-muted">
         Share your experience after a purchase or consultation — Pulse reviews replace star ratings.
       </p>
@@ -70,7 +70,7 @@ export function PendingPulseReviewsPanel() {
                     size="sm"
                     onClick={() => setActiveKey(expanded ? null : key)}
                   >
-                    {expanded ? "Cancel" : "Give Pulse"}
+                    {expanded ? "Cancel" : "Give a Pulse"}
                   </Button>
                   <Link
                     href={`/discover/vendors/${item.vendorProfileId}`}

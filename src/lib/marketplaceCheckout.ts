@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { orderItemTypeForListingType } from "@/lib/roles";
+import { LISTING_TYPE, ORDER_ITEM_TYPE, orderItemTypeForListingType } from "@/lib/roles";
 import { publicListingWhere } from "@/lib/offeringListing";
 import { resolveOfferingVariant } from "@/lib/offeringVariants";
 import {
@@ -35,6 +35,9 @@ export type MarketplaceListingCheckout = {
       durationMinutes: number | null;
       sku: string | null;
     }>;
+    eventDetails: {
+      capacity: number | null;
+    } | null;
   };
 };
 
@@ -81,6 +84,7 @@ export async function loadListingForCheckout(
               sku: true,
             },
           },
+          eventDetails: { select: { capacity: true } },
         },
       },
     },
@@ -111,6 +115,26 @@ export async function createMarketplaceListingCheckout(args: {
   const lineName = variant ? `${listing.title} — ${variant.title}` : listing.title;
   const subtotalCents = unitPriceCents * quantity;
   const baseUrl = appBaseUrl(origin);
+
+  const eventCapacity = listing.offering.eventDetails?.capacity;
+  if (listing.listingType === LISTING_TYPE.EVENT && eventCapacity != null) {
+    const sold = await prisma.orderItem.aggregate({
+      where: {
+        listingId: listing.id,
+        type: ORDER_ITEM_TYPE.EVENT,
+        order: { status: "paid" },
+      },
+      _sum: { quantity: true },
+    });
+    const remaining = Math.max(0, eventCapacity - (sold._sum.quantity ?? 0));
+    if (quantity > remaining) {
+      throw new Error(
+        remaining === 0
+          ? "This Event is sold out."
+          : `Only ${remaining} ticket${remaining === 1 ? "" : "s"} remaining.`,
+      );
+    }
+  }
 
   const order = await prisma.order.create({
     data: {

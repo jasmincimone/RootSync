@@ -18,7 +18,7 @@ export default async function GrowthLayout({ children }: { children: React.React
 
   if (!canAccessGrowthWorkspace(role, vendorStatus ?? undefined)) {
     return (
-      <PageBody description="GrowSpace helps approved vendors build relationships, run campaigns, and grow their mission. Apply to become a vendor to unlock CRM, funnels, newsletters, and more.">
+      <PageBody description="GrowSpace helps approved vendors build relationships and grow their mission with CRM, funnels, and campaigns.">
         <ButtonLink href="/account/vendor/apply" variant="cta" size="sm">
           Become a vendor
         </ButtonLink>

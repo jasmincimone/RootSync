@@ -33,6 +33,8 @@ export const RATE_LIMIT_PRESETS = {
   checkout: { limit: 20, windowMs: 15 * 60 * 1000 },
   /** File uploads (images, resources, avatars) */
   upload: { limit: 40, windowMs: 15 * 60 * 1000 },
+  /** Directory ownership claim requests */
+  directoryClaim: { limit: 5, windowMs: 60 * 60 * 1000 },
 } as const;
 
 export type RateLimitPreset = keyof typeof RATE_LIMIT_PRESETS;

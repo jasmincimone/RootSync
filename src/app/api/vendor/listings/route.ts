@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
-import { parseOfferingDetailsFromBody } from "@/lib/offeringDetails";
+import {
+  assertPublishableOfferingDetails,
+  parseOfferingDetailsFromBody,
+} from "@/lib/offeringDetails";
 import {
   createOfferingWithListing,
   isListingType,
@@ -139,6 +142,12 @@ export async function POST(request: NextRequest) {
   let details;
   try {
     details = parseOfferingDetailsFromBody(body, type);
+    assertPublishableOfferingDetails({
+      listingType: type,
+      status: resolvedSchedule.status,
+      details,
+      priceCents: Math.round(priceCents),
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Invalid type-specific fields" },

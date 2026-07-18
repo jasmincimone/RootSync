@@ -20,21 +20,21 @@ import {
   type AccountHubId,
   isAccountHubId,
 } from "@/config/accountHubs";
-import { GROWTH_NAV_ITEMS } from "@/config/growthNav";
+import { LIVE_GROWTH_NAV_ITEMS } from "@/config/growthNav";
 
 const HUB_META: Record<
   AccountHubId,
   { title: string; description: string; icon: typeof LayoutDashboard; usePulseIcon?: boolean }
 > = {
   vitals: {
-    title: "Vitals",
-    description: "Pulse score, posts & your contribution",
+    title: "Your Pulse",
+    description: "Your score, posts & contribution history",
     icon: LayoutDashboard,
     usePulseIcon: true,
   },
   "member-hub": {
     title: "Member Hub",
-    description: "Orders, bookings, settings & messages",
+    description: "Orders, bookings, settings & Stay Synced",
     icon: LayoutDashboard,
   },
   "vendor-hub": {
@@ -44,7 +44,7 @@ const HUB_META: Record<
   },
   growspace: {
     title: "GrowSpace",
-    description: "Overview live · CRM & campaigns coming soon",
+    description: "Overview · CRM · Funnels · Campaigns",
     icon: Sprout,
   },
   "admin-hub": {
@@ -149,7 +149,7 @@ function AccountHubExplorerInner({ showVendorHub, showGrowspace, showAdminHub }:
     }
 
     if (showGrowspace) {
-      items.growspace = GROWTH_NAV_ITEMS.map((item) => ({
+      items.growspace = LIVE_GROWTH_NAV_ITEMS.map((item) => ({
         href: item.href,
         label: item.label,
         description: item.description,

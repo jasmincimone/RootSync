@@ -189,9 +189,34 @@ export function OrderConfirmationClient() {
           <div className="mt-3 flex justify-center">
             <OrderStatusBadge status={order.status} />
           </div>
-          <p className="mt-1 text-sm text-fix-text-muted">
-            A confirmation has been sent to <strong className="text-fix-heading">{order.email}</strong>.
-          </p>
+          {order.booking || order.eventJoin ? (
+            <p className="mt-1 text-sm text-fix-text-muted">
+              A confirmation has been sent to{" "}
+              <strong className="text-fix-heading">{order.email}</strong>.
+            </p>
+          ) : order.items.some((item) => isResourceOrderItem(item.type)) ? (
+            <p className="mt-1 text-sm text-fix-text-muted">
+              Access your files from{" "}
+              <Link
+                href={`/account/orders/${order.id}`}
+                className="font-medium text-fix-link hover:text-fix-link-hover"
+              >
+                Order history
+              </Link>
+              .
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-fix-text-muted">
+              Receipt details are saved in your{" "}
+              <Link
+                href={`/account/orders/${order.id}`}
+                className="font-medium text-fix-link hover:text-fix-link-hover"
+              >
+                Order history
+              </Link>
+              .
+            </p>
+          )}
         </div>
 
         {order.booking ? (

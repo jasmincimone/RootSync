@@ -246,7 +246,7 @@ Allows Members to receive updates from Vendors and other Members.
 
 ## Favorite
 
-A saved Vendor or Listing.
+A saved Listing, Vendor, or Directory Listing (Members only).
 
 ---
 

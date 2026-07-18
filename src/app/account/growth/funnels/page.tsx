@@ -1,19 +1,44 @@
-import { Filter } from "lucide-react";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
-import { GrowthModuleShell } from "@/components/growth/GrowthModuleShell";
+import { GrowthFunnelsClient } from "@/components/growth/GrowthFunnelsClient";
+import { PageBody } from "@/components/ui/PageBody";
+import { authOptions } from "@/lib/authOptions";
+import { requireGrowthWorkspace } from "@/lib/growthAccess";
+import { listGrowthFunnels } from "@/lib/growth/funnels";
 
-export default function GrowthFunnelsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function GrowthFunnelsPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) redirect("/login?callbackUrl=/account/growth/funnels");
+
+  const ctx = await requireGrowthWorkspace(session.user.id);
+  if ("error" in ctx) redirect("/account/vendor/apply");
+
+  const funnels = await listGrowthFunnels(ctx.vendorProfileId, ctx.isPlatformScope);
+
   return (
-    <GrowthModuleShell
-      title="Funnels"
-      description="Build multi-step journeys from podcast listeners to returning customers — with metrics at every stage."
-      icon={Filter}
-      highlights={[
-        "Podcast → Landing → Lead magnet → Newsletter → Consultation",
-        "Visual funnel analytics (coming soon)",
-        "Entry sources, CTAs, and active status",
-        "Connect landing pages and email sequences",
-      ]}
-    />
+    <PageBody
+      wide
+      description="Map the path from first touch to conversion. Default steps: landing → nurture → CTA."
+    >
+      <GrowthFunnelsClient
+        initialFunnels={funnels.map((f) => ({
+          id: f.id,
+          name: f.name,
+          description: f.description,
+          objective: f.objective,
+          isActive: f.isActive,
+          contactCount: f._count.contacts,
+          steps: f.steps.map((s) => ({
+            id: s.id,
+            label: s.label,
+            stepType: s.stepType,
+            sortOrder: s.sortOrder,
+          })),
+        }))}
+      />
+    </PageBody>
   );
 }

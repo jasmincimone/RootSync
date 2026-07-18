@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   BarChart3,
+  Bookmark,
   Calendar,
   CalendarClock,
   CreditCard,
@@ -79,6 +80,12 @@ export const ACCOUNT_MEMBER_NAV: AccountNavItem[] = [
     icon: Calendar,
   },
   {
+    href: "/account/saved",
+    label: "Favorites",
+    description: "Listings, vendors & places you love",
+    icon: Bookmark,
+  },
+  {
     href: "/messages/inbox?from=account",
     label: "Stay Synced",
     description: "Your conversations",
@@ -90,7 +97,7 @@ export const ACCOUNT_MEMBER_NAV: AccountNavItem[] = [
 export const ACCOUNT_VITALS_NAV: AccountNavItem[] = [
   {
     href: "/account/vitals",
-    label: "Pulse overview",
+    label: "Your Pulse",
     description: "Score, events & contribution",
     usePulseIcon: true,
     icon: Heart,
@@ -212,9 +219,11 @@ const PATH_TITLE_OVERRIDES: { pattern: RegExp; label: string }[] = [
   { pattern: /^\/account\/vendor\/listings\/[^/]+\/edit$/, label: "Edit offering" },
   { pattern: /^\/account\/orders\/[^/]+$/, label: "Order details" },
   { pattern: /^\/account\/pulses$/, label: "My Pulses" },
-  { pattern: /^\/account\/vitals$/, label: "Pulse overview" },
+  { pattern: /^\/account\/vitals$/, label: "Your Pulse" },
   { pattern: /^\/account\/admin\/pulse$/, label: "Pulse manager" },
   { pattern: /^\/account\/admin\/sentry-test$/, label: "Sentry test" },
+  { pattern: /^\/account\/saved$/, label: "Favorites" },
+  { pattern: /^\/account\/growth\/crm\/[^/]+$/, label: "Contact" },
   { pattern: /^\/account\/community$/, label: "My Pulses" },
 ];
 

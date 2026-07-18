@@ -307,7 +307,7 @@ export function VendorMessenger({
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-fix-border/20 bg-fix-surface p-8 text-center shadow-soft">
         <MessageCircle className="mx-auto h-10 w-10 text-fix-accent" aria-hidden />
-        <h2 className="mt-4 text-lg font-semibold text-fix-heading">Sign in to Messages</h2>
+        <h2 className="mt-4 text-lg font-semibold text-fix-heading">Sign in to Stay Synced</h2>
         <p className="mt-2 text-sm text-fix-text-muted">
           Chat with vendors, community members, and others you connect with on RootSync.
         </p>
@@ -379,7 +379,7 @@ export function VendorMessenger({
       >
         <div className="border-b border-clay/10 px-4 py-3">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-clay">
-            <span>Messages</span>
+            <span>Stay Synced</span>
             {hasAnyUnread ? (
               <span
                 className="inline-flex h-2 w-2 rounded-full bg-gold"
@@ -388,7 +388,7 @@ export function VendorMessenger({
               />
             ) : null}
           </h2>
-          <p className="mt-0.5 text-xs text-clay/55">Chats with The RootSync Community</p>
+          <p className="mt-0.5 text-xs text-clay/55">Chats across RootSync</p>
         </div>
         <nav
           className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pb-4"
@@ -403,8 +403,8 @@ export function VendorMessenger({
                 Discover
               </Link>{" "}
               or{" "}
-              <Link href="/community" className="underline underline-offset-2 hover:text-clay">
-                community
+              <Link href="/pulse" className="underline underline-offset-2 hover:text-clay">
+                Pulse
               </Link>{" "}
               to start a chat.
             </p>
@@ -497,8 +497,8 @@ export function VendorMessenger({
                   Discover
                 </Link>{" "}
                 or{" "}
-                <Link href="/community" className="font-medium text-fix-link hover:text-fix-link-hover">
-                  community
+                <Link href="/pulse" className="font-medium text-fix-link hover:text-fix-link-hover">
+                  Pulse
                 </Link>
                 .
               </p>

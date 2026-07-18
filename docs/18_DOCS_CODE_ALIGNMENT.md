@@ -53,21 +53,24 @@ Use it when:
 |------|------------|------------|--------|
 | Platform identity | RootSync local-living platform | RootSync branding live; Fix Collective parent in legal copy | **Partial** |
 | User types | Visitor, Member, Vendor, Administrator | `User` + `CUSTOMER`/`VENDOR`/`ADMIN` roles | **Partial** |
-| Marketplace model | Offering → Listing → Product/Service/Resource/Event | `Offering` + `Listing` + detail tables (ADR-001) | **Partial** — schema live; Service/Resource/Event UX pending |
-| Verified vendors | Admin verification + trust indicators | `VendorProfile.status` APPROVED gate | **Partial** |
-| Discover | Unified discovery (vendors, listings, directory, map, search) | `/marketplace` + map; no `/discover`; no directory | **Partial** |
-| Directory listings | View-only imported businesses; claim later | Not modeled | **Deferred** |
+| Marketplace model | Offering → Listing → Product/Service/Resource/Event | `Offering` + `Listing` + type details and live UX (ADR-001) | **Aligned** (MVP) |
+| Verified vendors | Admin verification + trust indicators | APPROVED gate + reusable badge/explainer | **Aligned** |
+| Discover | Unified discovery (vendors, listings, directory, map, search) | `/discover` with search, filters, map, favorites, spotlights | **Aligned** (MVP) |
+| Directory listings | Imported businesses with assisted claim path | USDA model/import, Discover detail/map, claim request + admin review | **Aligned** (MVP) |
 | Commerce | Stripe Connect + Checkout + Booking | Marketplace Buy Now + service booking engine | **Partial** — refunds on cancel live |
-| Resources (digital) | Listing type Resource | `/discover?type=RESOURCE`, order items `resource` | **Partial** — listings + download gate; Blob signed URLs pending |
+| Resources (digital) | Listing type Resource | Private Blob upload, paid-order ownership gate, secure delivery | **Aligned** (MVP) |
 | Services / Consultations | Service type + booking | Full flow: slots, Checkout, Meet, cancel, refund | **Aligned** (MVP) |
-| Events | Listing type Event (classes/workshops) | `/discover?type=EVENT`; vendor form + details | **Partial** — RSVP/tickets not built |
+| Events | Listing type Event (classes/workshops) | Attendance modes, ticket tiers, checkout, confirmation + join email | **Aligned** (MVP) |
 | Community | Member discussions | `CommunityPost` live; UI branded **Pulse** | **Partial** — rename complete in nav; table deferred |
 | Pulse (platform service) | Contribution ledger + Individual + Platform Pulse | Phase 1–2 shipped; v2 spec documented | **Partial** — see [22_PULSE_SYSTEM.md](./22_PULSE_SYSTEM.md) |
-| Messaging | Member ↔ Member / Vendor | `DirectThread` / `DirectMessage`; UI **Stay Synced** | **Partial** |
-| AI | RootSync AI assistant | `/rootsync`, `/rootsyncai` live | **Aligned** |
-| Favorites / Follow / Reviews | Glossary + Phase 3 roadmap | Not implemented | **Deferred** |
+| Messaging | Member ↔ Member / Vendor | `DirectThread` / `DirectMessage`; UI **Stay Synced** | **Aligned** |
+| AI | RootSense AI + Rootie | `/rootsense-ai` live; legacy redirects retained | **Aligned** |
+| Favorites | Save Listing, Vendor, or Directory Listing | `Favorite`, `/account/saved`, Discover section + detail controls | **Aligned** |
+| Follow | Receive Member/Vendor updates | Not implemented | **Deferred** |
+| Pulse reviews | Legitimate post-interaction trust signal | Order/booking eligibility + Vendor Pulse review UI | **Partial** |
+| GrowSpace | Vendor growth workspace | Overview + CRM + Funnels + Campaigns live; later modules hidden | **Partial** (Phase 1) |
 | Legacy platform shops | Vendor profile IS the shop | Redirects live; `ShopPage` + admin shops + `/products/` remain | **Legacy** |
-| Governance | RFC → PRD → ADR → Changelog | Docs exist; no ADRs in repo; changelog sparse | **Partial** |
+| Governance | RFC → PRD → ADR → Changelog | PRDs and ADR-001–008 exist; changelog discipline remains partial | **Partial** |
 
 **App version:** `package.json` → `0.1.0` (pre-1.0 rapid iteration per [VERSIONING.md](./governance/VERSIONING.md)).
 
@@ -83,11 +86,10 @@ Use it when:
 | Member | Registered account | `User` model, role `CUSTOMER` | **Partial** | Rename to Member in UI/docs-over-code path; keep `User` table until ADR |
 | Vendor | Verified member who sells | `VendorProfile` + `User.role` VENDOR | **Partial** | Approval via `VendorProfile.status`; role and profile can diverge |
 | Administrator | Platform moderator | `User.role` ADMIN | **Aligned** | Admin vendor approval, users, legacy shop catalog |
-| Verified Vendor | Completed verification | `VendorProfile.status === APPROVED` | **Partial** | No distinct "verified" badge beyond approval |
+| Verified Vendor | Completed verification | `VendorProfile.status === APPROVED` | **Aligned** | Badge and RootSync review explainer on Discover |
 
-**Offering states (doc):** Draft, Scheduled, Active, Paused, Archived  
-**Listing states (code):** `DRAFT`, `PUBLISHED`, `ARCHIVED` on `MarketplaceListing`  
-→ No Offering layer; no Scheduled/Paused.
+**Offering states:** Draft, Scheduled, Active, Paused, Archived.  
+**Listing visibility:** Public or Hidden. Offering is the internal lifecycle source of truth.
 
 ### Marketplace entities
 
@@ -97,9 +99,9 @@ Use it when:
 | Listing | `Listing` model (public) | **Aligned** | 1:1 with Offering; `visibility` PUBLIC/HIDDEN |
 | Product | `ProductDetails` + `listingType PRODUCT` | **Partial** | Default for migrated + new offerings |
 | Service | `ServiceDetails` + booking engine | **Aligned** | See [19_SERVICE_BOOKINGS.md](./19_SERVICE_BOOKINGS.md), ADR-005 |
-| Resource | `ResourceDetails` + vendor form | **Partial** | Secure delivery not built; form + API live |
-| Event | `EventDetails` + vendor form | **Partial** | RSVP/tickets not built; form + API live |
-| Directory Listing | — | **Gap** | Phase 2 PRD |
+| Resource | `ResourceDetails` + vendor form + paid download gate | **Aligned** (MVP) | Publishing requires a delivery file |
+| Event | `EventDetails` + ticket tiers + fulfillment | **Aligned** (MVP) | In-person, Meet, and external event-space modes |
+| Directory Listing | `DirectoryListing` | **Aligned** (MVP) | USDA import, map/search, request + admin-assisted claim |
 
 ### Commerce & orders
 
@@ -107,7 +109,7 @@ Use it when:
 |-------------|---------------|--------|-------|
 | Checkout | `marketplaceCheckout.ts`, `/api/marketplace/listings/[id]/checkout` | **Partial** | Marketplace listings; destination charge when Connect ready |
 | Checkout (legacy) | Cart + `/api/checkout-session`, `ShopCatalogListing` | **Legacy** | Platform shop catalog path |
-| Stripe Connect | `User.stripeConnectAccountId`, Connect API routes | **Partial** | Onboarding at `/account/connect-demo`, not main vendor flow |
+| Stripe Connect | `User.stripeConnectAccountId`, Payment Hub + Connect APIs | **Aligned** (MVP) | Vendor Payment Hub owns onboarding |
 | Booking | `Booking`, `ServiceAvailabilityRule`, `BookingIntakeAnswer` | **Aligned** | Cancel + full refund; calendar + Meet |
 | Order | `Order`, `OrderItem` | **Aligned** | Supports marketplace + service bookings; `refunded` status |
 
@@ -121,11 +123,11 @@ Use it when:
 | Platform Pulse | `PlatformPulseDaily`, `PublicPulseDashboard` | **Partial** — sum-based v1; weighted index pending |
 | Give a Pulse | `PulseReaction`, `GivePulseButton` | **Aligned** |
 | Stay Synced | `DirectThread`, `DirectMessage` | **Aligned** |
-| Pulse earned toast | — | **Gap** |
-| Vendor Pulse reviews | — | **Deferred** |
+| Pulse earned toast | `PulseToastProvider`, `PulseEarnedToast` | **Aligned** |
+| Vendor Pulse reviews | `VendorPulseReview`, eligibility + review form | **Partial** |
 | Follow | — | **Gap** |
-| Favorite | — | **Gap** |
-| Review (stars) | — | **Gap** — replace with Pulse ratings |
+| Favorite | `Favorite`, API, detail controls, account + Discover surfaces | **Aligned** |
+| Review (stars) | Replaced by Pulse reviews | **Aligned** in terminology |
 
 ### Legacy / parallel systems (technical debt)
 
@@ -133,7 +135,7 @@ Use it when:
 |--------|-----------------|------------|--------|
 | Platform shop landing | `ShopPage`, admin `/account/admin/shops` | Vendor profile is storefront | **Legacy** |
 | Platform shop catalog | `ShopCatalogListing`, `/products/[id]`, cart | Unified vendor listings | **Legacy** |
-| Legacy URL slugs | `VendorProfile.shopSlug`, `/shops/[slug]` → redirect | Keep redirects; retire duplicate admin | **Partial** |
+| Legacy URL slugs | `VendorProfile.shopSlug`, `/shops/[slug]` → vendor Discover path (not blanket `/discover`) | Keep redirects; assign `shopSlug` for Survival Kits; retire duplicate admin | **Aligned** (2026-07-17: config no longer swallows per-slug routes) |
 | Vendor carousel | `VendorProfile.mediaCarouselJson` | On vendor profile | **Aligned** |
 
 ---
@@ -168,19 +170,19 @@ Per [17_GLOSSARY.md](./17_GLOSSARY.md) deprecated terms:
 
 | Feature | Doc | Code | Status |
 |---------|-----|------|--------|
-| Marketplace | ✓ | `/marketplace`, vendor profiles, listings | **Partial** — no listing types |
-| Vendor profiles | ✓ | `/marketplace/vendors/[id]`, apply, admin approve | **Aligned** |
-| Community | ✓ | `/community` | **Aligned** |
-| AI | ✓ | RootSync chat | **Aligned** |
-| Messaging | ✓ | Inbox, vendor messaging | **Aligned** |
-| Maps | ✓ | Leaflet map on marketplace | **Partial** — vendors only, no directory pins |
+| Discover Marketplace | ✓ | `/discover`, Vendor/Listing/Directory details | **Aligned** (MVP) |
+| Vendor profiles | ✓ | `/discover/vendors/[id]`, apply, admin approve | **Aligned** |
+| Pulse | ✓ | `/pulse`, Your Pulse, Give a Pulse | **Aligned** (MVP) |
+| RootSense AI | ✓ | Rootie chat | **Aligned** |
+| Stay Synced | ✓ | Inbox, Vendor/Member conversations | **Aligned** |
+| Maps | ✓ | Leaflet Vendor + Directory pins | **Aligned** (MVP) |
 
-### Phase 2 (roadmap) — not started or stub only
+### Phase 2 / growth capabilities
 
 | Feature | PRD | Code | Status |
 |---------|-----|------|--------|
-| Directory Listings | [PRD-Directory-Listings.md](./PRDs/PRD-Directory-Listings.md) | — | **Deferred** |
-| Marketing Funnel | [PRD-Marketing-Funnel.md](./PRDs/PRD-Marketing-Funnel.md) | — | **Deferred** |
+| Directory Listings | [PRD-Directory-Listings.md](./PRDs/PRD-Directory-Listings.md) | Browse, map, favorites, assisted claim | **Aligned** (MVP) |
+| Marketing Funnel | [PRD-Marketing-Funnel.md](./PRDs/PRD-Marketing-Funnel.md) | GrowSpace CRM, Funnels, Campaigns | **Partial** (Phase 1) |
 | Consultations | [PRD-Consultation-Booking.md](./PRDs/PRD-Consultation-Booking.md) | Service booking engine | **Aligned** (as Service subtype) |
 
 ### Phase 3 (roadmap)
@@ -193,14 +195,14 @@ Reviews, Analytics, Referrals, Native Apps — **Deferred**. Events and Resource
 
 | Doc concept | Expected UX | Current route / component | Status |
 |-------------|-------------|---------------------------|--------|
-| Discover | Primary discovery hub | `/marketplace` (labeled Vendor Marketplace) | **Partial** — rename/route TBD |
-| Vendors | Browse verified vendors | `/marketplace`, vendor cards, map | **Aligned** |
-| Listings | Browse all listing types | `/marketplace` listing grid, `/marketplace/listings/[id]` | **Partial** — products only in practice |
-| Directory Listings | Map + search, view-only | — | **Gap** |
-| Storefront | Vendor-managed public page | `/marketplace/vendors/[id]` | **Aligned** |
-| Resources | Discover filter + order access | `/discover?type=RESOURCE`, `/api/download` | **Partial** — secure Blob delivery pending |
-| Booking | Service scheduling | — | **Gap** |
-| Connect onboarding | Vendor payouts | `/account/connect-demo` | **Partial** — should move into vendor account |
+| Discover | Primary discovery hub | `/discover` | **Aligned** |
+| Vendors | Browse verified vendors | `/discover`, Vendor cards/spotlights/map | **Aligned** |
+| Listings | Browse all listing types | `/discover`, `/discover/listings/[id]` | **Aligned** (MVP) |
+| Directory Listings | Map + search + assisted claim | `/discover/directory/[id]` | **Aligned** (MVP) |
+| Storefront | Vendor-managed public page | `/discover/vendors/[id]` | **Aligned** |
+| Resources | Discover filter + paid order access | `/discover?type=RESOURCE`, `/api/download` | **Aligned** (MVP) |
+| Booking | Service scheduling | `/discover/listings/[id]/book` | **Aligned** (MVP) |
+| Connect onboarding | Vendor payouts | `/account/vendor/payments` | **Aligned** (MVP) |
 
 ---
 
@@ -209,7 +211,7 @@ Reviews, Analytics, Referrals, Native Apps — **Deferred**. Events and Resource
 | Handbook expectation | Repo state | Action |
 |----------------------|------------|--------|
 | PRD before feature | PRDs exist for Phase 2; Phase 1 built pre-PRD template | Backfill PRDs for marketplace pivot or write ADR |
-| ADR for core model changes | [ADR_GUIDELINES.md](./governance/ADR_GUIDELINES.md) only; no `docs/adr/` | ADR-001: Offering/Listing model; ADR-002: Retire ShopCatalog |
+| ADR for core model changes | ADR-001–008 exist | Continue ADR discipline; ADR-002 legacy catalog retirement remains |
 | Changelog per release | [CHANGELOG.md](./CHANGELOG.md) stops at 1.0.0 narrative | Align with git tags (v0.1.33+) |
 | MASTER_CURSOR_PROMPT | [prompts/README.md](./prompts/README.md) references missing file | Upload prompt library |
 | Definition of Done | Not tracked per feature historically | Use for next prioritized item below |
@@ -235,18 +237,18 @@ Work in this order unless a release forces otherwise. Each item should update do
 |---|------|---------|---------|
 | 5 | **Member in UI** | Account, community, errors | Glossary-compliant copy; keep `User` in DB |
 | 6 | **Seller → Vendor in UI/legal** | `seller-terms`, listing labels, footer | Consistent vendor language |
-| 7 | **Verified vendor badge** | Marketplace cards, vendor hero | Visual trust per glossary |
+| 7 | ~~**Verified vendor badge**~~ | Discover cards, vendor hero | **Done** — visual trust + review explainer |
 | 8 | **Changelog discipline** | `CHANGELOG.md`, release process | Entries for v0.1.33+ marketplace pivot |
 
 ### P2 — Domain completion (Phase 2 enablers)
 
 | # | Work | Touches | Outcome |
 |---|------|---------|---------|
-| 9 | **Listing types** | Schema, vendor forms, discover filters | Product / Service / Resource / Event |
-| 10 | **Directory Listings** | New model, map, PRD | View-only pins; vendor filter |
-| 11 | **Resources** | Secure Blob upload + signed download URLs | Instant fulfillment after `checkout.session.completed` |
-| 12 | **Consultation as Service** | Booking PRD, Stripe, calendar | Not a standalone "Consultation" feature |
-| 13 | **Discover experience** | Nav, `/discover` or marketplace evolution | Unified search + filters per glossary |
+| 9 | ~~**Listing types**~~ | Schema, vendor forms, Discover filters | **Done** — Product / Service / Resource / Event |
+| 10 | ~~**Directory Listings**~~ | Model, map, PRD, claim request | **Done (MVP)** |
+| 11 | ~~**Resources**~~ | Private Blob upload + paid download gate | **Done (MVP)** |
+| 12 | ~~**Consultation as Service**~~ | Booking PRD, Stripe, calendar | **Done (MVP)** |
+| 13 | ~~**Discover experience**~~ | `/discover` | **Done (MVP)** — unified search, filters, map, favorites |
 
 ### P3 — Retire legacy & Phase 3
 
@@ -254,7 +256,7 @@ Work in this order unless a release forces otherwise. Each item should update do
 |---|------|---------|---------|
 | 14 | **Remove admin platform shops** | `ShopPage`, admin shops UI | Single vendor storefront model |
 | 15 | **Cart vs Buy Now** | Checkout paths | One checkout pattern per listing type |
-| 16 | **Reviews, Favorites, Follow** | New models | Phase 3 roadmap |
+| 16 | **Follow** | New relationship model | Favorites and Pulse reviews shipped; Follow deferred |
 | 17 | **Rename `User` → `Member` in schema** | Prisma, auth, migrations | Only after ADR + P1 UI stable |
 
 ---
@@ -264,8 +266,11 @@ Work in this order unless a release forces otherwise. Each item should update do
 1. ~~**ADR-001: Offering and Listing lifecycle**~~ — Accepted. See [ADR-001](./adr/ADR-001-offering-listing-model.md).
 2. **ADR-002: Deprecation of ShopPage and ShopCatalogListing** — Timeline; Urban Roots / Amara kit migration.
 3. **ADR-003: Member terminology** — UI/API rename scope; whether `CUSTOMER` becomes `MEMBER`.
-4. **ADR-004: Discover route and information architecture** — `/discover` vs enhanced `/marketplace`.
-5. **ADR-005: Directory Listing data model** — Import source, claim workflow, map integration.
+4. ~~**ADR-004: Offering variants**~~ — Accepted.
+5. ~~**ADR-005: Service bookings**~~ — Accepted.
+6. ~~**ADR-006: Directory listings**~~ — Accepted.
+7. ~~**ADR-007: Growth workspace**~~ — Accepted.
+8. ~~**ADR-008: Pulse system**~~ — Accepted.
 
 ---
 
@@ -298,4 +303,4 @@ Update this file when:
 
 ---
 
-*Snapshot as of 2026-06-22. Codebase includes marketplace pivot, vendor carousel, profile images, and marketplace Buy Now (may be ahead of last deployed tag).*
+*Snapshot as of 2026-07-17. Updated for Discover, Directory claims, Favorites, Event/Resource fulfillment, Pulse naming, and GrowSpace Phase 1.*

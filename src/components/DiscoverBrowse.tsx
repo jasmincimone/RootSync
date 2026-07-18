@@ -7,6 +7,12 @@ import { Search } from "lucide-react";
 import { MarketplaceListingCheckoutActions } from "@/components/MarketplaceListingCheckoutActions";
 import { ListingImage } from "@/components/ListingImage";
 import { MessageVendorLink } from "@/components/MessageVendorLink";
+import { DiscoverCollapsibleSection } from "@/components/DiscoverCollapsibleSection";
+import {
+  DiscoverFavoritesSection,
+  type DiscoverFavoriteItem,
+} from "@/components/DiscoverFavoritesSection";
+import { DiscoverVendorSpotlight } from "@/components/DiscoverVendorSpotlight";
 import { UserAvatar } from "@/components/UserAvatar";
 import { DirectoryListingBadge } from "@/components/DirectoryListingBadge";
 import { RootSyncLoader } from "@/components/RootSyncLoader";
@@ -88,6 +94,8 @@ export type DiscoverVendorRow = {
   listingsCount: number;
   latitude: number | null;
   longitude: number | null;
+  /** Vendor account community Pulse score (0 if none yet). */
+  pulseScore: number;
 };
 
 export type DiscoverSearchFormValues = {
@@ -139,6 +147,13 @@ type Props = {
     kind: "vendor" | "directory" | "listing",
     id: string,
   ) => string;
+  /** Signed-in only; null/undefined hides the section from guests. */
+  favorites?: DiscoverFavoriteItem[] | null;
+  /** Always-on Pulse + nearby spotlights (independent of search filters). */
+  spotlightTopByPulse?: DiscoverVendorRow[];
+  spotlightNearby?: Array<DiscoverVendorRow & { distanceMiles?: number }>;
+  /** True after the member runs a real search (query / location / filters). */
+  searchActive?: boolean;
 };
 
 export function DiscoverBrowse({
@@ -173,6 +188,10 @@ export function DiscoverBrowse({
   searchError,
   discoverResultsHref,
   buildDetailHref,
+  favorites = null,
+  spotlightTopByPulse = [],
+  spotlightNearby = [],
+  searchActive = false,
 }: Props) {
   const rememberResults = () => rememberDiscoverResults(discoverResultsHref);
 
@@ -190,6 +209,15 @@ export function DiscoverBrowse({
     if (!isAllView) return true;
     return loading || total > 0;
   };
+
+  /** Directory stays visible in All view after a search attempt so empty/error states aren't hidden. */
+  const showDirectorySection =
+    showDirectory &&
+    (directoryLoading ||
+      Boolean(directoryError) ||
+      directoryTotal > 0 ||
+      directorySearchScope != null ||
+      !isAllView);
 
   const hasAnyResults =
     (showVendors && vendorsTotal > 0) ||
@@ -566,10 +594,32 @@ export function DiscoverBrowse({
         </form>
       </section>
 
+      {favorites ? (
+        <DiscoverFavoritesSection
+          favorites={favorites}
+          discoverResultsHref={discoverResultsHref}
+          buildDetailHref={buildDetailHref}
+          defaultOpen={!searchActive}
+        />
+      ) : null}
+
+      {showVendors ? (
+        <DiscoverVendorSpotlight
+          topByPulse={spotlightTopByPulse}
+          nearby={spotlightNearby}
+          discoverResultsHref={discoverResultsHref}
+          buildDetailHref={buildDetailHref}
+          locationSummary={locationSummary}
+          defaultOpen={!searchActive}
+        />
+      ) : null}
+
       {isAllView ? (
-        <div className="mt-10">
-          <h2 className="text-lg font-semibold text-fix-heading">Search results</h2>
-          <p className="mt-1 text-sm text-fix-text-muted">
+        <div className="mt-10 border-b border-fix-border/15 pb-4">
+          <h2 className="text-2xl font-bold tracking-tight text-fix-heading sm:text-3xl">
+            Search results
+          </h2>
+          <p className="mt-2 text-base leading-relaxed text-fix-text-muted sm:text-lg">
             Matches are grouped by type — vendors, directory listings, and marketplace listings.
           </p>
           {!hasAnyResults && !directoryLoading ? (
@@ -585,25 +635,28 @@ export function DiscoverBrowse({
       ) : null}
 
       {showVendors && shouldShowSection(vendorsTotal) ? (
-        <section className="mt-12" aria-labelledby="featured-vendors-heading">
-          <h2 id="featured-vendors-heading" className="text-lg font-semibold text-fix-heading">
-            Featured vendors
-          </h2>
-          <p className="mt-1 text-sm text-fix-text-muted">
-          Verified growers and makers on Discover.
-          {locationSummary ? ` · ${locationSummary}` : ""}
-        </p>
+        <DiscoverCollapsibleSection
+          id="discover-matching-vendors"
+          title="Matching vendors"
+          description={
+            <>
+              Vendors that match your search
+              {locationSummary ? ` · ${locationSummary}` : ""}.
+            </>
+          }
+          count={vendorsTotal}
+          defaultOpen={searchActive || vendorsTotal > 0}
+          className="mt-12"
+        >
           {vendorsTotal === 0 ? (
-            <div className="mt-6">
-              <EmptyState
+            <EmptyState
                 bordered={false}
                 title="No vendors match your search"
                 description="Try a different search or clear filters, then click Search."
               />
-            </div>
           ) : (
             <>
-              <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {vendors.map((v) => (
                   <li key={v.id}>
                     <Card id={`discover-vendor-${v.id}`} className="h-full scroll-mt-24 p-4 sm:p-5">
@@ -615,14 +668,19 @@ export function DiscoverBrowse({
                           className="shrink-0"
                         />
                         <div className="min-w-0 flex-1">
-                          <Link
-                            href={buildDetailHref(discoverVendorPath(v), "vendor", v.id)}
-                            onClick={rememberResults}
-                            className="text-sm font-semibold text-fix-heading hover:text-fix-link hover:underline"
-                          >
-                            {v.displayName}
-                          </Link>
-                          <VerifiedVendorBadge size="sm" className="mt-1" />
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                            <Link
+                              href={buildDetailHref(discoverVendorPath(v), "vendor", v.id)}
+                              onClick={rememberResults}
+                              className="min-w-0 truncate text-sm font-semibold text-fix-heading hover:text-fix-link hover:underline"
+                            >
+                              {v.displayName}
+                            </Link>
+                            <span className="select-none text-sm text-fix-text-muted/45" aria-hidden>
+                              |
+                            </span>
+                            <VerifiedVendorBadge size="sm" className="shrink-0" />
+                          </div>
                           {v.pickupLocation ? (
                             <p className="mt-1 text-xs text-fix-text-muted">{v.pickupLocation}</p>
                           ) : null}
@@ -659,18 +717,23 @@ export function DiscoverBrowse({
               />
             </>
           )}
-        </section>
+        </DiscoverCollapsibleSection>
       ) : null}
 
-      {showDirectory && shouldShowSection(directoryTotal, directoryLoading) ? (
-        <section className="mt-12" aria-labelledby="directory-listings-heading">
-          <h2 id="directory-listings-heading" className="text-lg font-semibold text-fix-heading">
-            Directory listings
-          </h2>
-          <p className="mt-1 text-sm text-fix-text-muted">
-            Local food businesses from the USDA directory — view only, not RootSync vendors.
-            {directorySummary ? ` · ${directorySummary}` : ""}
-          </p>
+      {showDirectorySection ? (
+        <DiscoverCollapsibleSection
+          id="discover-directory-listings"
+          title="Directory listings"
+          description={
+            <>
+              Local food businesses from the USDA directory — view only, not RootSync vendors.
+              {directorySummary ? ` · ${directorySummary}` : ""}
+            </>
+          }
+          count={directoryLoading ? null : directoryTotal}
+          defaultOpen={searchActive || directoryLoading || directoryTotal > 0}
+          className="mt-12"
+        >
           {directorySearchScope === "state" ? (
             <p className="mt-2 text-sm text-fix-text-muted">
               {directoryLoading
@@ -708,7 +771,7 @@ export function DiscoverBrowse({
             </div>
           ) : (
             <>
-              <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {directory.map((d) => (
                   <li key={d.id}>
                     <Card id={`discover-directory-${d.id}`} className="h-full scroll-mt-24 p-4 sm:p-5">
@@ -755,20 +818,25 @@ export function DiscoverBrowse({
               />
             </>
           )}
-        </section>
+        </DiscoverCollapsibleSection>
       ) : null}
 
       {showListings && shouldShowSection(listingsTotal) ? (
-        <section className="mt-12" aria-labelledby="discover-listings-heading">
-          <h2 id="discover-listings-heading" className="text-lg font-semibold text-fix-heading">
-            Listings
-          </h2>
-          <p className="mt-1 text-sm text-fix-text-muted">
-            {listingsTotal} listing{listingsTotal === 1 ? "" : "s"}
-            {form.typeFilter ? ` · ${listingTypeLabel(form.typeFilter)}` : ""}
-            {form.categoryFilter ? ` · ${form.categoryFilter}` : ""}
-            {locationSummary ? ` · ${locationSummary}` : ""}
-          </p>
+        <DiscoverCollapsibleSection
+          id="discover-listings"
+          title="Listings"
+          description={
+            <>
+              {listingsTotal} listing{listingsTotal === 1 ? "" : "s"}
+              {form.typeFilter ? ` · ${listingTypeLabel(form.typeFilter)}` : ""}
+              {form.categoryFilter ? ` · ${form.categoryFilter}` : ""}
+              {locationSummary ? ` · ${locationSummary}` : ""}
+            </>
+          }
+          count={listingsTotal}
+          defaultOpen={searchActive || listingsTotal > 0}
+          className="mt-12"
+        >
           {listingsTotal === 0 ? (
             <div className="mt-6">
               <EmptyState
@@ -779,7 +847,7 @@ export function DiscoverBrowse({
             </div>
           ) : (
             <>
-              <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+              <ul className="grid gap-4 sm:grid-cols-2">
                 {listings.map((listing) => (
                   <li key={listing.id}>
                     <Card
@@ -821,17 +889,20 @@ export function DiscoverBrowse({
                             listing.vendorProfile.id,
                           )}
                           onClick={rememberResults}
-                          className="mt-1 inline-flex flex-col items-start gap-0.5 text-xs font-medium text-fix-link hover:text-fix-link-hover"
+                          className="mt-1 inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-fix-link hover:text-fix-link-hover"
                         >
-                          <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-flex min-w-0 items-center gap-1.5">
                             <UserAvatar
                               src={listing.vendorProfile.profileImageUrl}
                               name={listing.vendorProfile.displayName}
                               size="xs"
                             />
-                            {listing.vendorProfile.displayName}
+                            <span className="truncate">{listing.vendorProfile.displayName}</span>
                           </span>
-                          <VerifiedVendorBadge size="sm" />
+                          <span className="select-none text-fix-text-muted/45" aria-hidden>
+                            |
+                          </span>
+                          <VerifiedVendorBadge size="sm" className="shrink-0" />
                         </Link>
                         <div className="mt-1 text-sm font-medium text-fix-text">
                           {formatPrice(listing.priceCents)}
@@ -860,7 +931,7 @@ export function DiscoverBrowse({
               />
             </>
           )}
-        </section>
+        </DiscoverCollapsibleSection>
       ) : null}
     </>
   );

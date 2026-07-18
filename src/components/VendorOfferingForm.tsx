@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { VendorListingImageField } from "@/components/VendorListingImageField";
 import { VendorResourceFileField } from "@/components/VendorResourceFileField";
@@ -94,7 +94,7 @@ const WIZARD_STEP_LABELS: Record<WizardStepKey, string> = {
   publish: "Publish",
 };
 
-function visibleWizardSteps(listingType: string): WizardStepKey[] {
+function visibleWizardSteps(): WizardStepKey[] {
   const steps: WizardStepKey[] = ["basics", "details", "options", "checkout", "publish"];
   return steps;
 }
@@ -128,19 +128,15 @@ export function VendorOfferingForm({
     toDatetimeLocalValue(initial?.scheduledPublishAt),
   );
 
-  const initialSteps = visibleWizardSteps(resolvedDefaultType);
+  const initialSteps = visibleWizardSteps();
   const initialStepIndex = initialWizardStep
     ? Math.max(0, initialSteps.indexOf(initialWizardStep))
     : 0;
   const [step, setStep] = useState(initialStepIndex >= 0 ? initialStepIndex : 0);
 
-  const wizardSteps = visibleWizardSteps(listingType);
+  const wizardSteps = visibleWizardSteps();
   const currentStepKey = wizardSteps[step] ?? "basics";
   const lastStepIndex = wizardSteps.length - 1;
-
-  useEffect(() => {
-    setStep((s) => Math.min(s, visibleWizardSteps(listingType).length - 1));
-  }, [listingType]);
 
   const [requiresShipping, setRequiresShipping] = useState(
     initial?.details.product?.requiresShipping ?? true,
@@ -309,6 +305,28 @@ export function VendorOfferingForm({
       return;
     }
 
+    if (
+      listingType === LISTING_TYPE.RESOURCE &&
+      (status === OFFERING_STATUS.ACTIVE || status === OFFERING_STATUS.SCHEDULED) &&
+      !resourceFileUrl.trim()
+    ) {
+      setError("Upload the Resource file before publishing.");
+      return;
+    }
+
+    if (
+      (listingType === LISTING_TYPE.EVENT || listingType === LISTING_TYPE.RESOURCE) &&
+      (status === OFFERING_STATUS.ACTIVE || status === OFFERING_STATUS.SCHEDULED) &&
+      cents <= 0
+    ) {
+      setError(
+        listingType === LISTING_TYPE.EVENT
+          ? "Set a ticket price greater than $0 before publishing. Free Events are not supported yet."
+          : "Set a price greater than $0 before publishing. Free Resources are not supported yet.",
+      );
+      return;
+    }
+
     if (listingType === LISTING_TYPE.EVENT) {
       if (
         eventAttendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL &&
@@ -329,7 +347,7 @@ export function VendorOfferingForm({
         eventAttendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET &&
         (!eventStartsAt.trim() || !eventEndsAt.trim())
       ) {
-        setError("Google Meet events need start and end times so we can create the room.");
+        setError("Virtual Meet events need start and end times so we can create the room.");
         return;
       }
     }
@@ -707,7 +725,7 @@ export function VendorOfferingForm({
               >
                 <option value={EVENT_ATTENDANCE_MODE.IN_PERSON}>In person — address / venue</option>
                 <option value={EVENT_ATTENDANCE_MODE.VIRTUAL_MEET}>
-                  Digital — Google Meet (created for you)
+                  Digital — Meet room (auto or paste your link)
                 </option>
                 <option value={EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL}>
                   Digital — external link (Whova, Cvent, Zoom…)
@@ -772,26 +790,37 @@ export function VendorOfferingForm({
               </div>
             ) : null}
             {eventAttendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET ? (
-              <div className="rounded-lg border border-fix-border/15 bg-fix-bg-muted/40 px-3 py-2 text-xs text-fix-text-muted">
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm font-medium text-fix-text">
+                    Meet link (optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={eventMeetUrl}
+                    onChange={(e) => setEventMeetUrl(e.target.value)}
+                    placeholder="https://meet.google.com/…"
+                    className={inputClass}
+                  />
+                  <p className="mt-1 text-xs text-fix-text-muted">
+                    Paste your own Google Meet URL to use it. Leave blank to auto-create a room
+                    (Google Calendar when configured, otherwise a Jitsi room). Join details stay
+                    private until after ticket purchase.
+                  </p>
+                </div>
                 {eventMeetUrl ? (
-                  <>
-                    Meet room ready:{" "}
+                  <p className="text-xs text-fix-text-muted">
+                    Current room: 
                     <a
                       href={eventMeetUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-medium text-fix-link hover:text-fix-link-hover"
                     >
-                      Open Google Meet
+                      Open join link
                     </a>
-                    . Ticket holders get join details after checkout.
-                  </>
-                ) : (
-                  <>
-                    Save with start and end times to create a Google Meet room (same calendar setup
-                    as consultations). Join details stay private until after ticket purchase.
-                  </>
-                )}
+                  </p>
+                ) : null}
               </div>
             ) : null}
             <div>

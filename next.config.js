@@ -10,14 +10,17 @@ const nextConfig = {
       { source: "/cart", destination: "/discover", permanent: false },
       { source: "/products/:path*", destination: "/discover", permanent: false },
       { source: "/checkout", destination: "/discover", permanent: false },
+      // /shops index → Discover. Per-slug routes stay in app/ so VendorProfile.shopSlug
+      // can resolve to the vendor storefront (legacy Fix Collective / pitch links).
       { source: "/shops", destination: "/discover", permanent: true },
-      { source: "/shops/:path*", destination: "/discover", permanent: true },
       { source: "/downloads", destination: "/discover?type=RESOURCE", permanent: true },
       { source: "/downloads/:path*", destination: "/discover?type=RESOURCE", permanent: true },
       { source: "/courses", destination: "/discover?type=EVENT", permanent: true },
       { source: "/courses/:path*", destination: "/discover?type=EVENT", permanent: true },
       { source: "/rootsyncai", destination: "/rootsense-ai", permanent: true },
       { source: "/rootsyncai/:path*", destination: "/rootsense-ai/:path*", permanent: true },
+      { source: "/community", destination: "/pulse", permanent: true },
+      { source: "/account/community", destination: "/account/pulses", permanent: true },
     ];
   },
 };

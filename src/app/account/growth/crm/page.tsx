@@ -1,21 +1,41 @@
-import { Users } from "lucide-react";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
-import { GrowthModuleShell } from "@/components/growth/GrowthModuleShell";
+import { GrowthCrmClient } from "@/components/growth/GrowthCrmClient";
+import { PageBody } from "@/components/ui/PageBody";
+import { authOptions } from "@/lib/authOptions";
+import { requireGrowthWorkspace } from "@/lib/growthAccess";
+import { listGrowthContacts } from "@/lib/growth/contacts";
 
-export default function GrowthCrmPage() {
+export const dynamic = "force-dynamic";
+
+export default async function GrowthCrmPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) redirect("/login?callbackUrl=/account/growth/crm");
+
+  const ctx = await requireGrowthWorkspace(session.user.id);
+  if ("error" in ctx) redirect("/account/vendor/apply");
+
+  const contacts = await listGrowthContacts(ctx.vendorProfileId, ctx.isPlatformScope);
+
   return (
-    <GrowthModuleShell
-      title="CRM"
-      description="A lightweight relationship manager — not a corporate CRM. Track contacts, tags, interests, purchase history, and follow-up tasks."
-      icon={Users}
-      highlights={[
-        "Search, filter, sort, and tag contacts",
-        "Link RootSync members automatically",
-        "Notes, tasks, and activity timeline",
-        "Statuses from New Lead through VIP and Partner",
-        "Import signals from orders, bookings, and community",
-      ]}
-      primaryAction={{ href: "/account/growth", label: "View growth overview" }}
-    />
+    <PageBody
+      wide
+      description="Lightweight relationship manager — contacts, status, and notes. Not a corporate CRM."
+    >
+      <GrowthCrmClient
+        initialContacts={contacts.map((c) => ({
+          id: c.id,
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+          status: c.status,
+          leadSource: c.leadSource,
+          funnel: c.funnel,
+          noteCount: c._count.notes,
+          updatedAt: c.updatedAt.toISOString(),
+        }))}
+      />
+    </PageBody>
   );
 }

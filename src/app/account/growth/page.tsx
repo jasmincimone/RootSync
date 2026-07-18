@@ -36,6 +36,7 @@ export default async function GrowthOverviewPage() {
       () => ({
         contacts: 0,
         activeFunnels: 0,
+        campaigns: 0,
         landingPageViews: 0,
         qrScans: 0,
         newsletterSubscribers: 0,

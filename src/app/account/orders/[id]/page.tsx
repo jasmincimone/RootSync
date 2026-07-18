@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 
 import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { Card } from "@/components/ui/Card";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { OrderStatusBadge } from "@/components/ui/StatusBadge";
 import { VendorPulseReviewForm } from "@/components/pulse/VendorPulseReviewForm";
 import { formatPrice } from "@/lib/format";
@@ -14,10 +15,13 @@ import { isResourceOrderItem, orderItemTypeLabel } from "@/lib/roles";
 
 export default async function AccountOrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ resource?: string }>;
 }) {
   const { id } = await params;
+  const { resource: resourceStatus } = await searchParams;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return null;
 
@@ -78,6 +82,12 @@ export default async function AccountOrderDetailPage({
         </>
       }
     >
+      {resourceStatus === "pending" ? (
+        <ErrorBanner message="This Resource file has not been added yet. The Vendor must finish delivery setup before it can be accessed." />
+      ) : resourceStatus === "unavailable" ? (
+        <ErrorBanner message="This Resource is temporarily unavailable. Please try again later or contact the Vendor through Stay Synced." />
+      ) : null}
+
       <Card className="p-6">
         <div className="flex flex-wrap items-center gap-2 border-b border-fix-border/15 pb-4">
           <OrderStatusBadge status={order.status} />

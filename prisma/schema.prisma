@@ -65,6 +65,23 @@ model User {
   growthContactsAsMember GrowthContact[] @relation("GrowthContactMember")
   growthCrmNotesAuthored GrowthCrmNote[] @relation("GrowthCrmNoteAuthor")
   growthMarketingEvents  GrowthMarketingEvent[] @relation("GrowthMarketingEventUser")
+  favorites              Favorite[]
+  directoryClaimsRequested DirectoryListing[] @relation("DirectoryClaimRequester")
+}
+
+/// Member-saved Listing, Vendor, or DirectoryListing — see FAVORITE_TARGET_TYPE
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// LISTING | VENDOR | DIRECTORY
+  targetType String
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, targetType, targetId])
+  @@index([userId, createdAt])
+  @@map("favorites")
 }
 
 /// One-time password reset link tokens (hashed at rest).
@@ -230,6 +247,9 @@ model DirectoryListing {
 
   /// UNCLAIMED | PENDING | CLAIMED
   claimStatus   String   @default("UNCLAIMED")
+  claimRequestedByUserId String?
+  claimRequestedBy       User?    @relation("DirectoryClaimRequester", fields: [claimRequestedByUserId], references: [id], onDelete: SetNull)
+  claimRequestedAt       DateTime?
   claimedVendorProfileId String? @unique
   claimedVendorProfile   VendorProfile? @relation(fields: [claimedVendorProfileId], references: [id], onDelete: SetNull)
 
@@ -242,6 +262,8 @@ model DirectoryListing {
   @@index([directoryType])
   @@index([state, city])
   @@index([status])
+  @@index([claimStatus, claimRequestedAt])
+  @@index([claimRequestedByUserId])
   @@index([latitude, longitude])
 }
 
@@ -356,7 +378,7 @@ model EventDetails {
   attendanceMode String @default("IN_PERSON")
   /// Whova, Cvent, Zoom, etc. when attendanceMode is VIRTUAL_EXTERNAL
   externalJoinUrl String?
-  /// Google Meet URL when attendanceMode is VIRTUAL_MEET (provisioned via Calendar)
+  /// Google Meet / Jitsi / pasted URL when attendanceMode is VIRTUAL_MEET
   meetUrl         String?
   googleCalendarEventId String?
 }

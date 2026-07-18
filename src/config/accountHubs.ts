@@ -23,7 +23,7 @@ export const ACCOUNT_HUB_IDS: AccountHubId[] = [
 ];
 
 export const ACCOUNT_HUB_LABELS: Record<AccountHubId, string> = {
-  vitals: "Vitals",
+  vitals: "Your Pulse",
   "member-hub": "Member Hub",
   "vendor-hub": "Vendor Hub",
   growspace: "GrowSpace",

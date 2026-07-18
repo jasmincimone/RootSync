@@ -136,13 +136,24 @@ export type FulfillmentMethod = (typeof FULFILLMENT_METHOD)[keyof typeof FULFILL
 
 /**
  * How an Event is attended — see EventDetails.attendanceMode.
- * VIRTUAL_MEET uses platform Google Meet; VIRTUAL_EXTERNAL is Whova/Cvent/Zoom/etc.
+ * VIRTUAL_MEET uses platform Meet (Google Calendar, or Jitsi / manual URL fallback);
+ * VIRTUAL_EXTERNAL is Whova/Cvent/Zoom/etc.
  */
 export const EVENT_ATTENDANCE_MODE = {
   IN_PERSON: "IN_PERSON",
   VIRTUAL_MEET: "VIRTUAL_MEET",
   VIRTUAL_EXTERNAL: "VIRTUAL_EXTERNAL",
 } as const;
+
+/** Member favorites — polymorphic target on Favorite.targetType */
+export const FAVORITE_TARGET_TYPE = {
+  LISTING: "LISTING",
+  VENDOR: "VENDOR",
+  DIRECTORY: "DIRECTORY",
+} as const;
+
+export type FavoriteTargetType =
+  (typeof FAVORITE_TARGET_TYPE)[keyof typeof FAVORITE_TARGET_TYPE];
 
 export type EventAttendanceMode =
   (typeof EVENT_ATTENDANCE_MODE)[keyof typeof EVENT_ATTENDANCE_MODE];

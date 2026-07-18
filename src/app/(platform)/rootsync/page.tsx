@@ -44,6 +44,10 @@ export default function RootSyncPlatformPage() {
             Products, Services, Resources, Events, and conversation.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-fix-text-muted">
+            Discover finds what&apos;s local. Pulse shares what&apos;s happening. Stay Synced builds
+            relationships. Rootie, powered by RootSense AI, offers practical guidance.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-fix-text-muted">
             Browse Discover Marketplace as a visitor. Become a Member to purchase, book Services, and
             join Pulse. Verified Vendors publish Listings for the neighborhood.
           </p>

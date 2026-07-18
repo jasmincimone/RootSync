@@ -74,6 +74,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (message.includes("not ready to accept card payments")) {
       return NextResponse.json({ error: message }, { status: 409 });
     }
+    if (
+      message === "This Event is sold out." ||
+      /^Only \d+ tickets? remaining\.$/.test(message)
+    ) {
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

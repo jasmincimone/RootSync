@@ -87,7 +87,7 @@ export function VendorPulseReviewForm({
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className={cn("space-y-4", className)}>
       <div>
-        <p className="text-sm font-semibold text-fix-heading">Give Pulse to {vendorName}</p>
+        <p className="text-sm font-semibold text-fix-heading">Give a Pulse to {vendorName}</p>
         {listingTitle ? (
           <p className="mt-0.5 text-xs text-fix-text-muted">For {listingTitle}</p>
         ) : null}
@@ -149,7 +149,7 @@ export function VendorPulseReviewForm({
       {error ? <FormFeedback error={error} /> : null}
 
       <Button type="submit" variant="cta" disabled={submitting}>
-        {submitting ? "Sending Pulse…" : "Give Pulse"}
+        {submitting ? "Sending Pulse…" : "Give a Pulse"}
       </Button>
     </form>
   );

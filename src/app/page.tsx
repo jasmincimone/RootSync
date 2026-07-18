@@ -38,13 +38,13 @@ export default async function HomePage() {
         <Container className="py-14 sm:py-20">
           <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col items-center text-center">
             <h1 className="text-3xl font-bold tracking-tight text-fix-heading sm:text-4xl md:text-5xl">
-              Stay Synced!
+              Make local living easier
             </h1>
             <div className="mt-5 max-w-xl space-y-4 text-base leading-relaxed text-fix-text">
               <p>A platform for self-sufficiency, connection, and local commerce.</p>
               <p>
-                RootSync brings together Discover Marketplace, Pulse, and Stay Synced — so you can
-                find vendors, book services, and grow with creators near you.
+                RootSync brings together Discover Marketplace, Pulse, Stay Synced, and RootSense AI —
+                so you can find vendors, book services, and grow with creators near you.
               </p>
             </div>
             <LandingCtaStack className="mt-8">
@@ -144,8 +144,8 @@ export default async function HomePage() {
             <div className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft sm:p-8">
               <h2 className="text-lg font-semibold text-fix-heading">RootSync platform</h2>
               <p className="mt-2 text-sm leading-relaxed text-fix-text-muted">
-                Pulse, Stay Synced, RootSense AI, and Discover Marketplace — shop local goods, book
-                services, and connect with makers in your region, all from one place.
+                Discover what&apos;s local. Share and contribute through Pulse. Build relationships
+                with Stay Synced. Get practical guidance from Rootie, powered by RootSense AI.
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <ButtonLink href="/rootsync" variant="cta" size="sm">

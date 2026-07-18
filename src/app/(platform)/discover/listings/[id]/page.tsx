@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { Container } from "@/components/Container";
 import { DiscoverDetailBackLink } from "@/components/DiscoverDetailBackLink";
 import { DiscoverDetailTopBack } from "@/components/DiscoverDetailTopBack";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import {
   ListingDetailHighlights,
   ListingTypeDetailCard,
@@ -16,13 +17,15 @@ import { ButtonLink } from "@/components/ui/Button";
 import { PulseRatingBadge } from "@/components/pulse/PulseRatingDisplay";
 import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurchase";
 import { ListingImage } from "@/components/ListingImage";
+import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
 import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
+import { isFavorited } from "@/lib/favorites";
 import { resolveListingCheckoutOptions } from "@/lib/listingCheckoutOptions";
 import { prisma } from "@/lib/prisma";
 import { loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
-import { LISTING_VISIBILITY, OFFERING_STATUS, VENDOR_STATUS } from "@/lib/roles";
+import { FAVORITE_TARGET_TYPE, LISTING_VISIBILITY, OFFERING_STATUS, VENDOR_STATUS } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -134,6 +137,8 @@ function PurchasePanel({
   returnTo,
   profileName,
   currentVendorPath,
+  favoriteSaved,
+  signedIn,
 }: {
   listing: {
     id: string;
@@ -159,18 +164,33 @@ function PurchasePanel({
   returnTo?: string | null;
   profileName?: string | null;
   currentVendorPath?: string | null;
+  favoriteSaved: boolean;
+  signedIn: boolean;
 }) {
   return (
     <Card className={className ?? "overflow-hidden border-fix-border/15 p-0 shadow-soft"}>
-      <div className="border-b border-fix-border/15 p-6">
-        {listing.category?.trim() ? (
-          <p className="text-xs font-medium uppercase tracking-wide text-fix-text-muted">
-            {listing.category.trim()}
-          </p>
-        ) : null}
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">
-          {listing.title}
-        </h1>
+            <div className="border-b border-fix-border/15 p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {listing.category?.trim() ? (
+              <p className="text-xs font-medium uppercase tracking-wide text-fix-text-muted">
+                {listing.category.trim()}
+              </p>
+            ) : null}
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-fix-heading sm:text-3xl">
+              {listing.title}
+            </h1>
+          </div>
+          {!isOwnerPreview ? (
+            <FavoriteButton
+              targetType={FAVORITE_TARGET_TYPE.LISTING}
+              targetId={listing.id}
+              initialSaved={favoriteSaved}
+              signedIn={signedIn}
+              size="sm"
+            />
+          ) : null}
+        </div>
         <div className="mt-4">
           <ListingDetailHighlights
             priceCents={listing.priceCents}
@@ -194,6 +214,7 @@ function PurchasePanel({
           <MarketplaceListingPurchase
             listingId={listing.id}
             listingType={listing.listingType}
+            priceCents={listing.priceCents}
             variants={variants}
             paymentLinkUrl={paymentLinkUrl}
             productUrl={offering.productUrl}
@@ -240,17 +261,14 @@ export default async function DiscoverListingPage({
   if (!loaded) notFound();
 
   const { listing, isOwnerPreview } = loaded;
+  const favoriteSaved = await isFavorited(
+    session?.user?.id,
+    FAVORITE_TARGET_TYPE.LISTING,
+    listing.id,
+  );
   const v = listing.vendorProfile;
   const offering = listing.offering;
   const variants = offering.variants ?? [];
-
-  const detailProps = {
-    listingType: listing.listingType,
-    product: offering.productDetails,
-    service: offering.serviceDetails,
-    resource: offering.resourceDetails,
-    event: offering.eventDetails,
-  };
 
   const vendorPulse = !isOwnerPreview ? await loadVendorPulseSummary(v.id) : null;
 
@@ -259,6 +277,15 @@ export default async function DiscoverListingPage({
     vendorPaymentLinkUrl: v.paymentLinkUrl,
     stripeConnectAccountId: v.user.stripeConnectAccountId,
   });
+
+  const detailProps = {
+    listingType: listing.listingType,
+    product: offering.productDetails,
+    service: offering.serviceDetails,
+    resource: offering.resourceDetails,
+    event: offering.eventDetails,
+    rootSyncCheckoutReady: checkoutOptions.stripeCheckoutReady,
+  };
 
   const vendorPath = discoverVendorPath(v);
   const backOptions = {
@@ -352,6 +379,8 @@ export default async function DiscoverListingPage({
                 returnTo={returnTo}
                 profileName={v.displayName}
                 currentVendorPath={vendorPath}
+              favoriteSaved={favoriteSaved}
+              signedIn={Boolean(session?.user?.id)}
               />
             </div>
 
@@ -381,6 +410,11 @@ export default async function DiscoverListingPage({
                   {v.displayName}
                 </Link>
               </p>
+              {!isOwnerPreview ? (
+                <div className="mt-2">
+                  <VerifiedVendorBadge explain />
+                </div>
+              ) : null}
               {vendorPulse ? (
                 <PulseRatingBadge
                   averageRating={vendorPulse.averageRating}
@@ -417,6 +451,8 @@ export default async function DiscoverListingPage({
                 returnTo={returnTo}
                 profileName={v.displayName}
                 currentVendorPath={vendorPath}
+              favoriteSaved={favoriteSaved}
+              signedIn={Boolean(session?.user?.id)}
               />
             </div>
           </div>

@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import { Store } from "lucide-react";
+import { getServerSession } from "next-auth";
 
 import { Container } from "@/components/Container";
 import { DiscoverMarketplace } from "@/components/DiscoverMarketplace";
 import { PageLoading } from "@/components/PageLoading";
 import { RoleCtaButton } from "@/components/RoleCtaButton";
+import { authOptions } from "@/lib/authOptions";
+import { listSavedFavorites } from "@/lib/favorites";
 import { publishDueScheduledOfferingsBestEffort } from "@/lib/publishScheduledOfferings";
 import { publicListingRelationWhere, publicListingWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
@@ -19,13 +22,20 @@ export const dynamic = "force-dynamic";
 export default async function DiscoverPage() {
   await publishDueScheduledOfferingsBestEffort(prisma);
 
-  const [vendorsRaw, listings] = await Promise.all([
+  const session = await getServerSession(authOptions);
+
+  const [vendorsRaw, listings, favorites] = await Promise.all([
     prisma.vendorProfile.findMany({
       where: { status: VENDOR_STATUS.APPROVED },
       include: {
         listings: {
           where: publicListingRelationWhere,
           select: { id: true },
+        },
+        user: {
+          select: {
+            pulseScore: { select: { totalScore: true } },
+          },
         },
       },
       orderBy: { updatedAt: "desc" },
@@ -44,9 +54,14 @@ export default async function DiscoverPage() {
       },
       orderBy: { updatedAt: "desc" },
     }),
+    session?.user?.id ? listSavedFavorites(session.user.id) : Promise.resolve(null),
   ]);
 
-  const featuredVendors = [...vendorsRaw].sort((a, b) => b.listings.length - a.listings.length);
+  const featuredVendors = [...vendorsRaw].sort((a, b) => {
+    const scoreDiff = (b.user.pulseScore?.totalScore ?? 0) - (a.user.pulseScore?.totalScore ?? 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    return b.listings.length - a.listings.length;
+  });
 
   return (
     <Container className="px-4 py-10 sm:px-6 sm:py-16">
@@ -81,6 +96,7 @@ export default async function DiscoverPage() {
             listingsCount: v.listings.length,
             latitude: v.latitude,
             longitude: v.longitude,
+            pulseScore: v.user.pulseScore?.totalScore ?? 0,
           }))}
           listings={listings.map((l) => ({
             id: l.id,
@@ -97,6 +113,19 @@ export default async function DiscoverPage() {
               resourceSubtype: l.offering.resourceDetails?.resourceSubtype ?? null,
             },
           }))}
+          favorites={
+            favorites
+              ? favorites.map((f) => ({
+                  id: f.id,
+                  targetType: f.targetType,
+                  targetId: f.targetId,
+                  title: f.title,
+                  subtitle: f.subtitle,
+                  href: f.href,
+                  imageUrl: f.imageUrl,
+                }))
+              : null
+          }
         />
       </Suspense>
     </Container>

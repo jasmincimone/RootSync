@@ -9,6 +9,7 @@ import {
   SERVICE_KIND,
   FULFILLMENT_METHOD,
   EVENT_ATTENDANCE_MODE,
+  OFFERING_STATUS,
   type ListingType,
   type ResourceSubtype,
   type ServiceKind,
@@ -55,6 +56,63 @@ export type OfferingDetailsPayload = {
   resource?: ResourceDetailsInput;
   event?: EventDetailsInput;
 };
+
+export function assertPublishableOfferingDetails(args: {
+  listingType: ListingType;
+  status: string;
+  details: OfferingDetailsPayload;
+  priceCents?: number;
+}): void {
+  if (
+    args.status !== OFFERING_STATUS.ACTIVE &&
+    args.status !== OFFERING_STATUS.SCHEDULED
+  ) {
+    return;
+  }
+
+  if (
+    (args.listingType === LISTING_TYPE.EVENT || args.listingType === LISTING_TYPE.RESOURCE) &&
+    typeof args.priceCents === "number" &&
+    args.priceCents <= 0
+  ) {
+    throw new Error(
+      args.listingType === LISTING_TYPE.EVENT
+        ? "Set a ticket price greater than $0 before publishing. Free Events are not supported yet."
+        : "Set a price greater than $0 before publishing. Free Resources are not supported yet.",
+    );
+  }
+
+  if (args.listingType === LISTING_TYPE.RESOURCE) {
+    if (!args.details.resource?.fileUrl?.trim()) {
+      throw new Error("Upload the Resource file before publishing.");
+    }
+    return;
+  }
+
+  if (args.listingType !== LISTING_TYPE.EVENT) return;
+
+  const event = args.details.event;
+  const attendanceMode = event?.attendanceMode ?? EVENT_ATTENDANCE_MODE.IN_PERSON;
+  if (
+    attendanceMode === EVENT_ATTENDANCE_MODE.IN_PERSON &&
+    !event?.venue?.trim() &&
+    !event?.location?.trim()
+  ) {
+    throw new Error("Add a venue or location before publishing this Event.");
+  }
+  if (
+    attendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL &&
+    !event?.externalJoinUrl?.trim()
+  ) {
+    throw new Error("Add the external event-space link before publishing this Event.");
+  }
+  if (
+    attendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET &&
+    (!event?.startsAt || !event.endsAt)
+  ) {
+    throw new Error("Add start and end times before publishing this Google Meet Event.");
+  }
+}
 
 export type SerializedOfferingDetails = {
   product: ProductDetailsInput | null;

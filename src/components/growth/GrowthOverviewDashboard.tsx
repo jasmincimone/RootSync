@@ -20,6 +20,7 @@ import { PulseWorkspacePanel } from "@/components/pulse/PulseWorkspacePanel";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { BookingStatusBadge, OrderStatusBadge } from "@/components/ui/StatusBadge";
+import { ROOTSENSE_AI_HREF } from "@/config/rootsensePaths";
 import { formatPrice } from "@/lib/format";
 import type { GrowthOverviewDashboardData } from "@/lib/growth/overviewDashboard";
 import type { MemberPulseSummary } from "@/lib/pulse/memberScore";
@@ -87,13 +88,14 @@ export function GrowthOverviewDashboard({ data, pulseWorkspace, pulseSummary }: 
       ? "Import contacts from recent orders and bookings to start nurturing relationships. RootSense AI can suggest your first welcome series."
       : metrics.activeFunnels === 0
         ? "You have contacts but no active funnels. Build a podcast → consultation funnel to convert interest into booked sessions."
-        : "Demand for local wellness and growing products is trending up in your region. Consider a seasonal newsletter and a QR campaign at your next event.";
+        : metrics.campaigns === 0
+          ? "Your relationship pipeline is ready. Create a campaign to reconnect with contacts and invite the next meaningful action."
+          : "Your CRM, funnels, and campaigns are working together. Review recent activity and follow up where a personal touch will help.";
 
   const quickActions = [
     { href: "/account/growth/crm", label: "Add contact", primary: true },
     { href: "/account/growth/funnels", label: "Create funnel", primary: false },
-    { href: "/account/growth/newsletter", label: "Draft newsletter", primary: false },
-    { href: "/account/growth/ai-marketing", label: "AI recommendations", primary: false },
+    { href: "/account/growth/campaigns", label: "Create campaign", primary: false },
   ];
 
   return (
@@ -129,7 +131,7 @@ export function GrowthOverviewDashboard({ data, pulseWorkspace, pulseSummary }: 
           <Link
             href="/messages/inbox"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-fix-border/15 bg-fix-bg-muted/50 text-fix-text-muted hover:text-fix-heading"
-            aria-label="Messages"
+            aria-label="Stay Synced"
           >
             <MessageSquare className="h-4 w-4" aria-hidden />
           </Link>
@@ -289,12 +291,12 @@ export function GrowthOverviewDashboard({ data, pulseWorkspace, pulseSummary }: 
             </div>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-fix-text-muted">{aiInsight}</p>
             <ButtonLink
-              href="/account/growth/ai-marketing"
+              href={ROOTSENSE_AI_HREF}
               variant="cta"
               size="sm"
               className="mt-4"
             >
-              View insights
+              Ask Rootie
             </ButtonLink>
           </div>
           <div
@@ -396,9 +398,9 @@ export function GrowthOverviewDashboard({ data, pulseWorkspace, pulseSummary }: 
 
           <Card className="p-5">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-fix-heading">Community highlight</h3>
+              <h3 className="text-sm font-semibold text-fix-heading">Pulse highlight</h3>
               <Link
-                href="/community"
+                href="/pulse"
                 className="text-xs font-medium text-fix-link hover:text-fix-link-hover"
               >
                 View feed
@@ -416,7 +418,7 @@ export function GrowthOverviewDashboard({ data, pulseWorkspace, pulseSummary }: 
               </div>
             ) : (
               <p className="mt-4 text-sm text-fix-text-muted">
-                Share updates in Community to strengthen local connections and grow your reach.
+                Share updates on Pulse to strengthen local connections and grow your reach.
               </p>
             )}
           </Card>
@@ -459,8 +461,8 @@ export function GrowthOverviewDashboard({ data, pulseWorkspace, pulseSummary }: 
         {[
           { label: "CRM contacts", value: metrics.contacts },
           { label: "Active funnels", value: metrics.activeFunnels },
-          { label: "Landing page views", value: metrics.landingPageViews },
-          { label: "QR scans", value: metrics.qrScans },
+          { label: "Campaigns", value: metrics.campaigns },
+          { label: "Open tasks", value: metrics.openTasks },
         ].map((item) => (
           <Card key={item.label} className="px-4 py-3">
             <p className="text-xs font-medium uppercase tracking-wide text-fix-text-muted">

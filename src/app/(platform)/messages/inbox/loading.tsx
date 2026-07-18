@@ -1,5 +1,5 @@
 import { PageLoading } from "@/components/PageLoading";
 
 export default function MessagesInboxLoading() {
-  return <PageLoading label="Loading messages" />;
+  return <PageLoading label="Loading Stay Synced" />;
 }

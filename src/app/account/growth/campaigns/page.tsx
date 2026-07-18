@@ -1,19 +1,39 @@
-import { Megaphone } from "lucide-react";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
-import { GrowthModuleShell } from "@/components/growth/GrowthModuleShell";
+import { GrowthCampaignsClient } from "@/components/growth/GrowthCampaignsClient";
+import { PageBody } from "@/components/ui/PageBody";
+import { authOptions } from "@/lib/authOptions";
+import { requireGrowthWorkspace } from "@/lib/growthAccess";
+import { listGrowthCampaigns } from "@/lib/growth/campaigns";
 
-export default function GrowthCampaignsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function GrowthCampaignsPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) redirect("/login?callbackUrl=/account/growth/campaigns");
+
+  const ctx = await requireGrowthWorkspace(session.user.id);
+  if ("error" in ctx) redirect("/account/vendor/apply");
+
+  const campaigns = await listGrowthCampaigns(ctx.vendorProfileId, ctx.isPlatformScope);
+
   return (
-    <GrowthModuleShell
-      title="Campaigns"
-      description="Plan, schedule, and measure email and outreach campaigns — synced from PostgreSQL to your email provider."
-      icon={Megaphone}
-      highlights={[
-        "Draft, scheduled, and sent campaigns",
-        "Open rate, click rate, and unsubscribes",
-        "Audience segment targeting",
-        "Resend sync (Phase 4)",
-      ]}
-    />
+    <PageBody
+      wide
+      description="Draft email campaigns and send them to your CRM contacts via Resend."
+    >
+      <GrowthCampaignsClient
+        initialCampaigns={campaigns.map((c) => ({
+          id: c.id,
+          name: c.name,
+          subject: c.subject,
+          bodyHtml: c.bodyHtml,
+          status: c.status,
+          sentAt: c.sentAt?.toISOString() ?? null,
+          updatedAt: c.updatedAt.toISOString(),
+        }))}
+      />
+    </PageBody>
   );
 }

@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
-import { parseOfferingDetailsFromBody } from "@/lib/offeringDetails";
+import {
+  assertPublishableOfferingDetails,
+  parseOfferingDetailsFromBody,
+} from "@/lib/offeringDetails";
 import {
   isListingType,
   isOfferingStatus,
@@ -22,7 +25,12 @@ import { provisionEventMeetIfNeeded } from "@/lib/eventMeetProvision";
 import { hookOfferingPublished } from "@/lib/pulse/hooks";
 import { syncOfferingStripeProduct } from "@/lib/offeringStripeProduct";
 import { prisma } from "@/lib/prisma";
-import { LISTING_TYPE, OFFERING_STATUS, type ListingType } from "@/lib/roles";
+import {
+  EVENT_ATTENDANCE_MODE,
+  LISTING_TYPE,
+  OFFERING_STATUS,
+  type ListingType,
+} from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
 import { rateLimitResponse } from "@/lib/rateLimit";
 
@@ -191,6 +199,59 @@ export async function PATCH(
   let details;
   try {
     details = parseOfferingDetailsFromBody(body, nextListingType);
+    const existingResource = existing.offering.resourceDetails;
+    const existingEvent = existing.offering.eventDetails;
+    const effectiveDetails = {
+      ...details,
+      resource:
+        nextListingType === LISTING_TYPE.RESOURCE
+          ? {
+              ...details.resource,
+              fileUrl:
+                details.resource?.fileUrl !== undefined
+                  ? details.resource.fileUrl
+                  : existingResource?.fileUrl,
+            }
+          : details.resource,
+      event:
+        nextListingType === LISTING_TYPE.EVENT
+          ? {
+              ...details.event,
+              attendanceMode:
+                details.event?.attendanceMode ??
+                (existingEvent?.attendanceMode as
+                  | typeof EVENT_ATTENDANCE_MODE[keyof typeof EVENT_ATTENDANCE_MODE]
+                  | undefined),
+              startsAt:
+                details.event?.startsAt !== undefined
+                  ? details.event.startsAt
+                  : existingEvent?.startsAt?.toISOString(),
+              endsAt:
+                details.event?.endsAt !== undefined
+                  ? details.event.endsAt
+                  : existingEvent?.endsAt?.toISOString(),
+              venue:
+                details.event?.venue !== undefined ? details.event.venue : existingEvent?.venue,
+              location:
+                details.event?.location !== undefined
+                  ? details.event.location
+                  : existingEvent?.location,
+              externalJoinUrl:
+                details.event?.externalJoinUrl !== undefined
+                  ? details.event.externalJoinUrl
+                  : existingEvent?.externalJoinUrl,
+            }
+          : details.event,
+    };
+    assertPublishableOfferingDetails({
+      listingType: nextListingType,
+      status: typeof data.status === "string" ? data.status : nextStatus,
+      details: effectiveDetails,
+      priceCents:
+        typeof priceCents === "number" && priceCents >= 0 && !Number.isNaN(priceCents)
+          ? Math.round(priceCents)
+          : existing.offering.priceCents,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Invalid type-specific fields" },

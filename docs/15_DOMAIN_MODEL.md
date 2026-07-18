@@ -181,7 +181,7 @@ Examples:
 - Build Plans
 - Guides
 - Templates
-- Courses (future)
+- Courses
 
 ---
 

@@ -49,12 +49,7 @@ export function GivePulseButton({ postId, authorId, initialCount, initialGiven }
     }
   }
 
-  const label =
-    count === 0
-      ? "Give Pulse"
-      : count === 1
-        ? "1 Pulse"
-        : `${count} Pulses`;
+  const countLabel = count === 1 ? "1 Pulse" : `${count} Pulses`;
 
   if (!signedIn) {
     return (
@@ -98,7 +93,13 @@ export function GivePulseButton({ postId, authorId, initialCount, initialGiven }
         alt=""
         className={heartbeat ? "pulse-earned-heartbeat" : undefined}
       />
-      <span>{given ? `+1 Pulse · ${label}` : label}</span>
+      <span>
+        {given
+          ? `Pulse given · ${countLabel}`
+          : count === 0
+            ? "Give a Pulse"
+            : `Give a Pulse · ${countLabel}`}
+      </span>
     </button>
   );
 }

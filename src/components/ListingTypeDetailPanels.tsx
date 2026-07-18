@@ -71,6 +71,8 @@ type ListingDetailPanelsProps = {
     externalJoinUrl: string | null;
     meetUrl: string | null;
   } | null;
+  /** When false, do not promise RootSync post-purchase join emails. */
+  rootSyncCheckoutReady?: boolean;
 };
 
 export function ListingDetailHighlights({
@@ -106,6 +108,7 @@ export function ListingTypeDetailCard({
   service,
   resource,
   event,
+  rootSyncCheckoutReady = true,
 }: Omit<ListingDetailPanelsProps, "priceCents" | "variantCount">) {
   if (listingType === LISTING_TYPE.RESOURCE && resource) {
     const subtype = resourceSubtypeLabel(resource.resourceSubtype);
@@ -117,13 +120,14 @@ export function ListingTypeDetailCard({
             <h2 className="text-sm font-semibold text-fix-heading">Resource</h2>
           </div>
           <p className="mt-1 text-sm text-fix-text-muted">
-            Delivered instantly after purchase. Access from your order history on RootSync.
+            RootSync purchases include secure digital access from your order history. External
+            checkout is fulfilled by the Vendor.
           </p>
         </div>
         <dl className="px-5 py-1">
           {subtype ? <DetailRow label="Kind" value={subtype} /> : null}
           {resource.format?.trim() ? <DetailRow label="Format" value={resource.format.trim()} /> : null}
-          <DetailRow label="Fulfillment" value="Instant digital access" />
+          <DetailRow label="Fulfillment" value="Digital access after confirmed RootSync purchase" />
         </dl>
       </Card>
     );
@@ -167,10 +171,16 @@ export function ListingTypeDetailCard({
     const attendance =
       EVENT_ATTENDANCE_LABELS[event.attendanceMode as EventAttendanceMode] ??
       event.attendanceMode;
-    const showExternal =
+    const showExternalHint =
+      rootSyncCheckoutReady &&
       event.attendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL &&
       !!event.externalJoinUrl?.trim();
-    const showMeetHint = event.attendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET;
+    const showMeetHint =
+      rootSyncCheckoutReady && event.attendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET;
+    const showExternalVendorFulfillment =
+      !rootSyncCheckoutReady &&
+      (event.attendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_EXTERNAL ||
+        event.attendanceMode === EVENT_ATTENDANCE_MODE.VIRTUAL_MEET);
     return (
       <Card className="overflow-hidden border-fix-border/15 p-0">
         <div className="border-b border-fix-border/15 bg-fix-bg-muted/50 px-5 py-4">
@@ -179,7 +189,7 @@ export function ListingTypeDetailCard({
             <h2 className="text-sm font-semibold text-fix-heading">Event</h2>
           </div>
           <p className="mt-1 text-sm text-fix-text-muted">
-            Classes, workshops, and gatherings — buy tickets on Discover.
+            Classes, workshops, and gatherings with RootSync or Vendor checkout options.
           </p>
         </div>
         <dl className="px-5 py-1">
@@ -190,13 +200,22 @@ export function ListingTypeDetailCard({
           {event.location?.trim() ? (
             <DetailRow label="Location" value={event.location.trim()} />
           ) : null}
-          {showExternal ? (
-            <DetailRow label="Event space" value={event.externalJoinUrl!.trim()} />
+          {showExternalHint ? (
+            <DetailRow
+              label="Join"
+              value="Event-space link emailed after confirmed RootSync ticket purchase"
+            />
           ) : null}
           {showMeetHint ? (
             <DetailRow
               label="Join"
-              value="Google Meet link emailed after ticket purchase"
+              value="Google Meet link emailed after confirmed RootSync ticket purchase"
+            />
+          ) : null}
+          {showExternalVendorFulfillment ? (
+            <DetailRow
+              label="Join"
+              value="Join details are provided by the Vendor for external ticket purchases"
             />
           ) : null}
           {event.capacity != null ? (

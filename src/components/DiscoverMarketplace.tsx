@@ -10,6 +10,7 @@ import {
   type DiscoverSearchFormValues,
   type DiscoverVendorRow,
 } from "@/components/DiscoverBrowse";
+import type { DiscoverFavoriteItem } from "@/components/DiscoverFavoritesSection";
 import { MarketplaceMapDynamic } from "@/components/MarketplaceMapDynamic";
 import {
   DEFAULT_DISCOVER_PAGE_SIZE,
@@ -21,11 +22,13 @@ import {
   isDiscoverStateRadiusAnywhere,
 } from "@/config/discoverLocation";
 import { directoryToMapPins, vendorsToMapPins, type DiscoverMapPin } from "@/lib/discoverMap";
+import { buildDiscoverVendorSpotlight } from "@/lib/discoverVendorSpotlight";
 import {
   DEFAULT_DISCOVER_SEARCH_FORM,
   directoryLocationPayload,
   filterDiscoverListings,
   filterDiscoverVendors,
+  hasActiveDiscoverSearch,
   locationSummaryFromSearch,
   normalizeDiscoverSearchForm,
   parseDiscoverStateRadius,
@@ -45,6 +48,8 @@ import { normalizeUsState } from "@/lib/usStates";
 type Props = {
   vendors: DiscoverVendorRow[];
   listings: DiscoverListingRow[];
+  /** Signed-in member favorites; null for guests (section hidden). */
+  favorites?: DiscoverFavoriteItem[] | null;
 };
 
 type DirectorySearchResponse = {
@@ -109,7 +114,7 @@ async function geocodeZip(zip: string): Promise<{ latitude: number; longitude: n
   return { latitude: body.latitude, longitude: body.longitude };
 }
 
-export function DiscoverMarketplace({ vendors, listings }: Props) {
+export function DiscoverMarketplace({ vendors, listings, favorites = null }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [form, setForm] = useState<DiscoverSearchFormValues>(DEFAULT_FORM);
@@ -148,6 +153,17 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
       const href = buildDiscoverSearchHref(discoverUrlStateFromApplied(nextApplied, pages), {
         hash,
       });
+      // Prefer history.replaceState so App Router does not remount this client tree
+      // (router.replace re-runs the server Discover page and wipes in-flight directory results).
+      if (typeof window !== "undefined") {
+        const nextUrl = new URL(href, window.location.origin);
+        const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        const target = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+        if (current !== target) {
+          window.history.replaceState(window.history.state, "", target);
+        }
+        return;
+      }
       router.replace(href, { scroll: false });
     },
     [router],
@@ -284,7 +300,8 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
       setVendorsPage(nextVendorsPage);
       setListingsPage(nextListingsPage);
       await fetchDirectory(nextApplied, nextDirectoryPage, {
-        refresh: true,
+        // Use cached/DB-fresh data for interactive search; USDA refresh is expensive.
+        refresh: false,
         locationCenter: nextLocationCenter,
       });
 
@@ -326,6 +343,8 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
   const showDirectory = isAllView || applied?.sourceFilter === "directory";
   const showListings = isAllView || applied?.sourceFilter === "listings";
 
+  const searchActive = Boolean(applied && hasActiveDiscoverSearch(applied));
+
   const filteredVendors = useMemo(() => {
     if (!applied) return [];
     return filterDiscoverVendors(vendors, applied, locationCenter);
@@ -344,6 +363,11 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
   const pagedListings = useMemo(
     () => paginateSlice(filteredListings, listingsPage, pageSize),
     [filteredListings, listingsPage, pageSize],
+  );
+
+  const vendorSpotlight = useMemo(
+    () => buildDiscoverVendorSpotlight(vendors, locationCenter),
+    [vendors, locationCenter],
   );
 
   const locationSummary = useMemo(
@@ -523,6 +547,10 @@ export function DiscoverMarketplace({ vendors, listings }: Props) {
         showDirectory={showDirectory}
         showListings={showListings}
         isAllView={isAllView}
+        favorites={favorites}
+        spotlightTopByPulse={vendorSpotlight.topByPulse}
+        spotlightNearby={vendorSpotlight.nearby}
+        searchActive={searchActive}
       />
     </>
   );

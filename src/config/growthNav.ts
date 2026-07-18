@@ -67,6 +67,18 @@ export const GROWTH_NAV_ITEMS: GrowthNavItem[] = [
   },
 ];
 
+const LIVE_GROWTH_HREFS = new Set([
+  "/account/growth",
+  "/account/growth/crm",
+  "/account/growth/funnels",
+  "/account/growth/campaigns",
+]);
+
+/** Modules currently available to vendors in GrowSpace. */
+export const LIVE_GROWTH_NAV_ITEMS = GROWTH_NAV_ITEMS.filter((item) =>
+  LIVE_GROWTH_HREFS.has(item.href),
+);
+
 export function growthNavItemForPath(pathname: string): GrowthNavItem | undefined {
   const normalized = pathname.replace(/\/$/, "") || "/account/growth";
   return GROWTH_NAV_ITEMS.find((item) => {

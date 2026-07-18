@@ -77,3 +77,14 @@ export function assertGoogleCalendarEnv(): {
     impersonateUser: getGoogleCalendarImpersonateUser(),
   };
 }
+
+/** True when Calendar ID + service account credentials are present (does not validate network). */
+export function isGoogleCalendarConfigured(): boolean {
+  try {
+    getGoogleCalendarId();
+    loadGoogleServiceAccountCredentials();
+    return true;
+  } catch {
+    return false;
+  }
+}
