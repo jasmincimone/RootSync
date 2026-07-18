@@ -11,7 +11,7 @@ import { VendorOnboardingChecklist } from "@/components/VendorOnboardingChecklis
 import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
-import { LISTING_TYPE, ROLES, VENDOR_STATUS } from "@/lib/roles";
+import { LISTING_TYPE, DIRECTORY_CLAIM_STATUS, ROLES, VENDOR_STATUS } from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
 
 export default async function VendorDashboardPage() {
@@ -40,7 +40,7 @@ export default async function VendorDashboardPage() {
   });
   const hasStripe = Boolean(user?.stripeConnectAccountId);
 
-  const [listingCount, serviceWithAvailability, serviceNeedingAvailability, anyServiceListing] =
+  const [listingCount, serviceWithAvailability, serviceNeedingAvailability, anyServiceListing, directoryClaims] =
     await Promise.all([
       prisma.listing.count({ where: { vendorProfileId: profile.id } }),
       prisma.serviceAvailabilityRule.findFirst({
@@ -63,6 +63,25 @@ export default async function VendorDashboardPage() {
         },
         select: { id: true },
         orderBy: { updatedAt: "desc" },
+      }),
+      prisma.directoryListing.findMany({
+        where: {
+          OR: [
+            { claimRequestedByUserId: session.user.id },
+            { claimedVendorProfileId: profile.id },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          state: true,
+          claimStatus: true,
+          claimRequestedAt: true,
+          claimedVendorProfileId: true,
+        },
+        orderBy: [{ claimRequestedAt: "desc" }, { updatedAt: "desc" }],
+        take: 10,
       }),
     ]);
 
@@ -103,6 +122,54 @@ export default async function VendorDashboardPage() {
             After approval, sign out and sign back in to refresh your account access.
           </p>
         )}
+
+        {directoryClaims.length > 0 ? (
+          <div className="mt-4 border-t border-fix-border/15 pt-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
+              Directory claims
+            </div>
+            <ul className="mt-3 space-y-3">
+              {directoryClaims.map((claim) => {
+                const location = [claim.city, claim.state].filter(Boolean).join(", ");
+                const label =
+                  claim.claimStatus === DIRECTORY_CLAIM_STATUS.CLAIMED ||
+                  claim.claimedVendorProfileId === profile.id
+                    ? "Approved"
+                    : claim.claimStatus === DIRECTORY_CLAIM_STATUS.PENDING
+                      ? "Pending"
+                      : claim.claimStatus === DIRECTORY_CLAIM_STATUS.REJECTED
+                        ? "Denied"
+                        : claim.claimStatus;
+                const tone =
+                  label === "Approved"
+                    ? "text-forest"
+                    : label === "Pending"
+                      ? "text-amber-800"
+                      : label === "Denied"
+                        ? "text-red-700"
+                        : "text-fix-text-muted";
+                return (
+                  <li key={claim.id} className="text-sm">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <Link
+                        href={`/discover/directory/${claim.id}`}
+                        className="font-medium text-fix-link hover:text-fix-link-hover"
+                      >
+                        {claim.name}
+                      </Link>
+                      <span className={`text-xs font-semibold uppercase tracking-wide ${tone}`}>
+                        {label}
+                      </span>
+                    </div>
+                    {location ? (
+                      <p className="mt-0.5 text-xs text-fix-text-muted">{location}</p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
       </Card>
 
       {profile.status === VENDOR_STATUS.APPROVED && !hasStripe ? (

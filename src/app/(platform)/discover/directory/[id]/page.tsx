@@ -221,6 +221,8 @@ export default async function DiscoverDirectoryPage({
                 <DirectoryClaimRequest
                   directoryListingId={listing.id}
                   claimStatus={listing.claimStatus}
+                  claimRequestedByUserId={listing.claimRequestedByUserId}
+                  currentUserId={session?.user?.id ?? null}
                   signedIn={Boolean(session?.user?.id)}
                 />
               ) : null}

@@ -191,6 +191,7 @@ export const DIRECTORY_CLAIM_STATUS = {
   UNCLAIMED: "UNCLAIMED",
   PENDING: "PENDING",
   CLAIMED: "CLAIMED",
+  REJECTED: "REJECTED",
 } as const;
 
 export type DirectoryClaimStatus =

@@ -30,7 +30,10 @@ export async function POST(request: NextRequest) {
     where: {
       id: directoryListingId,
       status: "ACTIVE",
-      claimStatus: DIRECTORY_CLAIM_STATUS.UNCLAIMED,
+      OR: [
+        { claimStatus: DIRECTORY_CLAIM_STATUS.UNCLAIMED },
+        { claimStatus: DIRECTORY_CLAIM_STATUS.REJECTED },
+      ],
     },
     data: {
       claimStatus: DIRECTORY_CLAIM_STATUS.PENDING,
@@ -61,6 +64,21 @@ export async function POST(request: NextRequest) {
       { error: "A claim for this listing is already under review." },
       { status: 409 },
     );
+  }
+  if (
+    listing.claimStatus === DIRECTORY_CLAIM_STATUS.REJECTED &&
+    listing.claimRequestedByUserId === session.user.id
+  ) {
+    // Race: another request may have just claimed; treat as re-open for this user.
+    await prisma.directoryListing.update({
+      where: { id: directoryListingId },
+      data: {
+        claimStatus: DIRECTORY_CLAIM_STATUS.PENDING,
+        claimRequestedByUserId: session.user.id,
+        claimRequestedAt: new Date(),
+      },
+    });
+    return NextResponse.json({ ok: true, status: DIRECTORY_CLAIM_STATUS.PENDING });
   }
 
   return NextResponse.json({ error: "This listing has already been claimed." }, { status: 409 });

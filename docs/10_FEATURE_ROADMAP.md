@@ -19,7 +19,7 @@
 | M6 | **Done** — Directory claim request + admin review path |
 | M7 | **Done** — Events/Resources only promise what works |
 | M8 | **Done** — Docs = reality (this file + docs↔code alignment) |
-| M9 | **In progress** — local smoke + legacy links restored; staging + production remain |
+| M9 | **In progress** — `v0.1.51` live on rootsync.io; public smoke passed; signed-in commerce/auth remain |
 
 ### Should (only if Must is done)
 

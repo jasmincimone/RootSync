@@ -47,6 +47,10 @@ export async function syncUsdaDirectoryListings(
 export const publicDirectoryWhere = {
   status: DIRECTORY_LISTING_STATUS.ACTIVE,
   claimStatus: {
-    in: [DIRECTORY_CLAIM_STATUS.UNCLAIMED, DIRECTORY_CLAIM_STATUS.PENDING],
+    in: [
+      DIRECTORY_CLAIM_STATUS.UNCLAIMED,
+      DIRECTORY_CLAIM_STATUS.PENDING,
+      DIRECTORY_CLAIM_STATUS.REJECTED,
+    ],
   },
 };

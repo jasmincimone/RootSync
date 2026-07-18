@@ -245,7 +245,7 @@ model DirectoryListing {
   rawSourceJson Json?
   lastSyncedAt  DateTime?
 
-  /// UNCLAIMED | PENDING | CLAIMED
+  /// UNCLAIMED | PENDING | CLAIMED | REJECTED
   claimStatus   String   @default("UNCLAIMED")
   claimRequestedByUserId String?
   claimRequestedBy       User?    @relation("DirectoryClaimRequester", fields: [claimRequestedByUserId], references: [id], onDelete: SetNull)

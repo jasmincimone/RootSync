@@ -38,9 +38,8 @@ export async function PATCH(
     await prisma.directoryListing.update({
       where: { id },
       data: {
-        claimStatus: DIRECTORY_CLAIM_STATUS.UNCLAIMED,
-        claimRequestedByUserId: null,
-        claimRequestedAt: null,
+        claimStatus: DIRECTORY_CLAIM_STATUS.REJECTED,
+        // Keep requester so Vendor hub can show Denied.
       },
     });
     return NextResponse.json({ ok: true });

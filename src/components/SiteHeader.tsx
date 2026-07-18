@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
-import { useSession } from "next-auth/react";
 
-import { UserAvatar } from "@/components/UserAvatar";
+import { HeaderAccountMenu } from "@/components/HeaderAccountMenu";
 import { BrandPngIcon } from "@/components/ui/BrandPngIcon";
 import { PulseIcon } from "@/components/pulse/PulseIcon";
 import { PLATFORM_PRIMARY_NAV_LINKS } from "@/config/platformNav";
@@ -26,16 +25,6 @@ function isActive(pathname: string, href: string) {
 export function SiteHeader() {
   const pathname = usePathname() || "/";
   const router = useRouter();
-  const { data: session, status: sessionStatus } = useSession();
-
-  const accountHref =
-    sessionStatus === "loading" || session ? "/account" : "/login?callbackUrl=/account";
-  const accountAria =
-    sessionStatus === "loading"
-      ? "Account"
-      : session?.user?.email
-        ? `Account (${session.user.email})`
-        : "Sign in to account";
 
   return (
     <header className="border-b border-fix-border/15 bg-fix-surface">
@@ -107,20 +96,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Link
-            href={accountHref}
-            aria-label={accountAria}
-            className={cn(
-              "inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2",
-              pathname.startsWith("/account") && "ring-2 ring-fix-cta/30 ring-offset-2",
-            )}
-          >
-            <UserAvatar
-              src={session?.user?.image}
-              name={session?.user?.name ?? session?.user?.email}
-              size="md"
-            />
-          </Link>
+          <HeaderAccountMenu />
         </div>
       </Container>
     </header>

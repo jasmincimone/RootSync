@@ -426,8 +426,8 @@ export function DiscoverBrowse({
               Location
             </p>
             <p className="mt-1 text-sm text-fix-text-muted">
-              By state: pick a state and distance — city is optional when you choose Anywhere. By ZIP:
-              use a ZIP code and radius in miles. Click Search to apply.
+              By city &amp; state: enter city (optional when Anywhere), then state and distance. By
+              ZIP: use a ZIP code and radius in miles. Click Search to apply.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -465,6 +465,27 @@ export function DiscoverBrowse({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <div className="max-w-xs flex-1">
                     <label
+                      htmlFor="discover-location-city"
+                      className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+                    >
+                      City
+                      {isStateAnywhere ? (
+                        <span className="ml-1 font-normal normal-case text-fix-text-muted/80">
+                          (optional)
+                        </span>
+                      ) : null}
+                    </label>
+                    <input
+                      id="discover-location-city"
+                      required={!isStateAnywhere}
+                      value={form.city}
+                      onChange={(e) => patchForm({ city: e.target.value })}
+                      placeholder={isStateAnywhere ? "Optional — narrow map focus" : "Hartford"}
+                      className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="max-w-xs flex-1">
+                    <label
                       htmlFor="discover-location-state"
                       className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
                     >
@@ -489,27 +510,6 @@ export function DiscoverBrowse({
                         <option key={`${s.value}-name`} value={s.label} />
                       ))}
                     </datalist>
-                  </div>
-                  <div className="max-w-xs flex-1">
-                    <label
-                      htmlFor="discover-location-city"
-                      className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
-                    >
-                      City
-                      {isStateAnywhere ? (
-                        <span className="ml-1 font-normal normal-case text-fix-text-muted/80">
-                          (optional)
-                        </span>
-                      ) : null}
-                    </label>
-                    <input
-                      id="discover-location-city"
-                      required={!isStateAnywhere}
-                      value={form.city}
-                      onChange={(e) => patchForm({ city: e.target.value })}
-                      placeholder={isStateAnywhere ? "Optional — narrow map focus" : "Hartford"}
-                      className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
-                    />
                   </div>
                 </div>
                 <div>
