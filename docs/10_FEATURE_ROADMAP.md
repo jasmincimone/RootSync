@@ -19,7 +19,7 @@
 | M6 | **Done** — Directory claim request + admin review path |
 | M7 | **Done** — Events/Resources only promise what works |
 | M8 | **Done** — Docs = reality (this file + docs↔code alignment) |
-| M9 | **In progress** — `v0.1.51` live on rootsync.io; public smoke passed; signed-in commerce/auth remain |
+| M9 | **Nearly done** — `v0.1.53` live on rootsync.io; core signed-in smoke green (Connect, OTP, Meet, events, claims, Sentry); optional leftovers only |
 
 ### Should (only if Must is done)
 

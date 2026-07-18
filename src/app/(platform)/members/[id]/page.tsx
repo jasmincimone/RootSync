@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 
@@ -29,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   });
   if (!user) return { title: "Member" };
   const name = user.name?.trim() || user.email?.split("@")[0] || "Member";
-  return { title: `${name} · Pulse` };
+  return { title: `${name} · Profile` };
 }
 
 export default async function MemberProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -83,10 +82,8 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
   return (
     <Container className="py-10 sm:py-14">
       <div className="mx-auto max-w-3xl">
-        <nav className="text-sm text-fix-text-muted">
-          <Link href="/pulse" className="text-fix-link hover:text-fix-link-hover">
-            Pulse
-          </Link>
+        <nav className="text-sm text-fix-text-muted" aria-label="Breadcrumb">
+          <span>Profile</span>
           <span className="mx-2">/</span>
           <span className="text-fix-heading">{displayName}</span>
         </nav>

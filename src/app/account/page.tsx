@@ -4,7 +4,6 @@ import { AccountFtueChecklist } from "@/components/AccountFtueChecklist";
 import { AccountHubExplorer } from "@/components/account/AccountHubExplorer";
 import { AccountProfileCard } from "@/components/account/AccountProfileCard";
 import { PageBody } from "@/components/ui/PageBody";
-import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { canAccessGrowthWorkspace } from "@/lib/growthAccess";
 import { prisma } from "@/lib/prisma";
@@ -39,12 +38,7 @@ export default async function AccountPage() {
   const displayName =
     user?.vendorProfile?.displayName ?? user?.name?.trim() ?? session.user.email ?? "Your account";
   const imageUrl = user?.vendorProfile?.profileImageUrl ?? user?.imageUrl;
-  const profileHref = user?.vendorProfile?.id
-    ? discoverVendorPath({
-        id: user.vendorProfile.id,
-        publicSlug: user.vendorProfile.publicSlug,
-      })
-    : `/members/${user?.id ?? session.user.id}`;
+  const profileHref = "/profile";
 
   const role = user?.role ?? ROLES.CUSTOMER;
   const vendorStatus = user?.vendorProfile?.status;

@@ -57,8 +57,6 @@ export function HeaderAccountMenu() {
     );
   }
 
-  const profileHref = user.id ? `/members/${user.id}` : "/account";
-
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -70,7 +68,10 @@ export function HeaderAccountMenu() {
         onClick={() => setOpen((value) => !value)}
         className={cn(
           "inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2",
-          (pathname.startsWith("/account") || pathname.startsWith("/members/")) &&
+          (pathname.startsWith("/account") ||
+            pathname.startsWith("/members/") ||
+            pathname.startsWith("/discover/vendors/") ||
+            pathname === "/profile") &&
             "ring-2 ring-fix-cta/30 ring-offset-2",
         )}
       >
@@ -94,7 +95,7 @@ export function HeaderAccountMenu() {
           </Link>
           <Link
             role="menuitem"
-            href={profileHref}
+            href="/profile"
             className="block px-4 py-2.5 text-sm font-medium text-fix-heading hover:bg-fix-bg-muted focus:bg-fix-bg-muted focus:outline-none"
             onClick={() => setOpen(false)}
           >

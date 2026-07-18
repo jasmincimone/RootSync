@@ -4,10 +4,10 @@ Run against **staging** first, then production. Check each box only after a real
 
 **Local pass (2026-07-17):** env + pillar routes + legacy redirects.
 
-**Production pass (2026-07-18):** `v0.1.51` live on https://rootsync.io  
-Deploy: https://the-fix-collective-htv31uyxb-jasmincimones-projects.vercel.app (`dpl_zqQ4vChfq1RBz3bEzjvu1EtXidDN`)
+**Production pass (2026-07-18):** `v0.1.53` live on https://rootsync.io  
+Deploy: https://the-fix-collective-raew1lizc-jasmincimones-projects.vercel.app (`dpl_H42TtvrBZRNDVkHMKKEtiQZZkQxh`)
 
-Public/unattended items below are checked on production. **Signed-in / money / email** items still need a browser session (admin + vendor + member).
+Core public + signed-in commerce/auth items are checked. Unchecked boxes below are optional leftovers (or blocked until Resource listings exist).
 
 ## Environment
 
