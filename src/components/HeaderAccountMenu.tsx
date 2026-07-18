@@ -14,10 +14,8 @@ export function HeaderAccountMenu() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
-
-  const signedIn = Boolean(session?.user);
   const loading = status === "loading";
-  const profileHref = session?.user?.id ? `/members/${session.user.id}` : "/account";
+  const user = session?.user;
 
   useEffect(() => {
     if (!open) return;
@@ -47,11 +45,10 @@ export function HeaderAccountMenu() {
     setOpen(false);
   }, [pathname]);
 
-  if (loading || !signedIn) {
-    const href = "/login?callbackUrl=/account";
+  if (loading || !user) {
     return (
       <Link
-        href={href}
+        href="/login?callbackUrl=/account"
         aria-label="Sign in to account"
         className="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2"
       >
@@ -60,13 +57,13 @@ export function HeaderAccountMenu() {
     );
   }
 
+  const profileHref = user.id ? `/members/${user.id}` : "/account";
+
   return (
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        aria-label={
-          session.user?.email ? `Account menu (${session.user.email})` : "Account menu"
-        }
+        aria-label={user.email ? `Account menu (${user.email})` : "Account menu"}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
@@ -77,11 +74,7 @@ export function HeaderAccountMenu() {
             "ring-2 ring-fix-cta/30 ring-offset-2",
         )}
       >
-        <UserAvatar
-          src={session.user?.image}
-          name={session.user?.name ?? session.user?.email}
-          size="md"
-        />
+        <UserAvatar src={user.image} name={user.name ?? user.email} size="md" />
       </button>
 
       {open ? (
