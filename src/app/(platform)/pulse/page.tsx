@@ -72,11 +72,12 @@ export default async function PulsePage() {
       </div>
 
       <PlatformIllustrationBanner
-        src="/images/platform/community/farm-illustration.png"
-        alt="Flat illustration of a diverse community farming, gardening, making pottery, and woodworking together."
-        width={1024}
-        height={511}
-        className="mx-auto mb-8 max-w-md"
+        src="/images/platform/community/pulse-community-gathering.png"
+        alt="A diverse community sharing a harvest outdoors — neighbors gathering around garden beds."
+        width={1376}
+        height={768}
+        fit="cover"
+        className="mx-auto mb-8 max-w-3xl"
       />
 
       <div className="mx-auto mt-10 max-w-3xl space-y-8">

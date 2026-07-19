@@ -8,6 +8,7 @@ import { Container } from "@/components/Container";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { BookingMeetLink } from "@/components/BookingMeetLink";
+import { PostPurchaseNextSteps } from "@/components/PostPurchaseNextSteps";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { OrderStatusBadge } from "@/components/ui/StatusBadge";
 import { formatPrice } from "@/lib/format";
@@ -392,10 +393,9 @@ export function OrderConfirmationClient() {
             </div>
           )}
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <ButtonLink href="/account/orders" size="md" variant="primary">
-              View order history
-            </ButtonLink>
+          <PostPurchaseNextSteps orderHref={`/account/orders/${order.id}`} />
+
+          <div className="mt-4 flex flex-wrap gap-3">
             <ButtonLink href="/discover" size="md" variant="secondary">
               Browse Discover
             </ButtonLink>

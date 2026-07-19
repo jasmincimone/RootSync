@@ -30,7 +30,7 @@ export default async function MessagesInboxPage({
 
   const messenger = (
     <>
-      <MessagesConnectIllustration className="mx-auto max-w-md" />
+      <MessagesConnectIllustration className="mx-auto max-w-3xl" />
       <VendorMessenger
         vendorProfileIdFromUrl={vendorProfileIdFromUrl}
         userIdFromUrl={userIdFromUrl}

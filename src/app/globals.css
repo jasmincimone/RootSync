@@ -228,4 +228,54 @@ body {
     padding-left: 0.75rem;
     color: var(--text-muted);
   }
+
+  /* Home hero — calm presence (respects prefers-reduced-motion via global rule) */
+  @keyframes home-hero-media-in {
+    from {
+      transform: scale(1.06);
+      opacity: 0.85;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes home-hero-copy-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.85rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes home-section-rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .home-hero-media {
+    animation: home-hero-media-in 1.1s ease-out both;
+  }
+
+  .home-hero-copy {
+    animation: home-hero-copy-in 0.7s ease-out 0.15s both;
+  }
+
+  .home-section-rise {
+    animation: home-section-rise 0.6s ease-out 0.1s both;
+  }
+
+  .discover-hero-rise {
+    animation: home-section-rise 0.65s ease-out both;
+  }
 }

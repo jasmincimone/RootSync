@@ -6,6 +6,7 @@ import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { Card } from "@/components/ui/Card";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { OrderStatusBadge } from "@/components/ui/StatusBadge";
+import { PostPurchaseNextSteps } from "@/components/PostPurchaseNextSteps";
 import { VendorPulseReviewForm } from "@/components/pulse/VendorPulseReviewForm";
 import { formatPrice } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -189,6 +190,8 @@ export default async function AccountOrderDetailPage({
           />
         </Card>
       ) : null}
+
+      <PostPurchaseNextSteps orderHref={`/account/orders/${order.id}`} />
     </AccountSubpageBody>
   );
 }

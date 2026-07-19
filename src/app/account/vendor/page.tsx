@@ -7,12 +7,14 @@ import { VendorHubNav } from "@/components/account/VendorHubNav";
 import { Card } from "@/components/ui/Card";
 import { PageBody } from "@/components/ui/PageBody";
 import { ButtonLink } from "@/components/ui/Button";
+import { VendorJourneyStrip, type VendorJourneyStep } from "@/components/VendorJourneyStrip";
 import { VendorOnboardingChecklist } from "@/components/VendorOnboardingChecklist";
 import { discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, DIRECTORY_CLAIM_STATUS, ROLES, VENDOR_STATUS } from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
+import { canAccessGrowthWorkspace } from "@/lib/growthAccess";
 
 export default async function VendorDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -88,6 +90,64 @@ export default async function VendorDashboardPage() {
   const hasProfile = Boolean(profile.bio?.trim() && profile.pickupLocation?.trim());
   const hasListing = listingCount > 0;
   const hasAvailability = Boolean(serviceWithAvailability);
+  const isApproved = profile.status === VENDOR_STATUS.APPROVED;
+  const canGrow = canAccessGrowthWorkspace(session.user.role, profile.status);
+
+  const journeySteps: VendorJourneyStep[] = (() => {
+    const applied = true;
+    const verified = isApproved;
+    const listed = hasListing;
+    const paid = hasStripe;
+    const growing = canGrow;
+
+    const currentId = !verified
+      ? profile.status === VENDOR_STATUS.PENDING
+        ? "verified"
+        : "apply"
+      : !listed
+        ? "list"
+        : !paid
+          ? "paid"
+          : "grow";
+
+    return [
+      {
+        id: "apply",
+        label: "Apply",
+        href: "/account/vendor/apply",
+        done: applied,
+        current: currentId === "apply",
+      },
+      {
+        id: "verified",
+        label: "Verified",
+        href: "/account/vendor",
+        done: verified,
+        current: currentId === "verified",
+      },
+      {
+        id: "list",
+        label: "List",
+        href: "/account/vendor/listings/new",
+        done: listed,
+        current: currentId === "list",
+      },
+      {
+        id: "paid",
+        label: "Get paid",
+        href: "/account/vendor/payments",
+        done: paid,
+        current: currentId === "paid",
+      },
+      {
+        id: "grow",
+        label: "GrowSpace",
+        href: "/account/growth",
+        done: growing && listed && paid,
+        current: currentId === "grow",
+      },
+    ];
+  })();
 
   // Prefer a service listing that still needs hours; else any service; else create a service.
   const availabilityTargetId = serviceNeedingAvailability?.id ?? anyServiceListing?.id;
@@ -97,6 +157,8 @@ export default async function VendorDashboardPage() {
 
   return (
     <AccountSubpageBody description={profile.displayName}>
+      <VendorJourneyStrip steps={journeySteps} />
+
       {profile.status === VENDOR_STATUS.APPROVED ? (
         <VendorOnboardingChecklist
           hasProfile={hasProfile}

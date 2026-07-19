@@ -29,7 +29,7 @@
 | S2 | Member language sweep (not User/Seller in UI) |
 | S3 | One teach-before-sell moment |
 | S4 | Resource download confidence |
-| S5 | Linear vendor checklist (Apply → Verified → List → Paid → GrowSpace) |
+| S5 | **Done** — Linear vendor checklist (Apply → Verified → List → Get paid → GrowSpace) |
 
 ---
 

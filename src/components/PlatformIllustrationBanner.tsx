@@ -6,15 +6,18 @@ export type PlatformIllustrationBannerProps = {
   width?: number;
   height?: number;
   className?: string;
+  /** Photo banners use cover; flat illustrations keep contain (default). */
+  fit?: "contain" | "cover";
 };
 
-/** Shared frame for Community / Messages hero illustrations—same max width and chrome everywhere. */
+/** Shared frame for platform hero imagery — same max width and chrome everywhere. */
 export function PlatformIllustrationBanner({
   src,
   alt,
   width = 1024,
   height = 511,
   className,
+  fit = "contain",
 }: PlatformIllustrationBannerProps) {
   return (
     <div className={cn("w-full", className)}>
@@ -25,7 +28,12 @@ export function PlatformIllustrationBanner({
           alt={alt}
           width={width}
           height={height}
-          className="block h-auto w-full object-contain object-center"
+          className={cn(
+            "block w-full object-center",
+            fit === "cover"
+              ? "aspect-[16/9] h-auto max-h-72 object-cover sm:max-h-96"
+              : "h-auto object-contain",
+          )}
           loading="lazy"
           decoding="async"
         />

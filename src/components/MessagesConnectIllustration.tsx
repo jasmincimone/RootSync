@@ -1,15 +1,16 @@
 import { PlatformIllustrationBanner } from "@/components/PlatformIllustrationBanner";
 
 /**
- * Messages inbox banner—community + mobile messaging theme (separate from Community page art).
+ * Stay Synced inbox banner — neighbors connecting with helpful technology outdoors.
  */
 export function MessagesConnectIllustration({ className }: { className?: string }) {
   return (
     <PlatformIllustrationBanner
-      src="/images/platform/messages/community-connect.png"
-      alt="Illustration of people connecting on phones near a barn, windmill, and house—community messaging."
-      width={1024}
-      height={511}
+      src="/images/platform/messages/stay-synced-connect.png"
+      alt="Teens, young adults, and older neighbors talking face-to-face in a community garden — Stay Synced relationships."
+      width={1376}
+      height={768}
+      fit="cover"
       className={className}
     />
   );

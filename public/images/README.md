@@ -16,11 +16,17 @@ Marketing imagery for the public homepage.
 |------|---------|
 | `hero-product-lineup.png` | Homepage hero (`src/app/page.tsx`) |
 
+### `discover/`
+
+| File | Used on |
+|------|---------|
+| `hero-community.png` | Discover Marketplace page banner |
+
 ---
 
 ### `platform/`
 
-Illustrations and icons for RootSync platform pages and marketing UI.
+Illustrations, photos, and icons for RootSync platform pages and marketing UI.
 
 #### `platform/explore/`
 
@@ -46,20 +52,28 @@ Superseded by `platform/explore/` for the RootSync landing explorer.
 
 | File | Used on |
 |------|---------|
-| `logo.png` | RootSync landing, RootSync AI, About |
-| `hero-mark.png` | RootSync AI page |
+| `logo.png` | RootSync landing, About |
+| `hero-mark.png` | Legacy RootSense mark |
 
 #### `platform/community/`
 
 | File | Used on |
 |------|---------|
-| `farm-illustration.png` | Community page banner |
+| `pulse-community-gathering.png` | Pulse feed banner |
+| `farm-illustration.png` | Legacy flat illustration (kept for reference) |
 
 #### `platform/messages/`
 
 | File | Used on |
 |------|---------|
-| `community-connect.png` | Messages inbox illustration |
+| `stay-synced-connect.png` | Stay Synced inbox banner |
+| `community-connect.png` | Legacy illustration (kept for reference) |
+
+#### `platform/rootsense/`
+
+| File | Used on |
+|------|---------|
+| `rootsense-nature-guide.png` | RootSense AI page banner |
 
 #### Other `platform/*/` folders
 
@@ -73,9 +87,13 @@ Reserved for site-wide assets (favicon sources, shared marks, etc.). Currently e
 
 ---
 
+## Imagery direction
+
+Platform banners should feel **photorealistic**: diverse thriving community, harmony of helpful tech and nature, and forward progress. Prefer documentary photography over flat illustration for pillar pages. Explore menu cards may remain Syntha illustration style for brand recognition.
+
 ## Conventions
 
-- Use lowercase filenames with hyphens: `farm-illustration.png`
+- Use lowercase filenames with hyphens: `pulse-community-gathering.png`
 - Prefer `.png` or `.webp` for UI art; `.jpg` for photos
 - In Next.js, use `/images/...` in `<img>` tags or `next/image` `src` props
 - After adding or renaming files, grep the repo for the old path to update references

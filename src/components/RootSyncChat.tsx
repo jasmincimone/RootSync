@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, PanelLeft, PenSquare, Send, Trash2, X } from "lucide-react";
+import { Loader2, PanelLeft, PenSquare, Send, Sprout, Trash2, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { FormFeedback } from "@/components/ui/FormFeedback";
 import { RootSenseJoinGate } from "@/components/RootSenseJoinGate";
 import { cn } from "@/lib/cn";
@@ -265,28 +266,40 @@ export function RootSyncChat() {
           </div>
         ) : messages.length === 0 && !loading ? (
           <div className="space-y-4">
-            <p className="text-sm text-fix-text-muted">
-              Start with a question, or try one of these:
-            </p>
-            <ul className="flex flex-col gap-2">
-              {SUGGESTIONS.map((s) => (
-                <li key={s}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!signedIn) {
-                        promptJoin();
-                        return;
-                      }
-                      setInput(s);
-                    }}
-                    className="w-full rounded-xl border border-fix-border/15 bg-fix-surface px-3 py-2.5 text-left text-sm text-fix-link hover:bg-fix-bg-muted"
-                  >
-                    {s}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <EmptyState
+              bordered={false}
+              icon={Sprout}
+              title={signedIn ? "Ask Rootie anything local" : "Join to chat with Rootie"}
+              description={
+                signedIn
+                  ? "Start with a question, or try one of the ideas below."
+                  : "RootSense AI helps with growing, food, and resilient local business — become a Member to begin."
+              }
+              action={
+                signedIn
+                  ? undefined
+                  : { href: "/signup", label: "Become a Member", variant: "cta" }
+              }
+              secondaryAction={
+                signedIn ? undefined : { href: "/login", label: "Sign in", variant: "secondary" }
+              }
+              className="py-4"
+            />
+            {signedIn ? (
+              <ul className="flex flex-col gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <li key={s}>
+                    <button
+                      type="button"
+                      onClick={() => setInput(s)}
+                      className="w-full rounded-xl border border-fix-border/15 bg-fix-surface px-3 py-2.5 text-left text-sm text-fix-link hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta"
+                    >
+                      {s}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ) : (
           <ul className="space-y-4">

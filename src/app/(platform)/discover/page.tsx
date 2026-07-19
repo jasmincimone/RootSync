@@ -1,11 +1,11 @@
+import Link from "next/link";
 import { Suspense } from "react";
-import { Store } from "lucide-react";
 import { getServerSession } from "next-auth";
 
 import { Container } from "@/components/Container";
 import { DiscoverMarketplace } from "@/components/DiscoverMarketplace";
 import { PageLoading } from "@/components/PageLoading";
-import { RoleCtaButton } from "@/components/RoleCtaButton";
+import { PlatformIllustrationBanner } from "@/components/PlatformIllustrationBanner";
 import { authOptions } from "@/lib/authOptions";
 import { listSavedFavorites } from "@/lib/favorites";
 import { publishDueScheduledOfferingsBestEffort } from "@/lib/publishScheduledOfferings";
@@ -65,22 +65,39 @@ export default async function DiscoverPage() {
 
   return (
     <Container className="px-4 py-10 sm:px-6 sm:py-16">
-      <div className="max-w-3xl">
-        <h1 className="text-2xl font-bold tracking-tight text-fix-heading sm:text-3xl md:text-4xl">
-          Discover Marketplace
-        </h1>
-        <div className="mt-4 max-w-sm">
-          <RoleCtaButton
-            role="vendor"
-            href="/account/vendor/apply"
-            label="Become a Vendor"
-            icon={<Store className="h-5 w-5" aria-hidden />}
-          />
+      <div className="mx-auto max-w-4xl">
+        <PlatformIllustrationBanner
+          src="/images/discover/hero-community.png"
+          alt="Neighbors at a sunny farmers market and community garden — shopping local and growing together."
+          width={1376}
+          height={768}
+          fit="cover"
+          className="discover-hero-rise"
+        />
+        <div className="mt-8 max-w-2xl">
+          <h1 className="text-2xl font-bold tracking-tight text-fix-heading sm:text-3xl md:text-4xl">
+            Discover Marketplace
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-fix-text-muted sm:text-base">
+            Find what&apos;s local — Verified Vendors, marketplace listings, and directory places near
+            you.
+          </p>
+          <p className="mt-2 text-sm text-fix-text-muted">
+            <span className="font-medium text-fix-heading">Verified Vendors</span> are reviewed by
+            RootSync.{" "}
+            <span className="font-medium text-fix-heading">Directory</span> listings come from the
+            public local food network until claimed.
+          </p>
+          <p className="mt-4 text-sm text-fix-text-muted">
+            Sell locally?{" "}
+            <Link
+              href="/account/vendor/apply"
+              className="font-medium text-fix-link hover:text-fix-link-hover hover:underline"
+            >
+              Become a Vendor
+            </Link>
+          </p>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-fix-text-muted sm:text-base">
-          Discover verified local vendors, browse directory listings from the USDA local food
-          network, and see what is available near you.
-        </p>
       </div>
 
       <Suspense fallback={<PageLoading contained={false} label="Loading browse" />}>

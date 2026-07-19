@@ -293,85 +293,6 @@ export function DiscoverBrowse({
                   ))}
                 </select>
               </div>
-              {showListingsFilters ? (
-                <div>
-                  <label
-                    htmlFor="discover-type"
-                    className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
-                  >
-                    Type
-                  </label>
-                  <select
-                    id="discover-type"
-                    value={form.typeFilter}
-                    onChange={(e) => {
-                      const next = e.target.value as "" | ListingType;
-                      patchForm({
-                        typeFilter: next,
-                        resourceSubtypeFilter:
-                          next !== LISTING_TYPE.RESOURCE ? "" : form.resourceSubtypeFilter,
-                      });
-                    }}
-                    className="mt-1 rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
-                  >
-                    {DISCOVER_TYPE_FILTERS.map((opt) => (
-                      <option key={opt.label} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-              {showListingsFilters && form.typeFilter === LISTING_TYPE.RESOURCE ? (
-                <div>
-                  <label
-                    htmlFor="discover-resource-subtype"
-                    className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
-                  >
-                    Resource kind
-                  </label>
-                  <select
-                    id="discover-resource-subtype"
-                    value={form.resourceSubtypeFilter}
-                    onChange={(e) =>
-                      patchForm({
-                        resourceSubtypeFilter: e.target.value as "" | ResourceSubtype,
-                      })
-                    }
-                    className="mt-1 max-w-[12rem] rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
-                  >
-                    <option value="">All resources</option>
-                    {RESOURCE_SUBTYPE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-              {showListingsFilters ? (
-                <div>
-                  <label
-                    htmlFor="discover-category"
-                    className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
-                  >
-                    Category
-                  </label>
-                  <select
-                    id="discover-category"
-                    value={form.categoryFilter}
-                    onChange={(e) => patchForm({ categoryFilter: e.target.value })}
-                    className="mt-1 max-w-[14rem] rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
-                  >
-                    <option value="">All categories</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
               <div>
                 <label
                   htmlFor="discover-page-size"
@@ -396,7 +317,7 @@ export function DiscoverBrowse({
           </div>
 
           {showListingsFilters ? (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Listing type">
               {DISCOVER_TYPE_FILTERS.filter((t) => t.value).map((t) => (
                 <button
                   key={t.value}
@@ -409,7 +330,7 @@ export function DiscoverBrowse({
                     })
                   }
                   className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                     form.typeFilter === t.value
                       ? "bg-forest text-fix-primary-foreground"
                       : "bg-fix-bg-muted text-fix-text-muted hover:bg-fix-bg-muted/80",
@@ -421,165 +342,228 @@ export function DiscoverBrowse({
             </div>
           ) : null}
 
-          <div className="mt-4 rounded-xl border border-fix-border/15 bg-fix-bg-muted/30 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
-              Location
-            </p>
-            <p className="mt-1 text-sm text-fix-text-muted">
-              By city &amp; state: enter city (optional when Anywhere), then state and distance. By
-              ZIP: use a ZIP code and radius in miles. Click Search to apply.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() =>
+          {showListingsFilters && form.typeFilter === LISTING_TYPE.RESOURCE ? (
+            <div className="mt-3">
+              <label
+                htmlFor="discover-resource-subtype"
+                className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+              >
+                Resource kind
+              </label>
+              <select
+                id="discover-resource-subtype"
+                value={form.resourceSubtypeFilter}
+                onChange={(e) =>
                   patchForm({
-                    locationMode: "state",
-                    radiusMiles: String(DEFAULT_STATE_RADIUS_MILES),
+                    resourceSubtypeFilter: e.target.value as "" | ResourceSubtype,
                   })
                 }
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                  form.locationMode === "state"
-                    ? "bg-forest text-fix-primary-foreground"
-                    : "bg-fix-surface text-fix-text-muted hover:bg-fix-bg-muted",
-                )}
+                className="mt-1 max-w-[12rem] rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
               >
-                By state
-              </button>
-              <button
-                type="button"
-                onClick={() => patchForm({ locationMode: "zip" })}
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                  form.locationMode === "zip"
-                    ? "bg-forest text-fix-primary-foreground"
-                    : "bg-fix-surface text-fix-text-muted hover:bg-fix-bg-muted",
-                )}
-              >
-                By ZIP &amp; radius
-              </button>
+                <option value="">All resources</option>
+                {RESOURCE_SUBTYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            {form.locationMode === "state" ? (
-              <div className="mt-3 space-y-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <div className="max-w-xs flex-1">
-                    <label
-                      htmlFor="discover-location-city"
-                      className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
-                    >
-                      City
-                      {isStateAnywhere ? (
-                        <span className="ml-1 font-normal normal-case text-fix-text-muted/80">
-                          (optional)
-                        </span>
-                      ) : null}
-                    </label>
-                    <input
-                      id="discover-location-city"
-                      required={!isStateAnywhere}
-                      value={form.city}
-                      onChange={(e) => patchForm({ city: e.target.value })}
-                      placeholder={isStateAnywhere ? "Optional — narrow map focus" : "Hartford"}
-                      className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div className="max-w-xs flex-1">
-                    <label
-                      htmlFor="discover-location-state"
-                      className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
-                    >
-                      State
-                    </label>
-                    <input
-                      id="discover-location-state"
-                      list="discover-us-states"
-                      required
-                      value={form.state}
-                      onChange={(e) => patchForm({ state: e.target.value })}
-                      placeholder="GA or Georgia"
-                      className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
-                    />
-                    <datalist id="discover-us-states">
-                      {US_STATE_OPTIONS.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                      {US_STATE_OPTIONS.map((s) => (
-                        <option key={`${s.value}-name`} value={s.label} />
-                      ))}
-                    </datalist>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
-                    {isStateAnywhere ? "State coverage" : "Distance from city"}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {DISCOVER_STATE_RADIUS_OPTIONS.map((opt) => (
-                      <button
-                        key={String(opt.value)}
-                        type="button"
-                        onClick={() => patchForm({ radiusMiles: String(opt.value) })}
-                        className={cn(
-                          "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                          form.radiusMiles === String(opt.value)
-                            ? "bg-forest text-fix-primary-foreground"
-                            : "bg-fix-surface text-fix-text-muted hover:bg-fix-bg-muted",
-                        )}
-                      >
-                        {opt.label}
-                      </button>
+          ) : null}
+
+          <details className="group mt-4 rounded-xl border border-fix-border/15 bg-fix-bg-muted/30">
+            <summary className="cursor-pointer list-none rounded-xl px-4 py-3 text-sm font-medium text-fix-heading marker:content-none focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center justify-between gap-2">
+                <span>Location &amp; more filters</span>
+                <span className="text-xs font-normal text-fix-text-muted group-open:hidden">
+                  Optional
+                </span>
+              </span>
+            </summary>
+            <div className="border-t border-fix-border/10 px-4 pb-4 pt-3">
+              {showListingsFilters ? (
+                <div className="mb-4">
+                  <label
+                    htmlFor="discover-category"
+                    className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+                  >
+                    Category
+                  </label>
+                  <select
+                    id="discover-category"
+                    value={form.categoryFilter}
+                    onChange={(e) => patchForm({ categoryFilter: e.target.value })}
+                    className="mt-1 max-w-[14rem] rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+                  >
+                    <option value="">All categories</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
                     ))}
+                  </select>
+                </div>
+              ) : null}
+
+              <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
+                Location
+              </p>
+              <p className="mt-1 text-sm text-fix-text-muted">
+                Narrow by city &amp; state or ZIP and radius, then Search.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    patchForm({
+                      locationMode: "state",
+                      radiusMiles: String(DEFAULT_STATE_RADIUS_MILES),
+                    })
+                  }
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                    form.locationMode === "state"
+                      ? "bg-forest text-fix-primary-foreground"
+                      : "bg-fix-surface text-fix-text-muted hover:bg-fix-bg-muted",
+                  )}
+                >
+                  By state
+                </button>
+                <button
+                  type="button"
+                  onClick={() => patchForm({ locationMode: "zip" })}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                    form.locationMode === "zip"
+                      ? "bg-forest text-fix-primary-foreground"
+                      : "bg-fix-surface text-fix-text-muted hover:bg-fix-bg-muted",
+                  )}
+                >
+                  By ZIP &amp; radius
+                </button>
+              </div>
+              {form.locationMode === "state" ? (
+                <div className="mt-3 space-y-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div className="max-w-xs flex-1">
+                      <label
+                        htmlFor="discover-location-city"
+                        className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+                      >
+                        City
+                        {isStateAnywhere ? (
+                          <span className="ml-1 font-normal normal-case text-fix-text-muted/80">
+                            (optional)
+                          </span>
+                        ) : null}
+                      </label>
+                      <input
+                        id="discover-location-city"
+                        required={!isStateAnywhere}
+                        value={form.city}
+                        onChange={(e) => patchForm({ city: e.target.value })}
+                        placeholder={isStateAnywhere ? "Optional — narrow map focus" : "Hartford"}
+                        className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="max-w-xs flex-1">
+                      <label
+                        htmlFor="discover-location-state"
+                        className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+                      >
+                        State
+                      </label>
+                      <input
+                        id="discover-location-state"
+                        list="discover-us-states"
+                        required
+                        value={form.state}
+                        onChange={(e) => patchForm({ state: e.target.value })}
+                        placeholder="GA or Georgia"
+                        className="mt-1 w-full rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+                      />
+                      <datalist id="discover-us-states">
+                        {US_STATE_OPTIONS.map((s) => (
+                          <option key={s.value} value={s.value}>
+                            {s.label}
+                          </option>
+                        ))}
+                        {US_STATE_OPTIONS.map((s) => (
+                          <option key={`${s.value}-name`} value={s.label} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
+                      {isStateAnywhere ? "State coverage" : "Distance from city"}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {DISCOVER_STATE_RADIUS_OPTIONS.map((opt) => (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          onClick={() => patchForm({ radiusMiles: String(opt.value) })}
+                          className={cn(
+                            "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                            form.radiusMiles === String(opt.value)
+                              ? "bg-forest text-fix-primary-foreground"
+                              : "bg-fix-surface text-fix-text-muted hover:bg-fix-bg-muted",
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-                <div>
-                  <label
-                    htmlFor="discover-location-zip"
-                    className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
-                  >
-                    ZIP code
-                  </label>
-                  <input
-                    id="discover-location-zip"
-                    inputMode="numeric"
-                    pattern="\d{5}"
-                    maxLength={5}
-                    value={form.zip}
-                    onChange={(e) =>
-                      patchForm({ zip: e.target.value.replace(/\D/g, "").slice(0, 5) })
-                    }
-                    placeholder="31216"
-                    className="mt-1 w-28 rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
-                  />
+              ) : (
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div>
+                    <label
+                      htmlFor="discover-location-zip"
+                      className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+                    >
+                      ZIP code
+                    </label>
+                    <input
+                      id="discover-location-zip"
+                      inputMode="numeric"
+                      pattern="\d{5}"
+                      maxLength={5}
+                      value={form.zip}
+                      onChange={(e) =>
+                        patchForm({ zip: e.target.value.replace(/\D/g, "").slice(0, 5) })
+                      }
+                      placeholder="31216"
+                      className="mt-1 w-28 rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="discover-location-radius"
+                      className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
+                    >
+                      Radius (miles)
+                    </label>
+                    <input
+                      id="discover-location-radius"
+                      type="number"
+                      min={1}
+                      max={250}
+                      value={form.radiusMiles}
+                      onChange={(e) => patchForm({ radiusMiles: e.target.value })}
+                      className="mt-1 w-28 rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label
-                    htmlFor="discover-location-radius"
-                    className="block text-xs font-semibold uppercase tracking-wide text-fix-text-muted"
-                  >
-                    Radius (miles)
-                  </label>
-                  <input
-                    id="discover-location-radius"
-                    type="number"
-                    min={1}
-                    max={250}
-                    value={form.radiusMiles}
-                    onChange={(e) => patchForm({ radiusMiles: e.target.value })}
-                    className="mt-1 w-28 rounded-full border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </details>
 
           {searchError ? (
-            <p className="mt-3 text-sm text-red-700">{searchError}</p>
+            <p className="mt-3 text-sm text-red-700" role="alert">
+              {searchError}
+            </p>
           ) : null}
 
           <div className="mt-5 flex justify-end">

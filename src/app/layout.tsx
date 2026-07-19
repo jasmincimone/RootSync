@@ -6,6 +6,7 @@ import { Providers } from "@/components/Providers";
 import { SkipLink } from "@/components/SkipLink";
 import { SiteChrome } from "@/components/SiteChrome";
 import { SiteFooter } from "@/components/SiteFooter";
+import { MobilePillarNav } from "@/components/MobilePillarNav";
 import { authOptions } from "@/lib/authOptions";
 
 import "./globals.css";
@@ -56,10 +57,11 @@ export default async function RootLayout({
           <div className="flex min-h-dvh flex-col bg-fix-bg text-fix-text">
             <SkipLink />
             <SiteChrome session={session} />
-            <main id="main-content" className="flex min-h-0 flex-1 flex-col">
+            <main id="main-content" className="flex min-h-0 flex-1 flex-col pb-16 lg:pb-0">
               {children}
             </main>
             <SiteFooter />
+            <MobilePillarNav />
           </div>
         </Providers>
       </body>

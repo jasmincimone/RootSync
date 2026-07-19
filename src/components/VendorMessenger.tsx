@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { FormFeedback } from "@/components/ui/FormFeedback";
 import { UserAvatar } from "@/components/UserAvatar";
 import { cn } from "@/lib/cn";
@@ -489,20 +490,14 @@ export function VendorMessenger({
               Loading conversation…
             </div>
           ) : !threadId ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <MessageCircle className="h-12 w-12 text-fix-border/40" aria-hidden />
-              <p className="mt-4 max-w-sm text-sm text-fix-text-muted">
-                Choose a conversation on the left, or start one from the{" "}
-                <Link href="/discover" className="font-medium text-fix-link hover:text-fix-link-hover">
-                  Discover
-                </Link>{" "}
-                or{" "}
-                <Link href="/pulse" className="font-medium text-fix-link hover:text-fix-link-hover">
-                  Pulse
-                </Link>
-                .
-              </p>
-            </div>
+            <EmptyState
+              bordered={false}
+              icon={MessageCircle}
+              title="No conversation selected"
+              description="Choose a chat on the left, or start one from Discover or Pulse."
+              action={{ href: "/discover", label: "Browse Discover" }}
+              secondaryAction={{ href: "/pulse", label: "Open Pulse" }}
+            />
           ) : (
             <ul className="space-y-4">
               {messages.map((m) => {

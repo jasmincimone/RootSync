@@ -1,4 +1,5 @@
 import { Container } from "@/components/Container";
+import { PlatformIllustrationBanner } from "@/components/PlatformIllustrationBanner";
 import { RootSyncChat } from "@/components/RootSyncChat";
 import { RootSyncFeatureCards } from "@/components/RootSyncFeatureCards";
 import { BrandPngIcon } from "@/components/ui/BrandPngIcon";
@@ -12,8 +13,15 @@ export const metadata = {
 export default function RootSenseAiPage() {
   return (
     <Container className="py-12 sm:py-16">
-      <div className="max-w-3xl">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+      <div className="mx-auto max-w-3xl">
+        <PlatformIllustrationBanner
+          src="/images/platform/rootsense/rootsense-nature-guide.png"
+          alt="A farmer and apprentice reviewing growing guidance on a tablet in a lush kitchen garden."
+          width={1376}
+          height={768}
+          fit="cover"
+        />
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
           <BrandPngIcon
             src={platformNavIconByHref[ROOTSENSE_AI_HREF]}
             alt="RootSense AI"
@@ -25,17 +33,19 @@ export default function RootSenseAiPage() {
               RootSense AI
             </h1>
             <p className="mt-3 text-base text-fix-text-muted">
-              Your AI guide for growing, eating well, and planning a resilient food business—rooted in
-              farming, gardening, and healthy food.
+              Meet Rootie — practical guidance for growing, eating well, and building resilient local
+              food businesses.
             </p>
           </div>
         </div>
       </div>
 
-      <RootSyncFeatureCards />
-
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="mx-auto mt-10 w-full max-w-6xl">
         <RootSyncChat />
+      </div>
+
+      <div className="mt-12">
+        <RootSyncFeatureCards />
       </div>
     </Container>
   );

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 
 import { AccountFtueChecklist } from "@/components/AccountFtueChecklist";
 import { AccountHubExplorer } from "@/components/account/AccountHubExplorer";
+import { AccountNextActions } from "@/components/account/AccountNextActions";
 import { AccountProfileCard } from "@/components/account/AccountProfileCard";
 import { PageBody } from "@/components/ui/PageBody";
 import { authOptions } from "@/lib/authOptions";
@@ -46,13 +47,73 @@ export default async function AccountPage() {
   const isApprovedVendor =
     role === ROLES.VENDOR && vendorStatus === VENDOR_STATUS.APPROVED;
 
-  // Hub visibility (server-gated from DB role / vendor status):
-  // Members → Vitals + Member Hub
-  // Approved vendors → + Vendor Hub + GrowSpace
-  // Admins → all five hubs
   const showAdminHub = isAdmin;
   const showVendorHub = isAdmin || isApprovedVendor;
   const showGrowspace = isAdmin || canAccessGrowthWorkspace(role, vendorStatus);
+
+  const nextActions = (() => {
+    if (isApprovedVendor || isAdmin) {
+      return [
+        {
+          href: "/account/vendor/listings",
+          label: "Manage listings",
+          hint: "Publish products, services, events, and resources",
+        },
+        {
+          href: "/account/vendor/payments",
+          label: "Payment Hub",
+          hint: "Keep Stripe Connect ready so you get paid",
+        },
+        showGrowspace
+          ? {
+              href: "/account/growth",
+              label: "Open GrowSpace",
+              hint: "CRM, funnels, and campaigns",
+            }
+          : {
+              href: "/discover",
+              label: "Browse Discover",
+              hint: "See how your listings appear to Members",
+            },
+      ];
+    }
+    if (vendorStatus === VENDOR_STATUS.PENDING) {
+      return [
+        {
+          href: "/account/vendor",
+          label: "Vendor application",
+          hint: "Check status while RootSync reviews your apply",
+        },
+        {
+          href: "/discover",
+          label: "Browse Discover",
+          hint: "Explore Verified Vendors while you wait",
+        },
+        {
+          href: "/pulse",
+          label: "Share a Pulse",
+          hint: "Stay visible in the community feed",
+        },
+      ];
+    }
+    return [
+      {
+        href: "/discover",
+        label: "Browse Discover",
+        hint: "Find local vendors, listings, and places",
+      },
+      {
+        href: "/messages/inbox",
+        label: "Stay Synced",
+        hint: "Message vendors and Members",
+      },
+      {
+        href: "/account/vitals",
+        label: "Your Pulse",
+        hint: "See your score and contribution history",
+      },
+    ];
+  })();
 
   return (
     <PageBody>
@@ -63,6 +124,8 @@ export default async function AccountPage() {
       />
 
       <AccountFtueChecklist />
+
+      <AccountNextActions actions={nextActions} />
 
       <AccountHubExplorer
         showVendorHub={showVendorHub}

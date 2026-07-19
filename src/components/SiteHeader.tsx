@@ -8,7 +8,7 @@ import { HeaderAccountMenu } from "@/components/HeaderAccountMenu";
 import { BrandPngIcon } from "@/components/ui/BrandPngIcon";
 import { PulseIcon } from "@/components/pulse/PulseIcon";
 import { PLATFORM_PRIMARY_NAV_LINKS } from "@/config/platformNav";
-import { platformNavIconByHref } from "@/config/platformExploreNav";
+import { platformNavIconByHref, ROOTSYNC_SYMBOL_SRC } from "@/config/platformExploreNav";
 import { cn } from "@/lib/cn";
 import { leaveMenu, rememberPathBeforeMenu } from "@/lib/menuReturn";
 
@@ -56,9 +56,17 @@ export function SiteHeader() {
             href="/"
             className="inline-flex shrink-0 items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2"
           >
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-fix-bg-muted text-bark ring-1 ring-inset ring-fix-border/20">
-              TF
-            </span>
+            {/* Native img preserves PNG alpha (same mark as favicon). */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`${ROOTSYNC_SYMBOL_SRC}?v=6`}
+              alt=""
+              width={36}
+              height={36}
+              className="h-9 w-9 object-contain"
+              decoding="async"
+              aria-hidden
+            />
             <div className="hidden leading-tight sm:block">
               <div className="text-sm font-semibold text-fix-heading">RootSync</div>
               <div className="text-xs text-fix-text-muted">Stay Synced!</div>
