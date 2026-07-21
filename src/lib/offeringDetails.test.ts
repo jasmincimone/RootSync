@@ -32,16 +32,14 @@ describe("assertPublishableOfferingDetails", () => {
     );
   });
 
-  it("rejects free Resources before publishing", () => {
-    assert.throws(
-      () =>
-        assertPublishableOfferingDetails({
-          listingType: LISTING_TYPE.RESOURCE,
-          status: OFFERING_STATUS.ACTIVE,
-          details: { resource: { fileUrl: "https://cdn.example/file.pdf" } },
-          priceCents: 0,
-        }),
-      /Free Resources are not supported/,
+  it("allows free Resources when a delivery file is present", () => {
+    assert.doesNotThrow(() =>
+      assertPublishableOfferingDetails({
+        listingType: LISTING_TYPE.RESOURCE,
+        status: OFFERING_STATUS.ACTIVE,
+        details: { resource: { fileUrl: "https://cdn.example/file.pdf" } },
+        priceCents: 0,
+      }),
     );
   });
 

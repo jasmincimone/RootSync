@@ -70,15 +70,14 @@ export function assertPublishableOfferingDetails(args: {
     return;
   }
 
+  // Events must be paid (Stripe). Free Resources use claim-free (no Stripe).
   if (
-    (args.listingType === LISTING_TYPE.EVENT || args.listingType === LISTING_TYPE.RESOURCE) &&
+    args.listingType === LISTING_TYPE.EVENT &&
     typeof args.priceCents === "number" &&
     args.priceCents <= 0
   ) {
     throw new Error(
-      args.listingType === LISTING_TYPE.EVENT
-        ? "Set a ticket price greater than $0 before publishing. Free Events are not supported yet."
-        : "Set a price greater than $0 before publishing. Free Resources are not supported yet.",
+      "Set a ticket price greater than $0 before publishing. Free Events are not supported yet.",
     );
   }
 

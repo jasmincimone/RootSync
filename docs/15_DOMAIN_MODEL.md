@@ -183,6 +183,8 @@ Examples:
 - Templates
 - Courses
 
+Vendors may publish **free ($0)** Resources for signed-in Members to download without Stripe, or **paid** Resources via Connect checkout.
+
 ---
 
 ## Event

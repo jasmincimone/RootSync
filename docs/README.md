@@ -18,6 +18,7 @@ Read in this order:
 16. adr/ADR-008-pulse-system.md — architecture decision for Pulse
 17. adr/ADR-005-service-bookings.md — architecture decision for bookings
 18. SENTRY.md — production error monitoring (DSN, verify, optional source maps)
+19. MONEY_OPS_RUNBOOK.md — webhooks, Connect stuck, refunds, fee checks (ops)
 
 Then review the appropriate PRD before implementing any feature.
 

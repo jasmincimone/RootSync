@@ -8,6 +8,7 @@ import {
   getConnectStripeClient,
 } from "@/lib/stripeConnectDemo";
 import { platformApplicationFeeCents } from "@/lib/platformFee";
+import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 import { BOOKING_STATUS } from "@/lib/roles";
 
 export type IntakeAnswerInput = {
@@ -183,10 +184,11 @@ export async function createServiceBookingCheckout(
       vendorProfileId: listing.vendorProfileId,
       type: "service_booking",
     },
-    payment_intent_data: {
-      application_fee_amount: applicationFeeCents,
-      transfer_data: { destination: connectAccountId },
-    },
+    payment_intent_data: connectDestinationPaymentIntentData(
+      priceCents,
+      connectAccountId,
+      applicationFeeCents,
+    ),
   };
 
   const session = await stripe.checkout.sessions.create(sessionParams);

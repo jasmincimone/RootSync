@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { BuyNowButton } from "@/components/BuyNowButton";
 import { BuyNowLink } from "@/components/BuyNowLink";
+import { ClaimFreeResourceButton } from "@/components/ClaimFreeResourceButton";
 import {
   ListingVariantSelector,
   type ListingVariant,
@@ -47,8 +48,10 @@ export function MarketplaceListingPurchase({
     ? variants.find((variant) => variant.id === selectedVariantId)
     : null;
   const effectivePriceCents = selectedVariant?.priceCents ?? priceCents;
-  const freeCheckoutUnsupported =
-    (isEvent || isResource) && (!Number.isFinite(effectivePriceCents) || effectivePriceCents <= 0);
+  const isFreeResource =
+    isResource && Number.isFinite(effectivePriceCents) && effectivePriceCents <= 0;
+  const freeEventUnsupported =
+    isEvent && (!Number.isFinite(effectivePriceCents) || effectivePriceCents <= 0);
   const bookHref =
     selectedVariantId && needsVariant
       ? `/discover/listings/${listingId}/book?variant=${encodeURIComponent(selectedVariantId)}`
@@ -64,12 +67,23 @@ export function MarketplaceListingPurchase({
       : "";
 
   function renderProductCheckout() {
-    if (freeCheckoutUnsupported) {
+    if (isFreeResource) {
+      return (
+        <ClaimFreeResourceButton
+          listingId={listingId}
+          variantId={selectedVariantId}
+          size={compact ? "sm" : "md"}
+          fullWidth={compact}
+          disabled={variantBlocked}
+        />
+      );
+    }
+
+    if (freeEventUnsupported) {
       return (
         <p className="w-full rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 px-4 py-3 text-sm text-fix-text-muted">
-          {isEvent
-            ? "Free tickets aren't available through RootSync checkout yet. Contact the Vendor through Stay Synced."
-            : "Free Resources aren't available through RootSync checkout yet. Contact the Vendor through Stay Synced."}
+          Free tickets aren&apos;t available through RootSync checkout yet. Contact the Vendor through
+          Stay Synced.
         </p>
       );
     }
@@ -195,7 +209,11 @@ export function MarketplaceListingPurchase({
           <p className="w-full text-xs text-fix-text-muted">
             Sign in to complete booking. Choose an option above, then continue to payment.
           </p>
-        ) : !isService && variants.length > 0 && !checkoutUnavailable ? (
+        ) : isFreeResource && variants.length > 0 ? (
+          <p className="w-full text-xs text-fix-text-muted">
+            Choose an option above, then download.
+          </p>
+        ) : !isService && !isFreeResource && variants.length > 0 && !checkoutUnavailable ? (
           <p className="w-full text-xs text-fix-text-muted">
             {isEvent
               ? "Choose a ticket tier above, then continue to checkout."

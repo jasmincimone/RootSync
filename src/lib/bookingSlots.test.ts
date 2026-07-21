@@ -60,15 +60,28 @@ describe("bookingSlots", () => {
 
   it("generates on-the-hour start times for 60-minute Monday slots", () => {
     const listing = mockListing({ durationMinutes: 60 });
-    const from = new Date("2026-06-29T04:00:00.000Z"); // before 9am ET
-    const to = new Date("2026-07-06T04:00:00.000Z");
+    // Use a Monday window in the future so slots are not filtered as past.
+    const now = new Date();
+    const day = now.getUTCDay(); // 0 Sun … 1 Mon
+    const daysUntilMon = (1 - day + 7) % 7 || 7;
+    const nextMondayUtc = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + daysUntilMon,
+      4,
+      0,
+      0,
+      0,
+    );
+    const from = new Date(nextMondayUtc);
+    const to = new Date(nextMondayUtc + 7 * 24 * 60 * 60 * 1000);
     const slots = generateAvailableSlots({
       listing,
       from,
       to,
       bookedRanges: [],
     });
-    assert.ok(slots.length > 0);
+    assert.ok(slots.length > 0, `expected slots between ${from.toISOString()} and ${to.toISOString()}`);
     for (const slot of slots) {
       const start = new Date(slot.startAt);
       assert.ok(

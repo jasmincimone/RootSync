@@ -4,6 +4,10 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { hookOrderVerified } from "@/lib/pulse/hooks";
 import {
+  checkoutCompletedFields,
+  shouldConfirmServiceBooking,
+} from "@/lib/stripeCheckoutWebhook";
+import {
   fetchConnectAccountStatus,
   getConnectStripeClient,
   hasStripeSig,
@@ -95,32 +99,31 @@ export async function POST(request: NextRequest) {
 
 async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
   const session = event.data.object as Stripe.Checkout.Session;
-  const orderId = session.metadata?.orderId;
-  const bookingId = session.metadata?.bookingId;
-  const checkoutType = session.metadata?.type;
+  const fields = checkoutCompletedFields({
+    id: session.id,
+    metadata: session.metadata as Record<string, string> | null,
+    payment_intent: session.payment_intent,
+  });
 
-  if (!orderId) return;
+  if (!fields.orderId) return;
 
   await prisma.order.update({
-    where: { id: orderId },
+    where: { id: fields.orderId },
     data: {
       status: "paid",
       stripeSessionId: session.id,
-      stripePaymentIntent:
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent?.id ?? null,
+      stripePaymentIntent: fields.paymentIntentId,
     },
   });
 
-  await hookOrderVerified(orderId);
+  await hookOrderVerified(fields.orderId);
 
-  if (checkoutType === "service_booking" && bookingId) {
+  if (shouldConfirmServiceBooking(fields)) {
     const { confirmPaidServiceBookingFromStripeSession } = await import("@/lib/confirmBooking");
     await confirmPaidServiceBookingFromStripeSession(session.id);
   } else {
     const { fulfillPaidEventTicketOrder } = await import("@/lib/fulfillEventTicket");
-    await fulfillPaidEventTicketOrder(orderId);
+    await fulfillPaidEventTicketOrder(fields.orderId);
   }
 }
 

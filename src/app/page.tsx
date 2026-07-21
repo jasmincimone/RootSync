@@ -175,7 +175,7 @@ export default async function HomePage() {
               centerInfoButton
               infoNotice={VENDOR_STARTUP_PROMO_NOTICE}
               icon={<Store className="h-5 w-5" aria-hidden />}
-              variant="secondary"
+              variant="cta"
               className="w-full uppercase tracking-wide"
             />
           </LandingCtaStack>

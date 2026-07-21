@@ -315,14 +315,12 @@ export function VendorOfferingForm({
     }
 
     if (
-      (listingType === LISTING_TYPE.EVENT || listingType === LISTING_TYPE.RESOURCE) &&
+      listingType === LISTING_TYPE.EVENT &&
       (status === OFFERING_STATUS.ACTIVE || status === OFFERING_STATUS.SCHEDULED) &&
       cents <= 0
     ) {
       setError(
-        listingType === LISTING_TYPE.EVENT
-          ? "Set a ticket price greater than $0 before publishing. Free Events are not supported yet."
-          : "Set a price greater than $0 before publishing. Free Resources are not supported yet.",
+        "Set a ticket price greater than $0 before publishing. Free Events are not supported yet.",
       );
       return;
     }
@@ -542,6 +540,10 @@ export function VendorOfferingForm({
           {variantDrafts.length > 0 && lowestVariantCents !== null ? (
             <p className="mt-1 text-xs text-fix-text-muted">
               Listing price uses your lowest option ({formatPrice(lowestVariantCents)}).
+            </p>
+          ) : listingType === LISTING_TYPE.RESOURCE ? (
+            <p className="mt-1 text-xs text-fix-text-muted">
+              Use $0 for a free download (no Stripe). Paid Resources still need Payment Hub setup.
             </p>
           ) : null}
         </div>

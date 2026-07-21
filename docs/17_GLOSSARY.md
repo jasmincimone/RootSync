@@ -176,6 +176,8 @@ Examples:
 - Guides
 - Courses (future)
 
+**Free Resources** use a $0 price and a claim flow (no Stripe). **Paid Resources** use Stripe Checkout / Connect like other commerce listings.
+
 ---
 
 ## Event

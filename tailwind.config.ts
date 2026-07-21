@@ -10,6 +10,8 @@ const fixTokens = {
   amber: "#e59a28",
   "clay-muted": "#d4bcae",
   "surface-tint": "#e8ded6",
+  /** Page canvas — light cream for cleaner contrast (not raw clay). */
+  bg: "#f8efe8",
 };
 
 const config: Config = {
@@ -19,7 +21,7 @@ const config: Config = {
       colors: {
         ...fixTokens,
         fix: {
-          bg: fixTokens.clay,
+          bg: fixTokens.bg,
           "bg-muted": fixTokens["clay-muted"],
           surface: fixTokens["surface-tint"],
           text: fixTokens.espresso,

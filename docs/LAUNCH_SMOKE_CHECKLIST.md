@@ -46,9 +46,11 @@ Core public + signed-in commerce/auth items are checked. Unchecked boxes below a
 
 ## Resources
 
-- [ ] Paid Resource: signed-in buyer can download — **no Resource listings yet**
+- [ ] Paid Resource: signed-in buyer can download — when a paid Resource listing exists
+- [ ] Free Resource ($0): signed-in Member can claim download without Stripe — when a free Resource exists
 - [x] Anonymous `/api/download` → 401 — **passed**
-- [ ] Other Member cannot download someone else’s order — after first Resource sale
+- [ ] Other Member cannot download someone else’s order — after first Resource claim/sale
+- [ ] Active/Scheduled Resource cannot publish without a delivery file — when Resources are added
 
 ## Discover honesty
 
@@ -56,7 +58,6 @@ Core public + signed-in commerce/auth items are checked. Unchecked boxes below a
 - [x] Directory claim request + admin reject/approve — **confirmed**; Vendor hub shows Pending / Approved / Denied
 - [x] Events ticket flow — **confirmed by operator**
 - [x] Paid Google Meet confirmation/email include Meet link — **confirmed**
-- [ ] Active/Scheduled Resource cannot publish without a delivery file — when Resources are added
 - [x] GrowSpace shows Overview · CRM · Funnels · Campaigns only
 - [ ] External Pay Link copy notes off-platform (no RootSync fee) — optional
 

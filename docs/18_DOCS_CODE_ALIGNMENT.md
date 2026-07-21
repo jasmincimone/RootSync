@@ -99,7 +99,7 @@ Use it when:
 | Listing | `Listing` model (public) | **Aligned** | 1:1 with Offering; `visibility` PUBLIC/HIDDEN |
 | Product | `ProductDetails` + `listingType PRODUCT` | **Partial** | Default for migrated + new offerings |
 | Service | `ServiceDetails` + booking engine | **Aligned** | See [19_SERVICE_BOOKINGS.md](./19_SERVICE_BOOKINGS.md), ADR-005 |
-| Resource | `ResourceDetails` + vendor form + paid download gate | **Aligned** (MVP) | Publishing requires a delivery file |
+| Resource | `ResourceDetails` + vendor form + paid/free download gate | **Aligned** (MVP) | Publishing requires a delivery file; $0 uses claim-free (no Stripe) |
 | Event | `EventDetails` + ticket tiers + fulfillment | **Aligned** (MVP) | In-person, Meet, and external event-space modes |
 | Directory Listing | `DirectoryListing` | **Aligned** (MVP) | USDA import, map/search, request + admin-assisted claim |
 
@@ -200,7 +200,7 @@ Reviews, Analytics, Referrals, Native Apps — **Deferred**. Events and Resource
 | Listings | Browse all listing types | `/discover`, `/discover/listings/[id]` | **Aligned** (MVP) |
 | Directory Listings | Map + search + assisted claim | `/discover/directory/[id]` | **Aligned** (MVP) |
 | Storefront | Vendor-managed public page | `/discover/vendors/[id]` | **Aligned** |
-| Resources | Discover filter + paid order access | `/discover?type=RESOURCE`, `/api/download` | **Aligned** (MVP) |
+| Resources | Discover filter + paid/free order access | `/discover?type=RESOURCE`, claim-free + `/api/download` | **Aligned** (MVP) |
 | Booking | Service scheduling | `/discover/listings/[id]/book` | **Aligned** (MVP) |
 | Connect onboarding | Vendor payouts | `/account/vendor/payments` | **Aligned** (MVP) |
 

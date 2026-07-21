@@ -18,5 +18,6 @@
 -   Smoke test payments (Connect destination charge + fee)
 -   Verify email service
 -   Follow [LAUNCH_SMOKE_CHECKLIST.md](./LAUNCH_SMOKE_CHECKLIST.md)
+-   Money incidents: [MONEY_OPS_RUNBOOK.md](./MONEY_OPS_RUNBOOK.md)
 -   Confirm Sentry DSN ([SENTRY.md](./SENTRY.md)) and send a test error from `/account/admin/sentry-test`
 -   Monitor logs after deployment

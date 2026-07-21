@@ -8,6 +8,7 @@ import {
   getConnectStripeClient,
 } from "@/lib/stripeConnectDemo";
 import { platformApplicationFeeCents } from "@/lib/platformFee";
+import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 
 export type MarketplaceListingCheckout = {
   id: string;
@@ -203,10 +204,11 @@ export async function createMarketplaceListingCheckout(args: {
       vendorProfileId: listing.vendorProfile.id,
       ...(variant ? { variantId: variant.id } : {}),
     },
-    payment_intent_data: {
-      application_fee_amount: applicationFeeCents,
-      transfer_data: { destination: connectAccountId },
-    },
+    payment_intent_data: connectDestinationPaymentIntentData(
+      subtotalCents,
+      connectAccountId,
+      applicationFeeCents,
+    ),
   };
 
   const session = await stripe.checkout.sessions.create(sessionParams);

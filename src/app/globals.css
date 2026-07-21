@@ -25,8 +25,8 @@
   /* Subtle tint for surfaces/cards */
   --surface-tint: #e8ded6;
 
-  /* Semantic tokens */
-  --bg: var(--clay);
+  /* Semantic tokens — page canvas is a light cream for cleaner text contrast */
+  --bg: #f8efe8;
   --bg-muted: var(--clay-muted);
   --surface: var(--surface-tint);
   --text: var(--espresso);
