@@ -5,6 +5,8 @@ export const DISCOVER_BASE = "/discover";
 
 export type DiscoverVendorRef = string | { id: string; publicSlug?: string | null };
 
+export type DiscoverListingRef = string | { id: string; publicSlug?: string | null };
+
 export function discoverVendorPath(vendor: DiscoverVendorRef): string {
   if (typeof vendor === "string") {
     return `${DISCOVER_BASE}/vendors/${vendor}`;
@@ -13,16 +15,20 @@ export function discoverVendorPath(vendor: DiscoverVendorRef): string {
   return `${DISCOVER_BASE}/vendors/${segment}`;
 }
 
-export function discoverListingPath(listingId: string) {
-  return `${DISCOVER_BASE}/listings/${listingId}`;
+export function discoverListingPath(listing: DiscoverListingRef): string {
+  if (typeof listing === "string") {
+    return `${DISCOVER_BASE}/listings/${listing}`;
+  }
+  const segment = listing.publicSlug?.trim() || listing.id;
+  return `${DISCOVER_BASE}/listings/${segment}`;
 }
 
 export function discoverDirectoryPath(directoryId: string) {
   return `${DISCOVER_BASE}/directory/${directoryId}`;
 }
 
-export function discoverBookPath(listingId: string, variantId?: string | null) {
-  const base = `${DISCOVER_BASE}/listings/${listingId}/book`;
+export function discoverBookPath(listing: DiscoverListingRef, variantId?: string | null) {
+  const base = `${discoverListingPath(listing)}/book`;
   if (variantId) return `${base}?variant=${encodeURIComponent(variantId)}`;
   return base;
 }

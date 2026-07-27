@@ -39,6 +39,7 @@ export type OfferingListingInput = {
   productUrl?: string | null;
   vendorNotes?: string | null;
   scheduledPublishAt?: Date | null;
+  publicSlug?: string | null;
   serviceKind?: ServiceKind;
   details?: OfferingDetailsPayload;
   bookingConfig?: ServiceBookingConfigInput;
@@ -199,6 +200,7 @@ export function serializeVendorOffering(row: VendorOfferingRow) {
     stripePriceId: row.stripePriceId,
     vendorNotes: row.vendorNotes,
     scheduledPublishAt: row.scheduledPublishAt,
+    publicSlug: row.listing?.publicSlug ?? null,
     visibility: row.listing?.visibility ?? LISTING_VISIBILITY.HIDDEN,
     details: serializeOfferingDetails(row),
     booking: serializeServiceBookingConfig(row),
@@ -255,6 +257,7 @@ export async function createOfferingWithListing(
           priceCents: input.priceCents,
           category: input.category ?? null,
           imageUrl: input.imageUrl ?? null,
+          publicSlug: input.publicSlug ?? null,
           ...listingVisibilityForOffering(resolved.status),
         },
       },
@@ -303,6 +306,7 @@ export async function updateOfferingAndSyncListing(
     details?: OfferingDetailsPayload;
     bookingConfig?: ServiceBookingConfigInput;
     variants?: OfferingVariantInput[];
+    publicSlug?: string | null;
   },
 ) {
   const before = options?.previousListingType
@@ -324,7 +328,10 @@ export async function updateOfferingAndSyncListing(
 
   const listing = await prisma.listing.update({
     where: { id: offering.listing.id },
-    data: syncListingFieldsFromOffering(offering, offering.listing.publishedAt),
+    data: {
+      ...syncListingFieldsFromOffering(offering, offering.listing.publishedAt),
+      ...(options && "publicSlug" in options ? { publicSlug: options.publicSlug ?? null } : {}),
+    },
   });
 
   const fromType = (options?.previousListingType ?? before?.listingType ?? offering.listingType) as ListingType;

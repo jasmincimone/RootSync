@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 
 import { authOptions } from "@/lib/authOptions";
 import {
@@ -26,6 +27,7 @@ import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, OFFERING_STATUS } from "@/lib/roles";
 import { requireApprovedVendorGate } from "@/lib/vendorListingAccess";
 import { rateLimitResponse } from "@/lib/rateLimit";
+import { validateListingPublicSlug } from "@/lib/listingPublicSlug";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -178,6 +180,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let publicSlug: string | null = null;
+  if ("publicSlug" in body) {
+    const parsed =
+      typeof body.publicSlug === "string"
+        ? validateListingPublicSlug(body.publicSlug)
+        : body.publicSlug === null
+          ? ({ ok: true as const, slug: null })
+          : ({ ok: false as const, error: "Invalid listing URL." });
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    publicSlug = parsed.slug;
+  }
+
   try {
     const offering = await prisma.$transaction(async (tx) => {
       const created = await createOfferingWithListing(tx, {
@@ -193,6 +209,7 @@ export async function POST(request: NextRequest) {
         productUrl: productUrlNorm,
         vendorNotes: typeof vendorNotes === "string" ? vendorNotes.trim() || null : null,
         scheduledPublishAt: resolvedSchedule.scheduledPublishAt,
+        publicSlug,
         details,
         bookingConfig,
         variants,
@@ -248,6 +265,12 @@ export async function POST(request: NextRequest) {
         : { ok: false, error: stripeSync.error },
     });
   } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return NextResponse.json(
+        { error: "That listing URL is already taken. Choose another." },
+        { status: 409 },
+      );
+    }
     const msg = e instanceof Error ? e.message : "Failed to create offering";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

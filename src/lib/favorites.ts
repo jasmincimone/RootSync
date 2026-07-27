@@ -198,6 +198,7 @@ export async function listSavedFavorites(userId: string): Promise<SavedFavoriteI
           where: { id: { in: listingIds } },
           select: {
             id: true,
+            publicSlug: true,
             title: true,
             imageUrl: true,
             listingType: true,
@@ -247,7 +248,7 @@ export async function listSavedFavorites(userId: string): Promise<SavedFavoriteI
         createdAt: row.createdAt,
         title: listing.title,
         subtitle: listing.vendorProfile.displayName,
-        href: discoverListingPath(listing.id),
+        href: discoverListingPath(listing),
         imageUrl: listing.imageUrl,
       });
       continue;

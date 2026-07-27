@@ -185,6 +185,8 @@ Examples:
 
 Vendors may publish **free ($0)** Resources for signed-in Members to download without Stripe, or **paid** Resources via Connect checkout.
 
+Each Listing may set an optional **public URL slug** (`/discover/listings/{slug}`) for QR codes, marketing, and SEO. The system id still works; when a slug exists, id URLs redirect to the slug.
+
 ---
 
 ## Event

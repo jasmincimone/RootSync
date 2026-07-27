@@ -17,6 +17,7 @@ function mockListing(overrides?: {
     priceCents: 5000,
     imageUrl: null,
     listingType: "SERVICE",
+    publicSlug: null,
     offeringId: "offering-1",
     vendorProfileId: "vendor-1",
     vendorProfile: {

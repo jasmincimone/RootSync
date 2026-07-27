@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/authOptions";
 import { publicListingWhere } from "@/lib/offeringListing";
+import { listingPublicRefWhere } from "@/lib/listingPublicResolve";
 import { prisma } from "@/lib/prisma";
 import {
   BOOKING_STATUS,
@@ -39,6 +40,7 @@ export type BookableServiceListing = {
   priceCents: number;
   imageUrl: string | null;
   listingType: string;
+  publicSlug: string | null;
   offeringId: string;
   vendorProfileId: string;
   vendorProfile: {
@@ -88,7 +90,7 @@ export async function loadBookableServiceListing(
 ): Promise<BookableServiceListing | null> {
   const listing = await prisma.listing.findFirst({
     where: {
-      id: listingId,
+      ...listingPublicRefWhere(listingId),
       listingType: LISTING_TYPE.SERVICE,
       ...publicListingWhere,
       priceCents: { gt: 0 },
@@ -100,6 +102,7 @@ export async function loadBookableServiceListing(
       priceCents: true,
       imageUrl: true,
       listingType: true,
+      publicSlug: true,
       offeringId: true,
       vendorProfileId: true,
       vendorProfile: {

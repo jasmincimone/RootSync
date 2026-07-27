@@ -332,7 +332,7 @@ export default async function PublicVendorProfilePage({
             <ul className="mt-6 grid gap-4 sm:grid-cols-2">
               {vendor.listings.map((listing) => {
                 const listingHref = withDiscoverReturnTo(
-                  discoverListingPath(listing.id),
+                  discoverListingPath(listing),
                   discoverVendorPath(vendor),
                 );
                 return (
@@ -367,6 +367,7 @@ export default async function PublicVendorProfilePage({
                       <div className="mt-3">
                         <MarketplaceListingCheckoutActions
                           listingId={listing.id}
+                          publicSlug={listing.publicSlug}
                           listingType={listing.listingType}
                           returnTo={discoverVendorPath(vendor)}
                           compact

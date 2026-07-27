@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { Container } from "@/components/Container";
 import { ServiceBookingWizard } from "@/components/ServiceBookingWizard";
+import { discoverBookPath, discoverListingPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { loadBookableServiceListing } from "@/lib/bookingAccess";
 import { getServiceDurationMinutes, resolveBookingPriceCents } from "@/lib/bookingSlots";
 import { formatPrice } from "@/lib/format";
+import { isListingCuidRef } from "@/lib/listingPublicSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +25,12 @@ export default async function BookServicePage({
   const listing = await loadBookableServiceListing(id, variantParam ?? null);
   if (!listing) notFound();
 
+  if (listing.publicSlug && isListingCuidRef(id)) {
+    permanentRedirect(discoverBookPath(listing, variantParam ?? null));
+  }
+
   const session = await getServerSession(authOptions);
-  const bookPath = variantParam
-    ? `/discover/listings/${id}/book?variant=${encodeURIComponent(variantParam)}`
-    : `/discover/listings/${id}/book`;
+  const bookPath = discoverBookPath(listing, variantParam ?? null);
   if (!session?.user) {
     redirect(`/login?callbackUrl=${encodeURIComponent(bookPath)}`);
   }
@@ -48,7 +52,7 @@ export default async function BookServicePage({
             </Link>
             <span className="mx-2">/</span>
             <Link
-              href={`/discover/listings/${listing.id}`}
+              href={discoverListingPath(listing)}
               className="text-fix-link hover:text-fix-link-hover"
             >
               {listing.title}

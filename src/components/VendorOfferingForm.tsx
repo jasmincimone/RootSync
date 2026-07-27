@@ -62,6 +62,7 @@ type Props = {
     vendorNotes: string;
     status: string;
     scheduledPublishAt: string | null;
+    publicSlug: string | null;
     details: SerializedOfferingDetails;
     booking?: SerializedServiceBookingConfig;
     variants?: SerializedOfferingVariant[];
@@ -108,6 +109,7 @@ export function VendorOfferingForm({
 }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initial?.title ?? "");
+  const [publicSlug, setPublicSlug] = useState(initial?.publicSlug ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [priceDollars, setPriceDollars] = useState(
     initial ? (initial.priceCents / 100).toFixed(2) : "",
@@ -377,6 +379,7 @@ export function VendorOfferingForm({
         vendorNotes: vendorNotes.trim() || null,
         status,
         scheduledPublishAt: fromDatetimeLocalValue(scheduledPublishAt),
+        publicSlug,
         details: buildDetailsPayload(),
         ...(listingType === LISTING_TYPE.SERVICE
           ? {
@@ -546,6 +549,32 @@ export function VendorOfferingForm({
               Use $0 for a free download (no Stripe). Paid Resources still need Payment Hub setup.
             </p>
           ) : null}
+        </div>
+
+
+        <div className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 p-4">
+          <label htmlFor="listingPublicSlug" className="block text-sm font-medium text-fix-heading">
+            Listing URL
+          </label>
+          <p className="mt-1 text-xs text-fix-text-muted">
+            Optional custom path for QR codes, marketing, and SEO. Leave blank to use the default link.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <span className="shrink-0 text-sm text-fix-text-muted">/discover/listings/</span>
+            <input
+              id="listingPublicSlug"
+              value={publicSlug}
+              onChange={(e) => setPublicSlug(e.target.value)}
+              placeholder="summer-garden-guide"
+              autoComplete="off"
+              spellCheck={false}
+              className={inputClass + " !mt-0"}
+            />
+          </div>
+          <p className="mt-2 text-xs text-fix-text-muted">
+            Lowercase letters, numbers, and hyphens. Example:{" "}
+            <span className="font-medium text-fix-heading">summer-garden-guide</span>
+          </p>
         </div>
 
         <div>

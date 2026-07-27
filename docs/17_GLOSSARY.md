@@ -121,6 +121,8 @@ Listing Types include:
 
 Every Listing belongs to exactly one Vendor.
 
+Vendors can set an optional **Listing URL** (`publicSlug`) so the public path is `/discover/listings/your-name` instead of a system id.
+
 ---
 
 ## Product

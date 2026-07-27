@@ -60,6 +60,7 @@ Core public + signed-in commerce/auth items are checked. Unchecked boxes below a
 - [x] Paid Google Meet confirmation/email include Meet link — **confirmed**
 - [x] GrowSpace shows Overview · CRM · Funnels · Campaigns only
 - [ ] External Pay Link copy notes off-platform (no RootSync fee) — optional
+- [ ] Listing custom URL: set slug on vendor form → `/discover/listings/{slug}` works; cuid URL redirects to slug
 
 
 ## Legacy links (keep — Fix Collective / shared URLs)

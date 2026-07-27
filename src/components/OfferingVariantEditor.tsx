@@ -1,5 +1,7 @@
 "use client";
 
+import { ArrowDown, ArrowUp } from "lucide-react";
+
 import { Button } from "@/components/ui/Button";
 import type { SerializedOfferingVariant } from "@/lib/offeringVariants";
 import { LISTING_TYPE } from "@/lib/roles";
@@ -61,6 +63,15 @@ export function draftsToPayload(
   });
 }
 
+function moveVariant(variants: VariantDraft[], index: number, direction: -1 | 1): VariantDraft[] {
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= variants.length) return variants;
+  const next = [...variants];
+  const [item] = next.splice(index, 1);
+  next.splice(nextIndex, 0, item);
+  return next;
+}
+
 type Props = {
   listingType: string;
   variants: VariantDraft[];
@@ -86,6 +97,11 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                 showDuration ? " and session length" : ""
               }. Shared description, image, and availability apply to all. Describe what each option includes in your listing description above.`}
         </p>
+        {variants.length > 1 ? (
+          <p className="mt-1 text-xs text-fix-text-muted">
+            Use the arrows to set the order Members see when choosing an option.
+          </p>
+        ) : null}
       </div>
 
       {variants.length === 0 ? (
@@ -105,14 +121,38 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                 <span className="text-xs font-medium uppercase tracking-wide text-fix-text-muted">
                   Option {index + 1}
                 </span>
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onChange(variants.filter((row) => row.clientKey !== v.clientKey))}
-                  className="text-xs text-fix-text-muted hover:text-bark"
-                >
-                  Remove
-                </button>
+                <div className="flex items-center gap-1">
+                  {variants.length > 1 ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={disabled || index === 0}
+                        onClick={() => onChange(moveVariant(variants, index, -1))}
+                        className="rounded-lg border border-fix-border/20 p-1.5 text-fix-text-muted hover:bg-fix-surface disabled:opacity-40"
+                        aria-label={`Move option ${index + 1} up`}
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={disabled || index === variants.length - 1}
+                        onClick={() => onChange(moveVariant(variants, index, 1))}
+                        className="rounded-lg border border-fix-border/20 p-1.5 text-fix-text-muted hover:bg-fix-surface disabled:opacity-40"
+                        aria-label={`Move option ${index + 1} down`}
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </button>
+                    </>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onChange(variants.filter((row) => row.clientKey !== v.clientKey))}
+                    className="px-1.5 text-xs text-fix-text-muted hover:text-bark"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-fix-text">Title *</label>

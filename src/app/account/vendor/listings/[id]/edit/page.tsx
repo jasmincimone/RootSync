@@ -60,6 +60,7 @@ export default function EditVendorListingPage() {
         vendorNotes: l.vendorNotes ?? "",
         status: l.status ?? OFFERING_STATUS.DRAFT,
         scheduledPublishAt: l.scheduledPublishAt ?? null,
+        publicSlug: l.publicSlug ?? null,
         details: l.details ?? emptyDetails,
         booking: l.booking ?? { availabilityRules: [], intakeQuestions: [] },
         variants: l.variants ?? [],

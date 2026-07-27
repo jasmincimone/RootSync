@@ -322,6 +322,8 @@ model Listing {
   priceCents      Int      @default(0)
   category        String?
   imageUrl        String?
+  /// Public Discover URL segment: /discover/listings/{publicSlug}
+  publicSlug      String?  @unique
   /// PUBLIC | HIDDEN — see LISTING_VISIBILITY
   visibility      String   @default("HIDDEN")
   publishedAt     DateTime?

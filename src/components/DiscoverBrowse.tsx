@@ -50,6 +50,7 @@ import { cn } from "@/lib/cn";
 
 export type DiscoverListingRow = {
   id: string;
+  publicSlug?: string | null;
   title: string;
   description: string;
   priceCents: number;
@@ -839,7 +840,7 @@ export function DiscoverBrowse({
                       className="flex h-full scroll-mt-24 gap-4 overflow-hidden p-4"
                     >
                       <Link
-                        href={buildDetailHref(discoverListingPath(listing.id), "listing", listing.id)}
+                        href={buildDetailHref(discoverListingPath(listing), "listing", listing.id)}
                         onClick={rememberResults}
                         className="relative block h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-fix-border/15 bg-fix-bg-muted outline-none ring-fix-cta transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
                         aria-label={`View ${listing.title}`}
@@ -860,7 +861,7 @@ export function DiscoverBrowse({
                             : ""}
                         </span>
                         <Link
-                          href={buildDetailHref(discoverListingPath(listing.id), "listing", listing.id)}
+                          href={buildDetailHref(discoverListingPath(listing), "listing", listing.id)}
                           onClick={rememberResults}
                           className="mt-0.5 block font-medium text-fix-heading hover:text-fix-link hover:underline"
                         >
@@ -897,6 +898,7 @@ export function DiscoverBrowse({
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           <MarketplaceListingCheckoutActions
                             listingId={listing.id}
+                            publicSlug={listing.publicSlug}
                             listingType={listing.listingType}
                             compact
                           />

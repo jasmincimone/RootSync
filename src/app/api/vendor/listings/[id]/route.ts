@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
@@ -33,6 +33,7 @@ import {
 } from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
 import { rateLimitResponse } from "@/lib/rateLimit";
+import { validateListingPublicSlug } from "@/lib/listingPublicSlug";
 
 async function getVendorOfferingByListingId(userId: string, listingId: string) {
   const user = await prisma.user.findUnique({
@@ -298,11 +299,26 @@ export async function PATCH(
 
   const hasVariants = "variants" in body;
 
+  let publicSlugUpdate: string | null | undefined;
+  if ("publicSlug" in body) {
+    const parsed =
+      typeof body.publicSlug === "string"
+        ? validateListingPublicSlug(body.publicSlug)
+        : body.publicSlug === null
+          ? ({ ok: true as const, slug: null })
+          : ({ ok: false as const, error: "Invalid listing URL." });
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    publicSlugUpdate = parsed.slug;
+  }
+
   if (
     Object.keys(data).length === 0 &&
     !hasDetails &&
     !hasBookingConfig &&
     !hasVariants &&
+    publicSlugUpdate === undefined &&
     previousListingType === nextListingType
   ) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
@@ -317,6 +333,7 @@ export async function PATCH(
         details: hasDetails ? details : undefined,
         bookingConfig: hasBookingConfig ? bookingConfig : undefined,
         variants: hasVariants ? variants : undefined,
+        ...(publicSlugUpdate !== undefined ? { publicSlug: publicSlugUpdate } : {}),
       });
       await publishOfferingIfDue(tx, existing.offering.id);
       const refreshed = await tx.offering.findUniqueOrThrow({
@@ -369,6 +386,12 @@ export async function PATCH(
         : { ok: false, error: stripeSync.error },
     });
   } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return NextResponse.json(
+        { error: "That listing URL is already taken. Choose another." },
+        { status: 409 },
+      );
+    }
     const msg = e instanceof Error ? e.message : "Failed to update offering";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

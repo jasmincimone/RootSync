@@ -10,11 +10,13 @@ import {
   type ListingVariant,
 } from "@/components/ListingVariantSelector";
 import { ButtonLink } from "@/components/ui/Button";
+import { discoverBookPath } from "@/config/discoverPaths";
 import { cn } from "@/lib/cn";
 import { LISTING_TYPE } from "@/lib/roles";
 
 type Props = {
   listingId: string;
+  publicSlug?: string | null;
   listingType: string;
   priceCents?: number;
   variants: ListingVariant[];
@@ -29,6 +31,7 @@ const secondaryCheckoutClass =
 
 export function MarketplaceListingPurchase({
   listingId,
+  publicSlug = null,
   listingType,
   priceCents = 0,
   variants,
@@ -52,10 +55,10 @@ export function MarketplaceListingPurchase({
     isResource && Number.isFinite(effectivePriceCents) && effectivePriceCents <= 0;
   const freeEventUnsupported =
     isEvent && (!Number.isFinite(effectivePriceCents) || effectivePriceCents <= 0);
-  const bookHref =
-    selectedVariantId && needsVariant
-      ? `/discover/listings/${listingId}/book?variant=${encodeURIComponent(selectedVariantId)}`
-      : `/discover/listings/${listingId}/book`;
+  const bookHref = discoverBookPath(
+    { id: listingId, publicSlug },
+    selectedVariantId && needsVariant ? selectedVariantId : null,
+  );
 
   const hasPaymentLink = !!paymentLinkUrl?.trim();
   const hasStripeCheckout = stripeCheckoutReady;

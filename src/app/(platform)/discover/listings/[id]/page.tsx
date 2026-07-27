@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { Container } from "@/components/Container";
@@ -18,12 +18,13 @@ import { PulseRatingBadge } from "@/components/pulse/PulseRatingDisplay";
 import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurchase";
 import { ListingImage } from "@/components/ListingImage";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
-import { discoverVendorPath } from "@/config/discoverPaths";
+import { discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
 import { isFavorited } from "@/lib/favorites";
+import { findListingByPublicRef } from "@/lib/listingPublicResolve";
+import { isListingCuidRef } from "@/lib/listingPublicSlug";
 import { resolveListingCheckoutOptions } from "@/lib/listingCheckoutOptions";
-import { prisma } from "@/lib/prisma";
 import { loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
 import { FAVORITE_TARGET_TYPE, LISTING_VISIBILITY, OFFERING_STATUS, VENDOR_STATUS } from "@/lib/roles";
 
@@ -67,24 +68,21 @@ const offeringDetailSelect = {
   },
 };
 
-async function loadListingForPage(listingId: string, viewerUserId: string | undefined) {
-  const listing = await prisma.listing.findUnique({
-    where: { id: listingId },
-    include: {
-      offering: { select: offeringDetailSelect },
-      vendorProfile: {
-        select: {
-          id: true,
-          publicSlug: true,
-          userId: true,
-          displayName: true,
-          status: true,
-          pickupLocation: true,
-          website: true,
-          paymentLinkUrl: true,
-          user: {
-            select: { stripeConnectAccountId: true },
-          },
+async function loadListingForPage(publicRef: string, viewerUserId: string | undefined) {
+  const listing = await findListingByPublicRef(publicRef, {
+    offering: { select: offeringDetailSelect },
+    vendorProfile: {
+      select: {
+        id: true,
+        publicSlug: true,
+        userId: true,
+        displayName: true,
+        status: true,
+        pickupLocation: true,
+        website: true,
+        paymentLinkUrl: true,
+        user: {
+          select: { stripeConnectAccountId: true },
         },
       },
     },
@@ -142,6 +140,7 @@ function PurchasePanel({
 }: {
   listing: {
     id: string;
+    publicSlug?: string | null;
     title: string;
     listingType: string;
     priceCents: number;
@@ -213,6 +212,7 @@ function PurchasePanel({
         ) : (
           <MarketplaceListingPurchase
             listingId={listing.id}
+            publicSlug={listing.publicSlug}
             listingType={listing.listingType}
             priceCents={listing.priceCents}
             variants={variants}
@@ -261,6 +261,14 @@ export default async function DiscoverListingPage({
   if (!loaded) notFound();
 
   const { listing, isOwnerPreview } = loaded;
+
+  if (listing.publicSlug && isListingCuidRef(id)) {
+    const canonical = discoverListingPath(listing);
+    permanentRedirect(
+      returnTo ? `${canonical}?returnTo=${encodeURIComponent(returnTo)}` : canonical,
+    );
+  }
+
   const favoriteSaved = await isFavorited(
     session?.user?.id,
     FAVORITE_TARGET_TYPE.LISTING,

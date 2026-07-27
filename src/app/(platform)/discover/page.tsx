@@ -117,6 +117,7 @@ export default async function DiscoverPage() {
           }))}
           listings={listings.map((l) => ({
             id: l.id,
+            publicSlug: l.publicSlug,
             title: l.title,
             description: l.description,
             priceCents: l.priceCents,

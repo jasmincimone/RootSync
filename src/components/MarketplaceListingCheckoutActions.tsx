@@ -5,6 +5,7 @@ import { LISTING_TYPE } from "@/lib/roles";
 
 type Props = {
   listingId: string;
+  publicSlug?: string | null;
   listingType?: string;
   compact?: boolean;
   /** When set, listing detail back navigation returns here (e.g. vendor profile). */
@@ -17,13 +18,14 @@ type Props = {
  */
 export function MarketplaceListingCheckoutActions({
   listingId,
+  publicSlug = null,
   listingType,
   compact = false,
   returnTo,
 }: Props) {
   const isService = listingType === LISTING_TYPE.SERVICE;
   const isEvent = listingType === LISTING_TYPE.EVENT;
-  const baseHref = discoverListingPath(listingId);
+  const baseHref = discoverListingPath({ id: listingId, publicSlug });
   const href = returnTo ? withDiscoverReturnTo(baseHref, returnTo) : baseHref;
 
   const label = isService ? "Book now" : isEvent ? "Get tickets" : "Buy now";

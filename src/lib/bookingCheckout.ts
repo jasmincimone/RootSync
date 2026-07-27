@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { BookableServiceListing } from "@/lib/bookingAccess";
 import { resolveVendorEmail } from "@/lib/bookingAccess";
 import { parseSlotSelection, resolveBookingPriceCents, slotIsAvailable } from "@/lib/bookingSlots";
+import { discoverBookPath } from "@/config/discoverPaths";
 import {
   appBaseUrl,
   fetchConnectAccountStatus,
@@ -174,9 +175,7 @@ export async function createServiceBookingCheckout(
       },
     ],
     success_url: `${baseUrl}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}&booking=1`,
-    cancel_url: variantId
-      ? `${baseUrl}/discover/listings/${listing.id}/book?variant=${encodeURIComponent(variantId)}`
-      : `${baseUrl}/discover/listings/${listing.id}/book`,
+    cancel_url: `${baseUrl}${discoverBookPath(listing, variantId)}`,
     metadata: {
       orderId: booking.order.id,
       bookingId: booking.booking.id,

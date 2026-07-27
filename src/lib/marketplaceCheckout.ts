@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, ORDER_ITEM_TYPE, orderItemTypeForListingType } from "@/lib/roles";
 import { publicListingWhere } from "@/lib/offeringListing";
 import { resolveOfferingVariant } from "@/lib/offeringVariants";
+import { discoverListingPath } from "@/config/discoverPaths";
 import {
   appBaseUrl,
   fetchConnectAccountStatus,
@@ -18,6 +19,7 @@ export type MarketplaceListingCheckout = {
   priceCents: number;
   imageUrl: string | null;
   listingType: string;
+  publicSlug: string | null;
   vendorProfile: {
     id: string;
     displayName: string;
@@ -58,6 +60,7 @@ export async function loadListingForCheckout(
       priceCents: true,
       imageUrl: true,
       listingType: true,
+      publicSlug: true,
       offeringId: true,
       vendorProfile: {
         select: {
@@ -197,7 +200,7 @@ export async function createMarketplaceListingCheckout(args: {
       },
     ],
     success_url: `${baseUrl}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/discover/listings/${listing.id}`,
+    cancel_url: `${baseUrl}${discoverListingPath(listing)}`,
     metadata: {
       orderId: order.id,
       listingId: listing.id,
