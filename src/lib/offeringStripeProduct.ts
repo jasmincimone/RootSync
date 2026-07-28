@@ -191,3 +191,54 @@ async function syncOfferingStripeProductInner(
     return { ok: false, error: stripeConnectErrorMessage(err) };
   }
 }
+
+export type PushVendorOfferingsSummary = {
+  pushed: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  errors: string[];
+};
+
+/**
+ * Push all of a vendor's RootSync offerings to their connected Stripe Product catalog.
+ * Creates missing products; updates existing ones linked via stripeProductId.
+ */
+export async function pushVendorOfferingsToStripe(
+  vendorProfileId: string,
+): Promise<PushVendorOfferingsSummary> {
+  const offerings = await prisma.offering.findMany({
+    where: { vendorProfileId },
+    select: { id: true, stripeProductId: true, title: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const summary: PushVendorOfferingsSummary = {
+    pushed: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  for (const row of offerings) {
+    const hadProduct = Boolean(row.stripeProductId);
+    const result = await syncOfferingStripeProduct(row.id);
+    if (!result.ok) {
+      summary.failed += 1;
+      summary.errors.push(`${row.title}: ${result.error}`);
+      continue;
+    }
+    if (result.skipped) {
+      summary.skipped += 1;
+      continue;
+    }
+    if (hadProduct) {
+      summary.updated += 1;
+    } else {
+      summary.pushed += 1;
+    }
+  }
+
+  return summary;
+}

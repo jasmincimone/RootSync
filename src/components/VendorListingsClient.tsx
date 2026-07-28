@@ -31,9 +31,12 @@ type Listing = {
 export function VendorListingsClient({ hideHeader = false }: { hideHeader?: boolean }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const [pulling, setPulling] = useState(false);
+  const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  const busy = pulling || pushing || loading;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,7 +58,7 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
   }, [load]);
 
   async function syncFromStripe() {
-    setSyncing(true);
+    setPulling(true);
     setError(null);
     setSyncMessage(null);
     try {
@@ -73,7 +76,38 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
     } catch {
       setError("Failed to sync listings from Stripe.");
     } finally {
-      setSyncing(false);
+      setPulling(false);
+    }
+  }
+
+  async function pushToStripe() {
+    setPushing(true);
+    setError(null);
+    setSyncMessage(null);
+    try {
+      const res = await fetch("/api/connect/products/push", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        errors?: string[];
+        failed?: number;
+      };
+      if (!res.ok) {
+        setError(data.error || "Failed to push listings to Stripe.");
+        return;
+      }
+      const detail =
+        data.errors && data.errors.length > 0 ? ` ${data.errors.join(" · ")}` : "";
+      if ((data.failed ?? 0) > 0) {
+        setError((data.message || "Some listings failed to push.") + detail);
+      } else {
+        setSyncMessage((data.message || "Pushed listings to Stripe.") + detail);
+      }
+      await load();
+    } catch {
+      setError("Failed to push listings to Stripe.");
+    } finally {
+      setPushing(false);
     }
   }
 
@@ -83,10 +117,19 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
         type="button"
         variant="secondary"
         size="sm"
-        disabled={syncing || loading}
+        disabled={busy}
         onClick={() => void syncFromStripe()}
       >
-        {syncing ? "Syncing…" : "Sync listings from Stripe"}
+        {pulling ? "Pulling…" : "Sync listings from Stripe"}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        disabled={busy || listings.length === 0}
+        onClick={() => void pushToStripe()}
+      >
+        {pushing ? "Pushing…" : "Push listings to Stripe"}
       </Button>
       <ButtonLink href="/account/vendor/listings/new" variant="cta" size="sm">
         New Listing
@@ -101,8 +144,11 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
           <div>
             <h2 className="text-lg font-semibold text-fix-heading">My offerings</h2>
             <p className="mt-1 text-sm text-fix-text-muted">
-              Manage offerings and their public listings. Sync pulls products from your Stripe
-              Dashboard.
+              Manage offerings and their public listings.{" "}
+              <span className="font-medium text-fix-heading">Sync from Stripe</span> pulls
+              Dashboard/Payment Hub products into RootSync.{" "}
+              <span className="font-medium text-fix-heading">Push to Stripe</span> creates or
+              updates Products on your connected Stripe account.
             </p>
           </div>
           {actions}

@@ -64,6 +64,21 @@ Signature failures return **400** — fix the secret; don’t “force” paid i
 
 See also [13_DEPLOYMENT.md](./13_DEPLOYMENT.md).
 
+## 7. Two Stripe accounts with the same business name
+
+Connect often creates a **second** `acct_…` for the vendor (Express/Standard connected account) while they still have an older standalone Stripe login with the same display name. RootSync only uses the `User.stripeConnectAccountId` shown in **Payment Hub**.
+
+1. Payment Hub → note the linked `acct_…`.  
+2. In Stripe user settings → Accounts, open that same `acct_…` (not the other same-named one).  
+3. Products pushed from RootSync and Connect transfers land on **that** connected account. Platform (RootSync) Payments still show the customer charges (destination charges).  
+4. Ignore or keep the other account for non-RootSync use — don’t mix keys/modes.
+
+## 8. In-person / M2 card reader
+
+- **Counter POS (works now):** Vendor → In-person POS → Charge on this device (Checkout → destination transfer).  
+- **M2:** Bluetooth reader — needs Terminal SDK app. Backend tokens/intents: see [TERMINAL_POS.md](./TERMINAL_POS.md).  
+- Sales still appear on **platform** Payments; vendor gets the Connect transfer.
+
 ## Who to ping
 
 - Product/ops: confirm Member email, approximate time, listing/vendor name.  

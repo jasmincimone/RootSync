@@ -88,6 +88,8 @@ export async function POST(request: NextRequest) {
 
   if (event.type === "checkout.session.completed") {
     await handleLegacyCheckoutCompleted(event);
+  } else if (event.type === "payment_intent.succeeded") {
+    await handlePaymentIntentSucceeded(event);
   } else if (isStripeProductEventType(event.type)) {
     await handleStripeProductWebhookEvent(event);
   } else if (isSubscriptionEventType(event.type)) {
@@ -125,6 +127,23 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
     const { fulfillPaidEventTicketOrder } = await import("@/lib/fulfillEventTicket");
     await fulfillPaidEventTicketOrder(fields.orderId);
   }
+}
+
+async function handlePaymentIntentSucceeded(event: Stripe.Event) {
+  const intent = event.data.object as Stripe.PaymentIntent;
+  const type = intent.metadata?.type?.trim();
+  if (type !== "vendor_pos" && type !== "vendor_pos_terminal") return;
+  const orderId = intent.metadata?.orderId?.trim();
+  if (!orderId) return;
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      status: "paid",
+      stripePaymentIntent: intent.id,
+    },
+  });
+  await hookOrderVerified(orderId);
 }
 
 async function handleSubscriptionAndBillingEvent(event: Stripe.Event) {

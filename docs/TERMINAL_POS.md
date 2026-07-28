@@ -1,0 +1,33 @@
+# In-person POS & Stripe Terminal (M2)
+
+RootSync marketplace and POS use **destination charges** on the **platform** Stripe account, then transfer net proceeds to the vendor’s Connect `acct_…`.
+
+## What works today
+
+### Counter checkout (phone / tablet — no reader)
+1. Vendor → **In-person POS** → **Counter**  
+2. Enter amount → **Charge on this device**  
+3. Customer pays with card / Apple Pay / Google Pay on that screen  
+
+### Stripe Reader M2 (you already bought this)
+The M2 is Bluetooth-only. Stripe Dashboard cannot run it as a full Connect POS.
+
+Use the companion app:
+
+→ **[`apps/terminal-pos/README.md`](../apps/terminal-pos/README.md)**
+
+Backend endpoints the app uses:
+- `POST /api/vendor/pos/mobile-login`
+- `POST /api/vendor/pos/connection-token` (Bearer or web session)
+- `POST /api/vendor/pos/terminal-intent`
+
+Optional env: `STRIPE_TERMINAL_LOCATION_ID=tml_…` (platform Terminal location).
+
+## Dual Urban Roots Stripe accounts
+See [MONEY_OPS_RUNBOOK.md](./MONEY_OPS_RUNBOOK.md) §7.
+
+## Stripe Dashboard checklist
+1. Platform → enable **Terminal**  
+2. Create a Location; set `STRIPE_TERMINAL_LOCATION_ID`  
+3. Webhook includes `payment_intent.succeeded`  
+4. Same test/live mode everywhere  

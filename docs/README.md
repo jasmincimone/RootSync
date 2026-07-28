@@ -19,6 +19,7 @@ Read in this order:
 17. adr/ADR-005-service-bookings.md — architecture decision for bookings
 18. SENTRY.md — production error monitoring (DSN, verify, optional source maps)
 19. MONEY_OPS_RUNBOOK.md — webhooks, Connect stuck, refunds, fee checks (ops)
+20. TERMINAL_POS.md — in-person counter POS + M2 / Terminal notes
 
 Then review the appropriate PRD before implementing any feature.
 

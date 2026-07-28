@@ -62,6 +62,8 @@ export const ORDER_ITEM_TYPE = {
   SERVICE: "service",
   RESOURCE: "resource",
   EVENT: "event",
+  /** In-person / counter POS sale */
+  POS: "pos",
   /** @deprecated legacy shop catalog */
   DIGITAL: "digital",
   /** @deprecated legacy shop catalog */
@@ -101,6 +103,8 @@ export function orderItemTypeLabel(type: string): string {
       return "Service";
     case ORDER_ITEM_TYPE.EVENT:
       return "Event";
+    case ORDER_ITEM_TYPE.POS:
+      return "In-person";
     case ORDER_ITEM_TYPE.MARKETPLACE:
       return "Listing";
     default:

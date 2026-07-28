@@ -18,6 +18,7 @@ import {
   Tag,
   UserPlus,
   Users,
+  Banknote,
 } from "lucide-react";
 
 export type AccountNavItem = {
@@ -123,6 +124,12 @@ export const ACCOUNT_VENDOR_NAV: AccountNavItem[] = [
     label: "Payment Hub",
     description: "Connect, payouts & storefront",
     icon: CreditCard,
+  },
+  {
+    href: "/account/vendor/pos",
+    label: "In-person POS",
+    description: "Counter & card-reader sales",
+    icon: Banknote,
   },
   {
     href: "/account/vendor/profile",

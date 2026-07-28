@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "RootSync Terminal",
+    "slug": "rootsync-terminal-pos",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "io.rootsync.terminalpos",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Bluetooth is required to connect to your Stripe Reader M2.",
+        "NSBluetoothPeripheralUsageDescription": "Bluetooth is required to connect to your Stripe Reader M2.",
+        "NSLocationWhenInUseUsageDescription": "Location is required by Stripe Terminal to accept card-present payments."
+      }
+    },
+    "android": {
+      "package": "io.rootsync.terminalpos",
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1",
+            "useFrameworks": "static"
+          },
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      [
+        "@stripe/stripe-terminal-react-native",
+        {
+          "bluetoothBackgroundMode": true,
+          "locationWhenInUsePermission": "Location is required to accept card payments with your Stripe reader.",
+          "bluetoothPeripheralPermission": "Bluetooth is required to connect to your Stripe Reader M2.",
+          "bluetoothAlwaysUsagePermission": "This app uses Bluetooth to connect to your Stripe Reader M2."
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}
