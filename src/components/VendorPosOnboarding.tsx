@@ -130,25 +130,44 @@ export function VendorPosOnboarding() {
 
       <div id="m2-setup" className="scroll-mt-24 space-y-3 border-t border-fix-border/15 pt-4">
         <h3 className="text-sm font-semibold text-fix-heading">Stripe Reader M2 (optional)</h3>
+        <p className="text-sm text-fix-text-muted">
+          Full download, TestFlight, first-launch, and troubleshooting steps are on the install
+          guide — not just this short list.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/account/vendor/pos/install" variant="cta" size="sm">
+            How to download &amp; install
+          </ButtonLink>
+          {appUrl ? (
+            <ButtonLink href={appUrl} variant="secondary" size="sm" className="inline-flex">
+              Get RootSync Terminal
+              <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
+            </ButtonLink>
+          ) : null}
+        </div>
         <ol className="list-decimal space-y-2 pl-5 text-sm text-fix-text-muted">
           <li>Buy a Stripe Reader M2 and charge it fully.</li>
           <li>
-            Install <strong className="text-fix-heading">RootSync Terminal</strong>
+            Follow{" "}
+            <Link href="/account/vendor/pos/install" className="font-medium text-forest underline">
+              Install RootSync Terminal
+            </Link>
             {appUrl ? (
               <>
                 {" "}
-                from{" "}
+                (or open{" "}
                 <a
                   href={appUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-medium text-forest underline"
                 >
-                  this install link
+                  the install link
                 </a>
+                )
               </>
             ) : (
-              <> (TestFlight / app install link from RootSync when invited)</>
+              <> — use a TestFlight invite from RootSync if no public link yet</>
             )}
             .
           </li>
@@ -169,18 +188,14 @@ export function VendorPosOnboarding() {
             listings, then charge. Sales + receipts are on the Sales tab.
           </li>
         </ol>
-        {appUrl ? (
-          <ButtonLink href={appUrl} variant="secondary" size="sm" className="inline-flex">
-            Get RootSync Terminal
-            <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
-          </ButtonLink>
-        ) : (
+        {!appUrl ? (
           <p className="text-xs text-fix-text-muted">
-            When RootSync publishes a TestFlight or App Store link, it will appear here. Until then,
-            ask the RootSync team for an install invite — Counter checkout above works without the
-            app.
+            When RootSync publishes a TestFlight or App Store link,{" "}
+            <strong className="text-fix-heading">Get RootSync Terminal</strong> appears here. Until
+            then, open the install guide and ask the team for a TestFlight invite — Counter checkout
+            works without the app.
           </p>
-        )}
+        ) : null}
       </div>
     </Card>
   );

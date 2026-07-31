@@ -9,7 +9,7 @@ import { PageBody } from "@/components/ui/PageBody";
 import { ButtonLink } from "@/components/ui/Button";
 import { VendorJourneyStrip, type VendorJourneyStep } from "@/components/VendorJourneyStrip";
 import { VendorOnboardingChecklist } from "@/components/VendorOnboardingChecklist";
-import { discoverVendorPath } from "@/config/discoverPaths";
+import { vendorStorefrontPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, DIRECTORY_CLAIM_STATUS, ROLES, VENDOR_STATUS } from "@/lib/roles";
@@ -254,7 +254,7 @@ export default async function VendorDashboardPage() {
       ) : null}
 
       {canManageVendorListings(session.user.role ?? "CUSTOMER", profile.status) && (
-        <VendorHubNav publicPageHref={discoverVendorPath(profile)} />
+        <VendorHubNav publicPageHref={vendorStorefrontPath(profile)} />
       )}
     </AccountSubpageBody>
   );

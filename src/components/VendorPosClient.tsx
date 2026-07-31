@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CreditCard, Smartphone, Nfc } from "lucide-react";
@@ -247,9 +248,11 @@ export function VendorPosClient() {
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-fix-text-muted">
-              The M2 needs the RootSync Terminal companion app (Bluetooth). See{" "}
-              <code className="text-fix-heading">apps/terminal-pos/README.md</code>. This button
-              still creates the PaymentIntent + connection token used by that app.
+              The M2 needs the RootSync Terminal companion app (Bluetooth). Follow{" "}
+              <Link href="/account/vendor/pos/install" className="font-medium text-forest underline">
+                Install RootSync Terminal
+              </Link>
+              . This button still creates the PaymentIntent + connection token used by that app.
             </p>
             <Button
               type="button"

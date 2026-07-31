@@ -7,7 +7,7 @@ import { ProfilePulseFeedSection } from "@/components/profile/ProfilePulseFeedSe
 import { ProfileSectionNav, type ProfileSectionLink } from "@/components/profile/ProfileSectionNav";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ButtonLink } from "@/components/ui/Button";
-import { discoverVendorPath } from "@/config/discoverPaths";
+import { vendorStorefrontPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { parsePulsePostMediaJson } from "@/lib/pulsePostMedia";
@@ -114,7 +114,7 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
                 <MessageUserLink targetUserId={user.id} variant="primary" size="md" />
               ) : null}
               {approvedVendor ? (
-                <ButtonLink href={discoverVendorPath(approvedVendor)} variant="secondary" size="md">
+                <ButtonLink href={vendorStorefrontPath(approvedVendor)} variant="secondary" size="md">
                   Vendor page
                 </ButtonLink>
               ) : null}

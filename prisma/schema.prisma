@@ -193,7 +193,7 @@ model VendorProfile {
   longitude       Float?
   /// Platform shop this vendor manages (urban-roots | self-care | stitch | survival-kits)
   shopSlug        String?  @unique
-  /// Public Discover URL segment: /discover/vendors/{publicSlug}
+  /// Public URL segment: rootsync.io/{publicSlug} → /discover/vendors/{publicSlug}
   publicSlug      String?  @unique
   /// Image/video carousel on the public vendor profile
   mediaCarouselJson Json?

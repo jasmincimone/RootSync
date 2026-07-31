@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
 import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
-import { discoverVendorPath } from "@/config/discoverPaths";
+import { vendorStorefrontPath } from "@/config/discoverPaths";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { VendorProfileForm } from "@/components/VendorProfileForm";
@@ -30,7 +30,7 @@ export default async function VendorProfilePage() {
 
   return (
     <AccountSubpageBody description="Marketplace profile and carousel for your public vendor page.">
-      <ButtonLink href={discoverVendorPath(profile)} variant="secondary" size="sm">
+      <ButtonLink href={vendorStorefrontPath(profile)} variant="secondary" size="sm">
         View my vendor page
       </ButtonLink>
       <Card className="p-6">
@@ -55,7 +55,7 @@ export default async function VendorProfilePage() {
             canEdit: canEditCarousel,
             vendorProfileId: profile.id,
             shopName: profile.displayName,
-            publicUrl: discoverVendorPath(profile),
+            publicUrl: vendorStorefrontPath(profile),
             mediaCarousel,
           }}
         />

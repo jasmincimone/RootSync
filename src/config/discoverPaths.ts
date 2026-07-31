@@ -15,6 +15,19 @@ export function discoverVendorPath(vendor: DiscoverVendorRef): string {
   return `${DISCOVER_BASE}/vendors/${segment}`;
 }
 
+/**
+ * Public share / storefront URL. Prefer root vanity `/{publicSlug}` when claimed;
+ * otherwise the Discover vendor path. Keep Discover paths for in-app browse.
+ */
+export function vendorStorefrontPath(vendor: DiscoverVendorRef): string {
+  if (typeof vendor === "string") {
+    return discoverVendorPath(vendor);
+  }
+  const slug = vendor.publicSlug?.trim();
+  if (slug) return `/${slug}`;
+  return discoverVendorPath(vendor);
+}
+
 export function discoverListingPath(listing: DiscoverListingRef): string {
   if (typeof listing === "string") {
     return `${DISCOVER_BASE}/listings/${listing}`;

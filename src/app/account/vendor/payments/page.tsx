@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 
 import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { VendorStripeConnectSetup } from "@/components/VendorStripeConnectSetup";
-import { discoverVendorPath } from "@/config/discoverPaths";
+import { vendorStorefrontPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { ROLES, VENDOR_STATUS } from "@/lib/roles";
@@ -38,7 +38,7 @@ export default async function VendorPaymentsPage() {
     redirect("/account/vendor");
   }
 
-  const storefrontHref = discoverVendorPath({
+  const storefrontHref = vendorStorefrontPath({
     id: profile.id,
     publicSlug: profile.publicSlug,
   });

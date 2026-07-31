@@ -107,6 +107,13 @@ Vendors may:
 - Receive Messages
 - Manage Storefront
 
+Each Vendor may claim an optional **public URL slug**. When set:
+
+- Short share URL: `rootsync.io/{slug}` (redirects to the Discover storefront)
+- Canonical Discover path: `/discover/vendors/{slug}` (also accepts the system id)
+
+Both remain valid; marketing and QR codes should prefer the short URL.
+
 ---
 
 ## Offering

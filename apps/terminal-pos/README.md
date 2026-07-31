@@ -2,6 +2,16 @@
 
 This companion app is required because the **M2 is a Bluetooth reader**. Stripe’s Dashboard cannot drive it for Connect destination charges the way a Wi‑Fi smart reader can. RootSync’s web POS still works for phone/tablet Checkout; this app is specifically for the M2 you already bought.
 
+## Download & distribute (read this first)
+
+**Extensive install documentation** (vendors + platform ops — TestFlight, EAS, App Store, USB, Ad Hoc, support blurb):
+
+→ **[`docs/TERMINAL_APP_INSTALL.md`](../../docs/TERMINAL_APP_INSTALL.md)**
+
+Vendor-facing page on the site: `/account/vendor/pos/install`
+
+This README is the **developer quickstart** for building from source on a Mac.
+
 ## What you need
 - iPhone (recommended) or Android phone with Bluetooth
 - Stripe Reader M2 charged/paired nearby

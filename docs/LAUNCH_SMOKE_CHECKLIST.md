@@ -61,6 +61,8 @@ Core public + signed-in commerce/auth items are checked. Unchecked boxes below a
 - [x] GrowSpace shows Overview · CRM · Funnels · Campaigns only
 - [ ] External Pay Link copy notes off-platform (no RootSync fee) — optional
 - [ ] Listing custom URL: set slug on vendor form → `/discover/listings/{slug}` works; cuid URL redirects to slug
+- [ ] Vendor root vanity: `/thefixurbanroots` → 308 → `/discover/vendors/thefixurbanroots` (Discover URL still 200)
+- [ ] Reserved roots unchanged (`/about`, `/login`, `/discover`, …)
 
 
 ## Legacy links (keep — Fix Collective / shared URLs)

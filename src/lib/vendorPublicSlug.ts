@@ -1,22 +1,41 @@
-/** Reserved path segments under /discover/vendors — cannot be used as vendor slugs. */
+/** Reserved path segments — cannot be used as vendor public slugs (Discover or root vanity). */
 const RESERVED_VENDOR_PUBLIC_SLUGS = new Set([
+  "about",
+  "account",
+  "ai-disclaimer",
   "api",
+  "checkout",
+  "community",
+  "connect-store",
   "directory",
+  "disclaimer",
   "discover",
+  "forgot-password",
   "listings",
+  "login",
   "marketplace",
   "members",
+  "menu",
+  "messages",
   "new",
+  "privacy",
+  "profile",
+  "pulse",
+  "reset-password",
+  "rootsense-ai",
+  "rootsync",
+  "rootsyncai",
   "search",
+  "seller-terms",
+  "shops",
+  "signup",
+  "terms",
+  "vendor-agreement",
   "vendors",
 ]);
 
 const VENDOR_CUID_RE = /^c[a-z0-9]{20,}$/i;
 const VENDOR_SLUG_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
-
-export function isVendorCuidRef(ref: string): boolean {
-  return VENDOR_CUID_RE.test(ref.trim());
-}
 
 export function normalizeVendorPublicSlug(raw: string): string {
   return raw
@@ -25,6 +44,14 @@ export function normalizeVendorPublicSlug(raw: string): string {
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+export function isReservedVendorPublicSlug(slug: string): boolean {
+  return RESERVED_VENDOR_PUBLIC_SLUGS.has(normalizeVendorPublicSlug(slug));
+}
+
+export function isVendorCuidRef(ref: string): boolean {
+  return VENDOR_CUID_RE.test(ref.trim());
 }
 
 export function validateVendorPublicSlug(

@@ -149,8 +149,8 @@ export async function getVendorPosReadiness(userId: string): Promise<VendorPosRe
       id: "terminal-app",
       title: "Install RootSync Terminal (M2)",
       description:
-        "Install the companion app, sign in with this vendor account, then scan your Stripe Reader M2.",
-      href: "/account/vendor/pos#m2-setup",
+        "Open the download & install guide, get the companion app, sign in, then scan your Stripe Reader M2.",
+      href: "/account/vendor/pos/install",
       done: hasTerminalSale,
       required: false,
     },

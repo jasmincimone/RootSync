@@ -119,10 +119,10 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
           Profile URL
         </label>
         <p className="mt-1 text-xs text-fix-text-muted">
-          Choose a short path for your public vendor page. Leave blank to use the default link.
+          Claim a short link for your storefront. Leave blank to use the default Discover link.
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <span className="shrink-0 text-sm text-fix-text-muted">/discover/vendors/</span>
+          <span className="shrink-0 text-sm text-fix-text-muted">rootsync.io/</span>
           <input
             id="publicSlug"
             value={publicSlug}
@@ -135,7 +135,8 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
         </div>
         <p className="mt-2 text-xs text-fix-text-muted">
           Lowercase letters, numbers, and hyphens only. Example:{" "}
-          <span className="font-medium text-fix-heading">thefixurbanroots</span>
+          <span className="font-medium text-fix-heading">thefixurbanroots</span>. Your longer
+          Discover URL (/discover/vendors/…) keeps working too.
         </p>
       </div>
       <VendorProfileImageField

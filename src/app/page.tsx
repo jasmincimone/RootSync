@@ -11,7 +11,7 @@ import {
 } from "@/components/RoleCtaPricing";
 import { ButtonLink } from "@/components/ui/Button";
 import { ROOTSYNC_SYMBOL_SRC } from "@/config/platformExploreNav";
-import { discoverVendorPath } from "@/config/discoverPaths";
+import { vendorStorefrontPath } from "@/config/discoverPaths";
 import { publicListingRelationWhere } from "@/lib/offeringListing";
 import { prisma } from "@/lib/prisma";
 import { VENDOR_STATUS } from "@/lib/roles";
@@ -122,7 +122,7 @@ export default async function HomePage() {
               {featuredVendors.map((vendor) => (
                 <li key={vendor.id}>
                   <Link
-                    href={discoverVendorPath(vendor)}
+                    href={vendorStorefrontPath(vendor)}
                     className="flex min-h-14 items-center justify-center rounded-2xl bg-warm-brown px-4 py-4 text-center text-sm font-semibold text-clay transition-colors hover:bg-bark focus:outline-none focus-visible:ring-2 focus-visible:ring-fix-cta focus-visible:ring-offset-2"
                   >
                     {vendor.displayName}

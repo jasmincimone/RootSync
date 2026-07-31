@@ -10,9 +10,11 @@ Vendors complete setup from **Account → Vendor → In-person POS**:
 2. Finish **Payment Hub** until Stripe shows charges/payouts ready  
 3. (Recommended) Publish an **ACTIVE** listing at $0.50+ for the Terminal picker  
 4. Use **Counter** on phone/tablet — fully self-serve in the browser  
-5. Optional **M2**: install RootSync Terminal, sign in with the same vendor login, scan the reader  
+5. Optional **M2**: install RootSync Terminal (see download guide), sign in with the same vendor login, scan the reader  
 
 Live checklist: `/account/vendor/pos` (POS setup guide) and vendor dashboard “Getting started”.  
+**Download / install (vendors):** `/account/vendor/pos/install`  
+**Ops download & distribution (TestFlight, EAS, USB, Ad Hoc):** **[TERMINAL_APP_INSTALL.md](./TERMINAL_APP_INSTALL.md)**  
 Admin view: **Account → Admin → Vendors** → **POS readiness** (computed live — no DB flag).
 
 ### What vendors can do without you
@@ -21,7 +23,7 @@ Admin view: **Account → Admin → Vendors** → **POS readiness** (computed li
 | Counter POS (Checkout on phone) | Yes, after Connect is ready |
 | Listings / Sync from Stripe | Yes |
 | Sales + email/SMS/Share receipts in Terminal app | Yes, once they have the app |
-| Install Terminal app | Needs a TestFlight/store link (`NEXT_PUBLIC_TERMINAL_APP_URL`) or you invite them once |
+| Install Terminal app | Follow [TERMINAL_APP_INSTALL.md](./TERMINAL_APP_INSTALL.md); needs TestFlight/store link (`NEXT_PUBLIC_TERMINAL_APP_URL`) or one invite |
 | Buy Stripe Reader M2 | They buy hardware themselves |
 
 Set `NEXT_PUBLIC_TERMINAL_APP_URL` in Vercel to your public TestFlight or App Store URL so the POS setup guide shows **Get RootSync Terminal**.
@@ -36,9 +38,9 @@ Set `NEXT_PUBLIC_TERMINAL_APP_URL` in Vercel to your public TestFlight or App St
 ### Stripe Reader M2
 The M2 is Bluetooth-only. Stripe Dashboard cannot run it as a full Connect POS.
 
-Use the companion app:
+**How vendors download & install:** [TERMINAL_APP_INSTALL.md](./TERMINAL_APP_INSTALL.md) · site: `/account/vendor/pos/install`  
 
-→ **[`apps/terminal-pos/README.md`](../apps/terminal-pos/README.md)**
+Dev quickstart: **[`apps/terminal-pos/README.md`](../apps/terminal-pos/README.md)**
 
 Backend endpoints the app uses:
 - `POST /api/vendor/pos/mobile-login`

@@ -20,6 +20,7 @@ Read in this order:
 18. SENTRY.md — production error monitoring (DSN, verify, optional source maps)
 19. MONEY_OPS_RUNBOOK.md — webhooks, Connect stuck, refunds, fee checks (ops)
 20. TERMINAL_POS.md — in-person counter POS + M2 / Terminal notes
+21. TERMINAL_APP_INSTALL.md — how to download/distribute RootSync Terminal (TestFlight, EAS, USB)
 
 Then review the appropriate PRD before implementing any feature.
 

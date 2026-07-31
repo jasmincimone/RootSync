@@ -1,4 +1,4 @@
-import { discoverVendorPath } from "@/config/discoverPaths";
+import { vendorStorefrontPath } from "@/config/discoverPaths";
 import { memberProfilePath } from "@/config/memberPaths";
 import { ROLES, VENDOR_STATUS } from "@/lib/roles";
 
@@ -38,10 +38,10 @@ export function isApprovedVendor(user: UserProfilePeer): boolean {
   return user.vendorProfile?.status === VENDOR_STATUS.APPROVED;
 }
 
-/** Public profile URL — approved vendors use Discover vendor page; everyone else uses member profile. */
+/** Public profile URL — approved vendors use storefront (root vanity when claimed); else member profile. */
 export function publicProfileHref(user: UserProfilePeer): string {
   if (isApprovedVendor(user) && user.vendorProfile) {
-    return discoverVendorPath({
+    return vendorStorefrontPath({
       id: user.vendorProfile.id,
       publicSlug: user.vendorProfile.publicSlug,
     });

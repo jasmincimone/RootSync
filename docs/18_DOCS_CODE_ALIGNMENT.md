@@ -171,7 +171,7 @@ Per [17_GLOSSARY.md](./17_GLOSSARY.md) deprecated terms:
 | Feature | Doc | Code | Status |
 |---------|-----|------|--------|
 | Discover Marketplace | ✓ | `/discover`, Vendor/Listing/Directory details | **Aligned** (MVP) |
-| Vendor profiles | ✓ | `/discover/vendors/[id]`, apply, admin approve | **Aligned** |
+| Vendor profiles | ✓ | `/discover/vendors/[id]`, root vanity `/{publicSlug}` → Discover, apply, admin approve | **Aligned** |
 | Pulse | ✓ | `/pulse`, Your Pulse, Give a Pulse | **Aligned** (MVP) |
 | RootSense AI | ✓ | Rootie chat | **Aligned** |
 | Stay Synced | ✓ | Inbox, Vendor/Member conversations | **Aligned** |
@@ -199,7 +199,7 @@ Reviews, Analytics, Referrals, Native Apps — **Deferred**. Events and Resource
 | Vendors | Browse verified vendors | `/discover`, Vendor cards/spotlights/map | **Aligned** |
 | Listings | Browse all listing types | `/discover`, `/discover/listings/[id|slug]` | **Aligned** (MVP) — optional custom URL |
 | Directory Listings | Map + search + assisted claim | `/discover/directory/[id]` | **Aligned** (MVP) |
-| Storefront | Vendor-managed public page | `/discover/vendors/[id]` | **Aligned** |
+| Storefront | Vendor-managed public page | `/discover/vendors/[id]`; share URL `/{publicSlug}` when claimed | **Aligned** |
 | Resources | Discover filter + paid/free order access | `/discover?type=RESOURCE`, claim-free + `/api/download` | **Aligned** (MVP) |
 | Booking | Service scheduling | `/discover/listings/[id]/book` | **Aligned** (MVP) |
 | Connect onboarding | Vendor payouts | `/account/vendor/payments` | **Aligned** (MVP) |

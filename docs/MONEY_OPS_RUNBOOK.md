@@ -76,8 +76,8 @@ Connect often creates a **second** `acct_…` for the vendor (Express/Standard c
 ## 8. In-person / M2 card reader
 
 - **Counter POS (works now):** Vendor → In-person POS → Charge on this device (Checkout → destination transfer).  
-- **M2:** Bluetooth reader — needs Terminal SDK app. Backend tokens/intents: see [TERMINAL_POS.md](./TERMINAL_POS.md).  
-- **Self-serve onboarding:** Vendor POS setup guide + admin **POS readiness** list (live Connect status).  
+- **M2:** Bluetooth reader — needs Terminal SDK app. Backend: [TERMINAL_POS.md](./TERMINAL_POS.md). Download/distribute: [TERMINAL_APP_INSTALL.md](./TERMINAL_APP_INSTALL.md).  
+- **Self-serve onboarding:** Vendor POS setup guide + `/account/vendor/pos/install` + admin **POS readiness**.  
 - Sales still appear on **platform** Payments; vendor gets the Connect transfer.  
 - Optional: `NEXT_PUBLIC_TERMINAL_APP_URL` for TestFlight/store install in the vendor guide.  
 - If charge fails with **restricted key / rk_live_… permissions**: expand RAK Terminal/PaymentIntents/Connect write, or use platform **Secret key** (`sk_live_…`) if Stripe blocks that permission on RAKs.

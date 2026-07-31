@@ -82,6 +82,8 @@ A verified Member who offers Products, Services, Resources, and/or Events.
 
 Every Vendor is also a Member.
 
+Vendors may claim an optional **Profile URL** (`publicSlug`): short share link `rootsync.io/{slug}` redirects to the Discover storefront `/discover/vendors/{slug}`.
+
 ---
 
 ## Administrator
