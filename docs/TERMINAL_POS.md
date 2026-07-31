@@ -20,7 +20,10 @@ Backend endpoints the app uses:
 - `POST /api/vendor/pos/mobile-login`
 - `POST /api/vendor/pos/connection-token` (Bearer or web session)
 - `GET /api/vendor/pos/listings` — ACTIVE listings/variants (live from Postgres; Refresh in-app)
+- `POST /api/vendor/pos/sync-from-stripe` — pull Connect products into RootSync (same as Payment Hub sync)
 - `POST /api/vendor/pos/terminal-intent` — custom `amountCents` **or** `listingId` + optional `variantId`
+
+Stripe Dashboard **Products** are not the Terminal catalog. Terminal sells **RootSync ACTIVE listings**. Use **Sync from Stripe** (app or Payment Hub) if products were created only in Stripe.
 
 Optional env: `STRIPE_TERMINAL_LOCATION_ID=tml_…` (platform Terminal location).
 

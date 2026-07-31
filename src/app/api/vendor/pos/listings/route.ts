@@ -31,6 +31,10 @@ export async function GET(request: NextRequest) {
       ok: true,
       listings,
       count: listings.length,
+      hint:
+        listings.length === 0
+          ? "Terminal sells RootSync ACTIVE listings (Postgres), not Stripe Products directly. Sync from Stripe or open Vendor → Listings and set items to ACTIVE, then Refresh."
+          : undefined,
     });
   } catch (e) {
     console.error("[vendor/pos/listings]", e);

@@ -414,6 +414,7 @@ function PosScreen({
       const res = await apiFetch(session, "/api/vendor/pos/listings");
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
+        hint?: string;
         listings?: {
           listingId: string;
           variantId: string | null;
@@ -428,9 +429,41 @@ function PosScreen({
         return;
       }
       setPosListings(data.listings || []);
+      if ((data.listings || []).length === 0 && data.hint) {
+        setListingsError(data.hint);
+      }
     } catch (e) {
       setListingsError(e instanceof Error ? e.message : "Could not load listings.");
       setPosListings([]);
+    } finally {
+      setListingsLoading(false);
+    }
+  }
+
+  async function syncListingsFromStripe() {
+    setListingsLoading(true);
+    setListingsError(null);
+    setStatus("Syncing products from Stripe into RootSync…");
+    try {
+      const res = await apiFetch(session, "/api/vendor/pos/sync-from-stripe", {
+        method: "POST",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        imported?: number;
+        updated?: number;
+      };
+      if (!res.ok) {
+        setListingsError(data.error || "Stripe sync failed.");
+        setStatus("Sync failed.");
+        return;
+      }
+      setStatus(data.message || "Synced from Stripe.");
+      await loadPosListings();
+    } catch (e) {
+      setListingsError(e instanceof Error ? e.message : "Stripe sync failed.");
+      setStatus("Sync failed.");
     } finally {
       setListingsLoading(false);
     }
@@ -597,8 +630,9 @@ function PosScreen({
         <>
           <Text style={styles.label}>Your ACTIVE listings</Text>
           <Text style={styles.hint}>
-            Live from RootSync — publish a new listing as ACTIVE and tap Refresh to sell it here.
-            Free items under $0.50 are hidden (card minimum).
+            These come from RootSync (not the Stripe Products tab). Products you create only in
+            Stripe need Sync from Stripe once; items you publish as ACTIVE in Vendor → Listings
+            appear after Refresh.
           </Text>
           <Pressable
             style={styles.secondaryBtn}
@@ -606,12 +640,19 @@ function PosScreen({
             onPress={() => void loadPosListings()}
           >
             <Text style={styles.secondaryBtnText}>
-              {listingsLoading ? "Refreshing…" : "Refresh listings"}
+              {listingsLoading ? "Working…" : "Refresh listings"}
             </Text>
+          </Pressable>
+          <Pressable
+            style={styles.secondaryBtn}
+            disabled={busy || listingsLoading}
+            onPress={() => void syncListingsFromStripe()}
+          >
+            <Text style={styles.secondaryBtnText}>Sync from Stripe</Text>
           </Pressable>
           {listingsError ? <Text style={styles.error}>{listingsError}</Text> : null}
           {!listingsLoading && posListings.length === 0 && !listingsError ? (
-            <Text style={styles.hint}>No ACTIVE listings at $0.50+ yet.</Text>
+            <Text style={styles.hint}>No ACTIVE RootSync listings at $0.50+ yet.</Text>
           ) : null}
           {posListings.map((item) => (
             <Pressable
