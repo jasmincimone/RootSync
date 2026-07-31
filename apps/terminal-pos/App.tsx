@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  View,
 } from "react-native";
 import {
   StripeTerminalProvider,
@@ -159,6 +160,20 @@ function PosScreen({
   >([]);
   const [listingsLoading, setListingsLoading] = useState(false);
   const [listingsError, setListingsError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"charge" | "sales">("charge");
+  const [orders, setOrders] = useState<
+    {
+      id: string;
+      status: string;
+      totalCents: number;
+      createdAt: string;
+      itemLabel: string;
+    }[]
+  >([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [receiptEmail, setReceiptEmail] = useState("");
+  const [receiptBusy, setReceiptBusy] = useState(false);
 
   /** When true, a canceled discoverReaders result is expected (Connect / Stop scan). */
   const expectDiscoverCancelRef = useRef(false);
@@ -475,6 +490,73 @@ function PosScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectedReader?.serialNumber, session.token]);
 
+  useEffect(() => {
+    void loadOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.token]);
+
+  async function loadOrders() {
+    setOrdersLoading(true);
+    try {
+      const res = await apiFetch(session, "/api/vendor/pos/orders?limit=25");
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        orders?: {
+          id: string;
+          status: string;
+          totalCents: number;
+          createdAt: string;
+          itemLabel: string;
+        }[];
+        lastOrderId?: string | null;
+      };
+      if (!res.ok) {
+        setError(data.error || "Could not load recent sales.");
+        return;
+      }
+      setOrders(data.orders || []);
+      if (!selectedOrderId && data.lastOrderId) {
+        setSelectedOrderId(data.lastOrderId);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load recent sales.");
+    } finally {
+      setOrdersLoading(false);
+    }
+  }
+
+  async function sendReceipt() {
+    if (!selectedOrderId) {
+      setError("Select a sale first.");
+      return;
+    }
+    if (!receiptEmail.trim()) {
+      setError("Enter a customer email for the receipt.");
+      return;
+    }
+    setReceiptBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch(session, `/api/vendor/pos/orders/${selectedOrderId}/receipt`, {
+        method: "POST",
+        body: JSON.stringify({ email: receiptEmail.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok) {
+        setError(data.error || "Could not send receipt.");
+        return;
+      }
+      setStatus(data.message || "Receipt sent.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not send receipt.");
+    } finally {
+      setReceiptBusy(false);
+    }
+  }
+
   async function charge(opts?: {
     listingId?: string;
     variantId?: string | null;
@@ -560,6 +642,11 @@ function PosScreen({
         `Paid $${(paidCents / 100).toFixed(2)} · order ${intentData.orderId || "ok"} · transfer to ${session.connectAccountId}`,
       );
       if (!fromListing) setDollars("");
+      if (intentData.orderId) {
+        setSelectedOrderId(intentData.orderId);
+        setTab("sales");
+      }
+      void loadOrders();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Charge failed.");
       setStatus("Ready to try again.");
@@ -577,9 +664,87 @@ function PosScreen({
         Reader: {connectedReader?.serialNumber || connectedReader?.deviceType || "not connected"}
       </Text>
 
+      <View style={styles.tabs}>
+        <Pressable
+          style={[styles.tab, tab === "charge" && styles.tabActive]}
+          onPress={() => setTab("charge")}
+        >
+          <Text style={[styles.tabText, tab === "charge" && styles.tabTextActive]}>Charge</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tab, tab === "sales" && styles.tabActive]}
+          onPress={() => {
+            setTab("sales");
+            void loadOrders();
+          }}
+        >
+          <Text style={[styles.tabText, tab === "sales" && styles.tabTextActive]}>Sales</Text>
+        </Pressable>
+      </View>
+
       <Text style={styles.status}>{status}</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {busy ? <ActivityIndicator style={{ marginTop: 12 }} /> : null}
+      {busy || receiptBusy ? <ActivityIndicator style={{ marginTop: 12 }} /> : null}
+
+      {tab === "sales" ? (
+        <>
+          <Text style={styles.label}>Recent Terminal sales</Text>
+          <Pressable
+            style={styles.secondaryBtn}
+            disabled={ordersLoading || receiptBusy}
+            onPress={() => void loadOrders()}
+          >
+            <Text style={styles.secondaryBtnText}>
+              {ordersLoading ? "Refreshing…" : "Refresh sales"}
+            </Text>
+          </Pressable>
+          {orders.length === 0 && !ordersLoading ? (
+            <Text style={styles.hint}>No in-person sales yet. Charge a card on the Charge tab.</Text>
+          ) : null}
+          {orders.map((o) => {
+            const selected = o.id === selectedOrderId;
+            const when = new Date(o.createdAt).toLocaleString();
+            return (
+              <Pressable
+                key={o.id}
+                style={[styles.orderRow, selected && styles.orderRowSelected]}
+                onPress={() => setSelectedOrderId(o.id)}
+              >
+                <Text style={styles.orderTitle}>
+                  ${(o.totalCents / 100).toFixed(2)} · {o.itemLabel}
+                </Text>
+                <Text style={styles.orderMeta}>
+                  {o.status} · {when}
+                </Text>
+              </Pressable>
+            );
+          })}
+
+          <Text style={[styles.label, { marginTop: 18 }]}>Email receipt</Text>
+          <Text style={styles.hint}>
+            Select a sale above, enter the customer email, then send. Uses RootSync email (Resend).
+          </Text>
+          <TextInput
+            style={styles.input}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoCorrect={false}
+            value={receiptEmail}
+            onChangeText={setReceiptEmail}
+            placeholder="customer@email.com"
+          />
+          <Pressable
+            style={styles.btn}
+            disabled={receiptBusy || !selectedOrderId}
+            onPress={() => void sendReceipt()}
+          >
+            <Text style={styles.btnText}>
+              {receiptBusy ? "Sending…" : "Send receipt email"}
+            </Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
       <Text style={styles.hint}>
         First connect installs a required Stripe firmware update (often 5–15 minutes). Keep this app open, phone unlocked, and next to the M2 until the percentage hits 100%. Do not pair the M2 in iOS Settings → Bluetooth — if it is listed there, Forget This Device, then Scan only in this app.
       </Text>
@@ -701,6 +866,8 @@ function PosScreen({
           </Pressable>
         </>
       )}
+        </>
+      )}
 
       <Pressable
         style={[styles.secondaryBtn, { marginTop: 24 }]}
@@ -807,4 +974,31 @@ const styles = StyleSheet.create({
   status: { marginTop: 16, fontSize: 13, color: "#44403c", lineHeight: 18 },
   hint: { marginTop: 10, fontSize: 12, color: "#78716c", lineHeight: 18 },
   error: { marginTop: 10, color: "#b91c1c", fontSize: 13 },
+  tabs: { flexDirection: "row", gap: 8, marginBottom: 4 },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(28,25,23,0.2)",
+    backgroundColor: "#fff",
+    alignItems: "center",
+  },
+  tabActive: { backgroundColor: "#166534", borderColor: "#166534" },
+  tabText: { fontWeight: "600", color: "#1c1917" },
+  tabTextActive: { color: "#fff" },
+  orderRow: {
+    marginTop: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(28,25,23,0.12)",
+    backgroundColor: "#fff",
+  },
+  orderRowSelected: {
+    borderColor: "#166534",
+    backgroundColor: "#ecfdf5",
+  },
+  orderTitle: { fontSize: 15, fontWeight: "600", color: "#1c1917" },
+  orderMeta: { marginTop: 4, fontSize: 12, color: "#78716c" },
 });

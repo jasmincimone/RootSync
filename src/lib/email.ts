@@ -394,3 +394,73 @@ export async function sendEventTicketConfirmationEmail(
 
   return { ok: true };
 }
+
+export async function sendPosSaleReceiptEmail(input: {
+  to: string;
+  vendorDisplayName: string;
+  orderId: string;
+  totalCents: number;
+  itemLines: { name: string; quantity: number; priceCents: number }[];
+  paidAt: Date;
+  paymentIntentId?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (!key || !from) {
+    return { ok: false, error: "Email is not configured (RESEND_API_KEY / EMAIL_FROM)." };
+  }
+
+  const to = input.to.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    return { ok: false, error: "Enter a valid email address." };
+  }
+
+  const when = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(input.paidAt);
+
+  const linesHtml = input.itemLines
+    .map(
+      (line) =>
+        `<tr><td style="padding:6px 0;">${escapeHtml(line.name)}${
+          line.quantity > 1 ? ` × ${line.quantity}` : ""
+        }</td><td style="padding:6px 0;text-align:right;">${formatPrice(line.priceCents * line.quantity)}</td></tr>`,
+    )
+    .join("");
+
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#1c1917;">
+      <h1 style="font-size:20px;margin:0 0 8px;">Receipt</h1>
+      <p style="margin:0 0 16px;color:#57534e;">${escapeHtml(input.vendorDisplayName)} · in-person sale</p>
+      <p style="margin:0 0 12px;font-size:14px;color:#57534e;">${escapeHtml(when)}</p>
+      <table style="width:100%;border-collapse:collapse;font-size:15px;">${linesHtml}</table>
+      <p style="margin:16px 0 0;font-size:18px;font-weight:700;">Total ${formatPrice(input.totalCents)}</p>
+      <p style="margin:20px 0 0;font-size:12px;color:#78716c;">Order ${escapeHtml(input.orderId)}${
+        input.paymentIntentId ? `<br/>Payment ${escapeHtml(input.paymentIntentId)}` : ""
+      }</p>
+      <p style="margin:16px 0 0;font-size:12px;color:#78716c;">Powered by RootSync</p>
+    </div>
+  `;
+
+  const resend = new Resend(key);
+  const { error } = await resend.emails.send({
+    from,
+    to: [to],
+    subject: `Receipt from ${input.vendorDisplayName} · ${formatPrice(input.totalCents)}`,
+    html,
+  });
+  if (error) {
+    console.error("[email] POS receipt Resend error:", error);
+    return { ok: false, error: error.message || "Could not send receipt email." };
+  }
+  return { ok: true };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

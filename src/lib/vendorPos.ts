@@ -5,6 +5,7 @@ import {
   stripeConnectErrorMessage,
   stripeTerminalKeyHint,
 } from "@/lib/stripeConnectDemo";
+import { sendPosSaleReceiptEmail } from "@/lib/email";
 import { platformApplicationFeeCents } from "@/lib/platformFee";
 import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 import { prisma } from "@/lib/prisma";
@@ -511,4 +512,116 @@ export async function markPosOrderPaidFromPaymentIntent(paymentIntentId: string)
     },
   });
   return order;
+}
+
+export type PosOrderSummary = {
+  id: string;
+  status: string;
+  totalCents: number;
+  createdAt: string;
+  itemLabel: string;
+  paymentIntentId: string | null;
+  sessionId: string | null;
+};
+
+/** Recent in-person / Terminal orders for this vendor (Postgres). */
+export async function listVendorPosOrders(
+  ctx: VendorPosContext,
+  limit = 25,
+): Promise<PosOrderSummary[]> {
+  const take = Math.min(50, Math.max(1, limit));
+  const orders = await prisma.order.findMany({
+    where: {
+      userId: ctx.userId,
+      OR: [
+        { items: { some: { type: ORDER_ITEM_TYPE.POS } } },
+        { items: { some: { productId: { startsWith: "pos-terminal:" } } } },
+        {
+          stripePaymentIntent: { not: null },
+          items: {
+            some: {
+              listingId: { not: null },
+              listing: { vendorProfileId: ctx.vendorProfileId },
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      items: {
+        select: { name: true, quantity: true, priceCents: true },
+        orderBy: { id: "asc" },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+
+  return orders.map((o) => ({
+    id: o.id,
+    status: o.status,
+    totalCents: o.totalCents,
+    createdAt: o.createdAt.toISOString(),
+    itemLabel:
+      o.items.map((i) => (i.quantity > 1 ? `${i.name} ×${i.quantity}` : i.name)).join(", ") ||
+      "Sale",
+    paymentIntentId: o.stripePaymentIntent,
+    sessionId: o.stripeSessionId,
+  }));
+}
+
+export async function sendVendorPosOrderReceiptEmail(args: {
+  ctx: VendorPosContext;
+  orderId: string;
+  toEmail: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const order = await prisma.order.findFirst({
+    where: {
+      id: args.orderId,
+      userId: args.ctx.userId,
+    },
+    include: {
+      items: {
+        select: {
+          name: true,
+          quantity: true,
+          priceCents: true,
+          type: true,
+          productId: true,
+          listingId: true,
+          listing: { select: { vendorProfileId: true } },
+        },
+      },
+    },
+  });
+  if (!order) {
+    return { ok: false, error: "Order not found." };
+  }
+
+  const isPos =
+    order.items.some((i) => i.type === ORDER_ITEM_TYPE.POS) ||
+    order.items.some((i) => i.productId.startsWith("pos-terminal:")) ||
+    (Boolean(order.stripePaymentIntent) &&
+      order.items.some((i) => i.listing?.vendorProfileId === args.ctx.vendorProfileId));
+  if (!isPos) {
+    return { ok: false, error: "That order is not an in-person Terminal sale." };
+  }
+
+  const sent = await sendPosSaleReceiptEmail({
+    to: args.toEmail,
+    vendorDisplayName: args.ctx.displayName,
+    orderId: order.id,
+    totalCents: order.totalCents,
+    itemLines: order.items.map((i) => ({
+      name: i.name,
+      quantity: i.quantity,
+      priceCents: i.priceCents,
+    })),
+    paidAt: order.createdAt,
+    paymentIntentId: order.stripePaymentIntent,
+  });
+  if (!sent.ok) {
+    return { ok: false, error: sent.error || "Could not send receipt." };
+  }
+  return { ok: true };
 }

@@ -21,9 +21,16 @@ Backend endpoints the app uses:
 - `POST /api/vendor/pos/connection-token` (Bearer or web session)
 - `GET /api/vendor/pos/listings` — ACTIVE listings/variants (live from Postgres; Refresh in-app)
 - `POST /api/vendor/pos/sync-from-stripe` — pull Connect products into RootSync (same as Payment Hub sync)
+- `GET /api/vendor/pos/orders` — recent Terminal / counter POS sales  
+- `POST /api/vendor/pos/orders/[id]/receipt` — email receipt (`{ email }`) via Resend  
 - `POST /api/vendor/pos/terminal-intent` — custom `amountCents` **or** `listingId` + optional `variantId`
 
 Stripe Dashboard **Products** are not the Terminal catalog. Terminal sells **RootSync ACTIVE listings**. Use **Sync from Stripe** (app or Payment Hub) if products were created only in Stripe.
+
+### Sales & receipts (Terminal app)
+- **Sales** tab lists recent in-person orders from Postgres.  
+- Select a sale → enter customer email → **Send receipt email**.  
+- After a successful charge, the app jumps to Sales with that order selected.
 
 Optional env: `STRIPE_TERMINAL_LOCATION_ID=tml_…` (platform Terminal location).
 
