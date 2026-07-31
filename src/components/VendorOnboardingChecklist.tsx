@@ -9,6 +9,8 @@ type Props = {
   hasStripe: boolean;
   hasListing: boolean;
   hasAvailability: boolean;
+  /** Payment Hub ready for in-person + Discover charges */
+  hasPosReady?: boolean;
   /** Deep link to configure booking hours (service edit or new service listing). */
   availabilityHref?: string;
 };
@@ -26,6 +28,7 @@ export function VendorOnboardingChecklist({
   hasStripe,
   hasListing,
   hasAvailability,
+  hasPosReady = false,
   availabilityHref = "/account/vendor/listings/new?type=SERVICE&step=details",
 }: Props) {
   const steps: Step[] = [
@@ -56,6 +59,13 @@ export function VendorOnboardingChecklist({
       description: "Configure booking hours for service listings.",
       href: availabilityHref,
       done: hasAvailability,
+    },
+    {
+      id: "pos",
+      label: "Set up in-person POS",
+      description: "Counter checkout on your phone, or RootSync Terminal + M2.",
+      href: "/account/vendor/pos",
+      done: hasPosReady,
     },
   ];
 

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/permissions";
 import { DIRECTORY_CLAIM_STATUS } from "@/lib/roles";
+import { listApprovedVendorsPosReadiness } from "@/lib/vendorPosReadiness";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -12,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const [pending, directoryClaims] = await Promise.all([
+  const [pending, directoryClaims, posVendors] = await Promise.all([
     prisma.vendorProfile.findMany({
       where: { status: "PENDING" },
       include: { user: { select: { id: true, email: true, name: true, role: true } } },
@@ -37,7 +38,8 @@ export async function GET() {
       },
       orderBy: { claimRequestedAt: "asc" },
     }),
+    listApprovedVendorsPosReadiness(40),
   ]);
 
-  return NextResponse.json({ vendors: pending, directoryClaims });
+  return NextResponse.json({ vendors: pending, directoryClaims, posVendors });
 }

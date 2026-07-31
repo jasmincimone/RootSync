@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, DIRECTORY_CLAIM_STATUS, ROLES, VENDOR_STATUS } from "@/lib/roles";
 import { canManageVendorListings } from "@/lib/vendorListingAccess";
 import { canAccessGrowthWorkspace } from "@/lib/growthAccess";
+import { getVendorPosReadiness } from "@/lib/vendorPosReadiness";
 
 export default async function VendorDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -92,6 +93,8 @@ export default async function VendorDashboardPage() {
   const hasAvailability = Boolean(serviceWithAvailability);
   const isApproved = profile.status === VENDOR_STATUS.APPROVED;
   const canGrow = canAccessGrowthWorkspace(session.user.role, profile.status);
+  const posReadiness = isApproved ? await getVendorPosReadiness(session.user.id) : null;
+  const hasPosReady = Boolean(posReadiness?.hasCounterSale || posReadiness?.hasTerminalSale);
 
   const journeySteps: VendorJourneyStep[] = (() => {
     const applied = true;
@@ -165,6 +168,7 @@ export default async function VendorDashboardPage() {
           hasStripe={hasStripe}
           hasListing={hasListing}
           hasAvailability={hasAvailability}
+          hasPosReady={hasPosReady}
           availabilityHref={availabilityHref}
         />
       ) : null}

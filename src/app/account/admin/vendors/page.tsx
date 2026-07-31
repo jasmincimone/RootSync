@@ -32,9 +32,21 @@ type DirectoryClaimRow = {
   } | null;
 };
 
+type PosVendorRow = {
+  userId: string;
+  displayName: string;
+  email: string;
+  connectAccountId: string | null;
+  counterReady: boolean;
+  connectReady: boolean;
+  hasSellableListing: boolean;
+  hasTerminalSale: boolean;
+};
+
 export default function AdminVendorsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [directoryClaims, setDirectoryClaims] = useState<DirectoryClaimRow[]>([]);
+  const [posVendors, setPosVendors] = useState<PosVendorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +59,7 @@ export default function AdminVendorsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to load");
       setRows(data.vendors ?? []);
       setDirectoryClaims(data.directoryClaims ?? []);
+      setPosVendors(data.posVendors ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -89,15 +102,15 @@ export default function AdminVendorsPage() {
   }
 
   return (
-    <PageBody wide description="Pending Discover vendor applications.">
+    <PageBody wide description="Vendor applications, directory claims, and POS readiness.">
       {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
       {loading ? (
         <CardListSkeleton count={3} />
-      ) : rows.length === 0 && directoryClaims.length === 0 ? (
+      ) : rows.length === 0 && directoryClaims.length === 0 && posVendors.length === 0 ? (
         <EmptyState
-          title="No pending requests"
-          description="New Vendor applications and Directory claims will appear here for review."
+          title="No vendor activity"
+          description="New Vendor applications, Directory claims, and approved vendors will appear here."
         />
       ) : (
         <div className="space-y-8">
@@ -179,6 +192,50 @@ export default function AdminVendorsPage() {
                           >
                             Reject
                           </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {posVendors.length > 0 ? (
+            <section>
+              <h2 className="mb-3 text-base font-semibold text-fix-heading">POS readiness</h2>
+              <p className="mb-3 text-sm text-fix-text-muted">
+                Approved vendors — Counter/M2 backend ready when Connect charges are enabled. No
+                manual flag; status is live from Stripe + RootSync.
+              </p>
+              <ul className="space-y-3">
+                {posVendors.map((v) => (
+                  <li key={v.userId}>
+                    <Card className="p-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="font-semibold text-fix-heading">{v.displayName}</div>
+                          <div className="mt-1 text-sm text-fix-text-muted">{v.email}</div>
+                          <div className="mt-1 font-mono text-xs text-fix-text-muted">
+                            {v.connectAccountId || "No Connect account"}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          <span
+                            className={
+                              v.counterReady
+                                ? "rounded-full bg-forest/15 px-2.5 py-1 font-medium text-forest"
+                                : "rounded-full bg-fix-bg-muted px-2.5 py-1 font-medium text-fix-text-muted"
+                            }
+                          >
+                            {v.counterReady ? "Counter ready" : "Connect incomplete"}
+                          </span>
+                          <span className="rounded-full bg-fix-bg-muted px-2.5 py-1 font-medium text-fix-text-muted">
+                            {v.hasSellableListing ? "Has ACTIVE listing" : "No sellable listing"}
+                          </span>
+                          <span className="rounded-full bg-fix-bg-muted px-2.5 py-1 font-medium text-fix-text-muted">
+                            {v.hasTerminalSale ? "M2 sale done" : "No M2 sale yet"}
+                          </span>
                         </div>
                       </div>
                     </Card>

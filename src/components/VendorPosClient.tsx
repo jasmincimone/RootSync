@@ -167,12 +167,12 @@ export function VendorPosClient() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-fix-heading">In-person POS</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-fix-heading">Take a payment</h1>
         <p className="mt-2 text-sm text-fix-text-muted">
-          Take a payment now. Money lands on RootSync&apos;s platform Stripe, then transfers to your
-          connected account (same model as Discover checkout).
+          Money lands on RootSync&apos;s platform Stripe, then transfers to your connected account
+          (same model as Discover checkout).
         </p>
       </div>
 

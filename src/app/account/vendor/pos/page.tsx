@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 
 import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { VendorPosClient } from "@/components/VendorPosClient";
+import { VendorPosOnboarding } from "@/components/VendorPosOnboarding";
 import { PageLoading } from "@/components/PageLoading";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
@@ -34,9 +35,14 @@ export default async function VendorPosPage() {
 
   return (
     <AccountSubpageBody description="Take counter or card-reader payments that pay out to your connected Stripe account.">
-      <Suspense fallback={<PageLoading contained label="Loading POS" />}>
-        <VendorPosClient />
-      </Suspense>
+      <div className="mx-auto max-w-lg space-y-6">
+        <Suspense fallback={<PageLoading contained label="Loading POS setup" />}>
+          <VendorPosOnboarding />
+        </Suspense>
+        <Suspense fallback={<PageLoading contained label="Loading POS" />}>
+          <VendorPosClient />
+        </Suspense>
+      </div>
     </AccountSubpageBody>
   );
 }
