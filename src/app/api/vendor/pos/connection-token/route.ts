@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const limited = rateLimitResponse(request, "checkout", {
+    const limited = rateLimitResponse(request, "terminalConnectionToken", {
       userId,
       scope: "vendor-pos-terminal-token",
       message: "Too many Terminal token requests. Try again shortly.",

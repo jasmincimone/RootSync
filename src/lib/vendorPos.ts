@@ -1,4 +1,9 @@
-import { appBaseUrl, fetchConnectAccountStatus, getConnectStripeClient } from "@/lib/stripeConnectDemo";
+import {
+  appBaseUrl,
+  fetchConnectAccountStatus,
+  getConnectStripeClient,
+  stripeConnectErrorMessage,
+} from "@/lib/stripeConnectDemo";
 import { platformApplicationFeeCents } from "@/lib/platformFee";
 import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 import { prisma } from "@/lib/prisma";
@@ -188,10 +193,38 @@ export async function ensurePlatformTerminalLocation(displayName: string): Promi
 
 export async function createTerminalConnectionToken(locationId?: string | null) {
   const stripe = getConnectStripeClient();
-  const token = await stripe.terminal.connectionTokens.create(
-    locationId ? { location: locationId } : {},
-  );
-  return token.secret;
+  try {
+    const token = await stripe.terminal.connectionTokens.create(
+      locationId ? { location: locationId } : {},
+    );
+    if (!token.secret) {
+      throw new Error("Stripe returned an empty Terminal connection token.");
+    }
+    return token.secret;
+  } catch (err) {
+    // If a stale/invalid location id is configured, retry without location restriction.
+    if (locationId) {
+      try {
+        const token = await stripe.terminal.connectionTokens.create({});
+        if (!token.secret) {
+          throw new Error("Stripe returned an empty Terminal connection token.");
+        }
+        console.warn(
+          `[terminal] connection token with location ${locationId} failed; issued unrestricted token.`,
+          err,
+        );
+        return token.secret;
+      } catch {
+        // fall through to original error
+      }
+    }
+    const message = stripeConnectErrorMessage(err);
+    throw new Error(
+      message.includes("terminal") || message.toLowerCase().includes("connection")
+        ? message
+        : `Stripe Terminal error: ${message}. In the RootSync platform Stripe Dashboard, open Terminal and finish setup (Locations).`,
+    );
+  }
 }
 
 /**

@@ -31,6 +31,11 @@ export const RATE_LIMIT_PRESETS = {
   rootsenseChat: { limit: 30, windowMs: 15 * 60 * 1000 },
   /** Marketplace / Connect checkout session create */
   checkout: { limit: 20, windowMs: 15 * 60 * 1000 },
+  /**
+   * Stripe Terminal connection tokens — SDK refresh + app preflight can be chatty.
+   * Keep higher than checkout; still bounds runaway clients.
+   */
+  terminalConnectionToken: { limit: 120, windowMs: 15 * 60 * 1000 },
   /** File uploads (images, resources, avatars) */
   upload: { limit: 40, windowMs: 15 * 60 * 1000 },
   /** Directory ownership claim requests */

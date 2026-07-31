@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -19,6 +19,7 @@ import {
 import {
   apiFetch,
   clearPosSession,
+  fetchConnectionToken,
   loadPosSession,
   savePosSession,
   type PosSession,
@@ -137,7 +138,10 @@ function PosScreen({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<string>("Initializing Terminal…");
   const [error, setError] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** When true, a canceled discoverReaders result is expected (Connect / Stop scan). */
+  const expectDiscoverCancelRef = useRef(false);
 
   const amountCents = useMemo(() => {
     const n = Number.parseFloat(dollars);
@@ -158,59 +162,101 @@ function PosScreen({
   } = useStripeTerminal({
     onUpdateDiscoveredReaders: (readers) => {
       setDiscovered(readers);
+      if (readers.length > 0) {
+        setStatus(
+          `Found ${readers.length} reader${readers.length === 1 ? "" : "s"} — tap Connect (scan can keep running).`,
+        );
+      }
     },
   });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const result = await initialize();
-      if (cancelled) return;
-      if (result.error) {
-        setError(result.error.message);
-        setStatus("Terminal failed to initialize.");
-        return;
-      }
-      setReady(true);
-      setStatus("Terminal ready. Discover your M2 next.");
       try {
-        const res = await apiFetch(session, "/api/vendor/pos/connection-token", {
-          method: "POST",
-        });
-        const data = (await res.json().catch(() => ({}))) as {
-          locationId?: string;
-          error?: string;
-        };
-        if (res.ok && data.locationId) setLocationId(data.locationId);
-      } catch {
-        // tokenProvider will still fetch secrets during discovery/connect
+        // Preflight: surface RootSync/Stripe errors before the SDK wraps them.
+        // Shares a short-lived cache with tokenProvider so init isn't 2 API hits.
+        const preData = await fetchConnectionToken(session);
+        if (cancelled) return;
+        if (preData.locationId) setLocationId(preData.locationId);
+
+        const result = await initialize();
+        if (cancelled) return;
+        if (result.error) {
+          setError(result.error.message || "Terminal initialize failed.");
+          setStatus("Terminal failed to initialize.");
+          return;
+        }
+        setReady(true);
+        setStatus("Terminal ready. Discover your M2 next.");
+      } catch (e) {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : "Terminal initialize failed.";
+        setError(msg);
+        setStatus("Terminal failed to initialize.");
+        if (/session expired/i.test(msg)) {
+          onLogout();
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [initialize, session]);
+  }, [initialize, session, onLogout]);
+
+  function isDiscoverCanceledMessage(message?: string | null) {
+    return /cancel+ed/i.test(message || "");
+  }
 
   async function scanReaders() {
     setError(null);
-    setBusy(true);
-    setStatus("Scanning for Bluetooth readers…");
+    setDiscovered([]);
+    expectDiscoverCancelRef.current = false;
+    setScanning(true);
+    setStatus("Scanning for Bluetooth readers… tap Connect when your M2 appears.");
     try {
       const result = await discoverReaders({
         discoveryMethod: "bluetoothScan",
         simulated: false,
       });
       if (result.error) {
+        const canceled =
+          expectDiscoverCancelRef.current || isDiscoverCanceledMessage(result.error.message);
+        if (canceled) {
+          // Connect / Stop scan ended discovery on purpose — don't treat as failure.
+          return;
+        }
         setError(result.error.message);
         setStatus("Discover failed.");
         return;
       }
-      setStatus("Scan finished — tap Connect on your M2 below (keep Bluetooth on).");
+      setStatus("Scan finished — tap Connect on your M2 below.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Discover failed.");
+      const msg = e instanceof Error ? e.message : "Discover failed.";
+      if (expectDiscoverCancelRef.current || isDiscoverCanceledMessage(msg)) {
+        return;
+      }
+      setError(msg);
+      setStatus("Discover failed.");
     } finally {
-      setBusy(false);
+      expectDiscoverCancelRef.current = false;
+      setScanning(false);
     }
+  }
+
+  async function stopScan() {
+    expectDiscoverCancelRef.current = true;
+    try {
+      await cancelDiscovering();
+    } catch {
+      // ignore
+    }
+    setScanning(false);
+    setStatus(
+      discovered.length > 0
+        ? "Scan stopped — tap Connect on your M2."
+        : "Scan stopped. Tap Scan for M2 to try again.",
+    );
   }
 
   async function connect(reader: Reader.Type) {
@@ -221,23 +267,26 @@ function PosScreen({
     setBusy(true);
     setError(null);
     setStatus(`Connecting to ${reader.serialNumber || reader.deviceType}…`);
+    // Connecting ends discovery; mark cancel as expected so scanReaders doesn't flash an error.
+    expectDiscoverCancelRef.current = true;
+    setScanning(false);
     try {
-      await cancelDiscovering();
-      const result = await connectReader(
-        {
-          reader,
-          locationId,
-        },
-        "bluetoothScan",
-      );
+      const result = await connectReader({
+        discoveryMethod: "bluetoothScan",
+        reader,
+        locationId,
+        autoReconnectOnUnexpectedDisconnect: true,
+      });
       if (result.error) {
         setError(result.error.message);
         setStatus("Connect failed.");
         return;
       }
+      setDiscovered([]);
       setStatus("Reader connected. Enter an amount and charge.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Connect failed.");
+      setStatus("Connect failed.");
     } finally {
       setBusy(false);
     }
@@ -325,19 +374,30 @@ function PosScreen({
         <>
           <Pressable
             style={styles.btn}
-            disabled={!ready || busy}
+            disabled={!ready || scanning || busy}
             onPress={() => void scanReaders()}
           >
-            <Text style={styles.btnText}>{busy ? "Working…" : "Scan for M2"}</Text>
+            <Text style={styles.btnText}>
+              {scanning ? "Scanning…" : "Scan for M2"}
+            </Text>
           </Pressable>
+          {scanning ? (
+            <Pressable
+              style={styles.secondaryBtn}
+              disabled={busy}
+              onPress={() => void stopScan()}
+            >
+              <Text style={styles.secondaryBtnText}>Stop scan</Text>
+            </Pressable>
+          ) : null}
           {(discovered || []).map((reader) => (
             <Pressable
               key={reader.serialNumber || String(reader.id)}
-              style={styles.secondaryBtn}
+              style={[styles.btn, { marginTop: 10, backgroundColor: "#1c1917" }]}
               disabled={busy}
               onPress={() => void connect(reader)}
             >
-              <Text style={styles.secondaryBtnText}>
+              <Text style={styles.btnText}>
                 Connect {reader.deviceType} {reader.serialNumber}
               </Text>
             </Pressable>
@@ -375,7 +435,7 @@ function PosScreen({
 
       <Text style={styles.status}>{status}</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {busy ? <ActivityIndicator style={{ marginTop: 12 }} /> : null}
+      {scanning || busy ? <ActivityIndicator style={{ marginTop: 12 }} /> : null}
 
       <Pressable
         style={[styles.secondaryBtn, { marginTop: 24 }]}
@@ -403,15 +463,9 @@ function AppShell() {
   const tokenProvider = useCallback(async () => {
     const current = session || (await loadPosSession());
     if (!current) {
-      throw new Error("Not signed in");
+      throw new Error("Not signed in — open the app and log in again.");
     }
-    const res = await apiFetch(current, "/api/vendor/pos/connection-token", {
-      method: "POST",
-    });
-    const data = (await res.json().catch(() => ({}))) as { secret?: string; error?: string };
-    if (!res.ok || !data.secret) {
-      throw new Error(data.error || "Could not fetch connection token");
-    }
+    const data = await fetchConnectionToken(current);
     return data.secret;
   }, [session]);
 
