@@ -31,6 +31,8 @@ export async function POST(request: NextRequest) {
       ctx: gate.ctx,
       amountCents: body.amountCents,
       description: body.description,
+      listingId: body.listingId,
+      variantId: body.variantId,
     });
 
     return NextResponse.json({

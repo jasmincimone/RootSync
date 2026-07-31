@@ -27,12 +27,38 @@ export function stripeConnectErrorMessage(err: unknown): string {
   return "Unknown error.";
 }
 
+/** True when STRIPE_SECRET_KEY is a Stripe restricted key (rk_…). */
+export function isStripeRestrictedSecretKey(): boolean {
+  return (
+    typeof process.env.STRIPE_SECRET_KEY === "string" &&
+    process.env.STRIPE_SECRET_KEY.trim().startsWith("rk_")
+  );
+}
+
+/**
+ * Terminal / card_present PaymentIntents are not available to restricted keys.
+ * Stripe returns: permissions "are not available for use by restricted keys".
+ */
+export function stripeTerminalKeyHint(err?: unknown): string | null {
+  const msg = err ? stripeConnectErrorMessage(err).toLowerCase() : "";
+  const looksRestrictedError =
+    msg.includes("restricted") ||
+    msg.includes("rk_live") ||
+    msg.includes("rk_test") ||
+    msg.includes("required permissions");
+  if (!isStripeRestrictedSecretKey() && !looksRestrictedError) return null;
+  return (
+    "RootSync’s STRIPE_SECRET_KEY is a restricted key (rk_…). Stripe Terminal charges need a full " +
+    "secret key (sk_live_… / sk_test_…). In Vercel → Production → Environment Variables, set " +
+    "STRIPE_SECRET_KEY to the platform Secret key from Stripe Dashboard → Developers → API keys " +
+    "(not a Restricted key), redeploy, then try the M2 charge again."
+  );
+}
+
 /** Actionable hint when Stripe returns 403 on Connect account APIs. */
 export function stripeConnectForbiddenHint(err: unknown): string {
   const msg = stripeConnectErrorMessage(err).toLowerCase();
-  const usingRestricted =
-    typeof process.env.STRIPE_SECRET_KEY === "string" &&
-    process.env.STRIPE_SECRET_KEY.startsWith("rk_");
+  const usingRestricted = isStripeRestrictedSecretKey();
 
   if (usingRestricted) {
     return (

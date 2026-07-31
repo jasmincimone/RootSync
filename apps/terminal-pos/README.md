@@ -34,8 +34,11 @@ Expo Go will **not** work — Terminal needs a development build.
 1. Open **RootSync Terminal** on your phone  
 2. API URL: `https://rootsync.io` (or your local tunnel / LAN URL)  
 3. Sign in with vendor email/password  
-4. **Scan for M2** → **Connect**  
-5. Enter amount → **Charge on M2** → customer taps/inserts  
+4. **Scan for M2** → connect (first time may install firmware for 5–15 minutes)  
+5. Tap an **ACTIVE listing** to charge that price, or enter a **custom amount**  
+6. Customer taps/inserts on the M2  
+
+New listings: set status **ACTIVE** in Vendor → Listings, then tap **Refresh listings** in the app (no separate import).
 
 Money flow matches Discover: charge on RootSync platform → transfer to Urban Roots Connect `acct_…`.
 

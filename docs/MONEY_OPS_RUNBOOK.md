@@ -77,7 +77,8 @@ Connect often creates a **second** `acct_…` for the vendor (Express/Standard c
 
 - **Counter POS (works now):** Vendor → In-person POS → Charge on this device (Checkout → destination transfer).  
 - **M2:** Bluetooth reader — needs Terminal SDK app. Backend tokens/intents: see [TERMINAL_POS.md](./TERMINAL_POS.md).  
-- Sales still appear on **platform** Payments; vendor gets the Connect transfer.
+- Sales still appear on **platform** Payments; vendor gets the Connect transfer.  
+- If charge fails with **restricted key / rk_live_… permissions**: Vercel `STRIPE_SECRET_KEY` must be the platform **Secret key** (`sk_live_…`), not a Restricted key. Redeploy after changing it.
 
 ## Who to ping
 

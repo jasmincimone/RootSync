@@ -19,7 +19,8 @@ Use the companion app:
 Backend endpoints the app uses:
 - `POST /api/vendor/pos/mobile-login`
 - `POST /api/vendor/pos/connection-token` (Bearer or web session)
-- `POST /api/vendor/pos/terminal-intent`
+- `GET /api/vendor/pos/listings` — ACTIVE listings/variants (live from Postgres; Refresh in-app)
+- `POST /api/vendor/pos/terminal-intent` — custom `amountCents` **or** `listingId` + optional `variantId`
 
 Optional env: `STRIPE_TERMINAL_LOCATION_ID=tml_…` (platform Terminal location).
 
@@ -31,3 +32,4 @@ See [MONEY_OPS_RUNBOOK.md](./MONEY_OPS_RUNBOOK.md) §7.
 2. Create a Location; set `STRIPE_TERMINAL_LOCATION_ID`  
 3. Webhook includes `payment_intent.succeeded`  
 4. Same test/live mode everywhere  
+5. **`STRIPE_SECRET_KEY` must be a full secret key (`sk_live_…` / `sk_test_…`), not a restricted key (`rk_…`).** Terminal `card_present` PaymentIntents are not available to restricted keys — Stripe returns a permissions error naming `rk_live_…` / `rk_test_…`.

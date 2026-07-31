@@ -3,11 +3,17 @@ import {
   fetchConnectAccountStatus,
   getConnectStripeClient,
   stripeConnectErrorMessage,
+  stripeTerminalKeyHint,
 } from "@/lib/stripeConnectDemo";
 import { platformApplicationFeeCents } from "@/lib/platformFee";
 import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 import { prisma } from "@/lib/prisma";
-import { ORDER_ITEM_TYPE, VENDOR_STATUS } from "@/lib/roles";
+import {
+  OFFERING_STATUS,
+  ORDER_ITEM_TYPE,
+  VENDOR_STATUS,
+  orderItemTypeForListingType,
+} from "@/lib/roles";
 
 export type VendorPosContext = {
   userId: string;
@@ -69,6 +75,144 @@ function parseAmountCents(raw: unknown): number | null {
   if (cents < 50) return null; // Stripe practical minimum for card
   if (cents > 1_000_000_00) return null;
   return cents;
+}
+
+export type PosSellableListing = {
+  listingId: string;
+  variantId: string | null;
+  offeringId: string;
+  title: string;
+  listingType: string;
+  priceCents: number;
+  /** Display line for the picker */
+  label: string;
+};
+
+/**
+ * Active vendor offerings for Terminal / counter POS.
+ * Live from Postgres — new ACTIVE listings appear on the next fetch (no separate import).
+ * Includes PUBLIC and HIDDEN (in-person can sell before Discover publish).
+ */
+export async function listVendorPosSellableListings(
+  ctx: VendorPosContext,
+): Promise<PosSellableListing[]> {
+  const listings = await prisma.listing.findMany({
+    where: {
+      vendorProfileId: ctx.vendorProfileId,
+      offering: { status: OFFERING_STATUS.ACTIVE },
+    },
+    include: {
+      offering: {
+        select: {
+          id: true,
+          variants: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: { id: true, title: true, priceCents: true },
+          },
+        },
+      },
+    },
+    orderBy: [{ title: "asc" }, { updatedAt: "desc" }],
+  });
+
+  const rows: PosSellableListing[] = [];
+  for (const listing of listings) {
+    const variants = listing.offering.variants;
+    if (variants.length > 0) {
+      for (const v of variants) {
+        if (v.priceCents < 50) continue;
+        rows.push({
+          listingId: listing.id,
+          variantId: v.id,
+          offeringId: listing.offering.id,
+          title: listing.title,
+          listingType: listing.listingType,
+          priceCents: v.priceCents,
+          label: `${listing.title} · ${v.title}`,
+        });
+      }
+      continue;
+    }
+    if (listing.priceCents < 50) continue;
+    rows.push({
+      listingId: listing.id,
+      variantId: null,
+      offeringId: listing.offering.id,
+      title: listing.title,
+      listingType: listing.listingType,
+      priceCents: listing.priceCents,
+      label: listing.title,
+    });
+  }
+  return rows;
+}
+
+async function resolveTerminalChargeFromListing(args: {
+  ctx: VendorPosContext;
+  listingId: string;
+  variantId?: string | null;
+}): Promise<{
+  amountCents: number;
+  description: string;
+  listingId: string;
+  variantId: string | null;
+  listingType: string;
+  productId: string;
+}> {
+  const listing = await prisma.listing.findFirst({
+    where: {
+      id: args.listingId,
+      vendorProfileId: args.ctx.vendorProfileId,
+      offering: { status: OFFERING_STATUS.ACTIVE },
+    },
+    include: {
+      offering: {
+        select: {
+          id: true,
+          variants: {
+            select: { id: true, title: true, priceCents: true },
+          },
+        },
+      },
+    },
+  });
+  if (!listing) {
+    throw new Error("Listing not found, not yours, or not ACTIVE.");
+  }
+
+  const variantId = args.variantId?.trim() || null;
+  if (variantId) {
+    const variant = listing.offering.variants.find((v) => v.id === variantId);
+    if (!variant) {
+      throw new Error("That option is not on this listing.");
+    }
+    if (variant.priceCents < 50) {
+      throw new Error("This option is under $0.50 and can’t be charged on the card reader.");
+    }
+    return {
+      amountCents: variant.priceCents,
+      description: `${listing.title} · ${variant.title}`.slice(0, 200),
+      listingId: listing.id,
+      variantId: variant.id,
+      listingType: listing.listingType,
+      productId: listing.id,
+    };
+  }
+
+  if (listing.offering.variants.length > 0) {
+    throw new Error("Choose a listing option (variant) for this item.");
+  }
+  if (listing.priceCents < 50) {
+    throw new Error("This listing is under $0.50 and can’t be charged on the card reader.");
+  }
+  return {
+    amountCents: listing.priceCents,
+    description: listing.title.slice(0, 200),
+    listingId: listing.id,
+    variantId: null,
+    listingType: listing.listingType,
+    productId: listing.id,
+  };
 }
 
 /**
@@ -230,21 +374,56 @@ export async function createTerminalConnectionToken(locationId?: string | null) 
 /**
  * card_present PaymentIntent for Stripe Terminal (destination charge).
  * M2 collection requires a native Terminal SDK app — not the browser.
+ * Pass listingId (+ optional variantId) to charge a RootSync listing price from Postgres,
+ * or amountCents for a custom counter amount.
  */
 export async function createVendorTerminalPaymentIntent(args: {
   ctx: VendorPosContext;
-  amountCents: unknown;
+  amountCents?: unknown;
   description?: unknown;
-}): Promise<{ orderId: string; clientSecret: string; paymentIntentId: string; amountCents: number }> {
-  const amountCents = parseAmountCents(args.amountCents);
-  if (amountCents == null) {
-    throw new Error("Enter an amount of at least $0.50.");
-  }
+  listingId?: unknown;
+  variantId?: unknown;
+}): Promise<{
+  orderId: string;
+  clientSecret: string;
+  paymentIntentId: string;
+  amountCents: number;
+  listingId?: string;
+  variantId?: string | null;
+}> {
+  const listingIdRaw =
+    typeof args.listingId === "string" && args.listingId.trim() ? args.listingId.trim() : null;
 
-  const description =
-    typeof args.description === "string" && args.description.trim()
-      ? args.description.trim().slice(0, 200)
-      : `Card reader sale · ${args.ctx.displayName}`;
+  let amountCents: number;
+  let description: string;
+  let listingId: string | null = null;
+  let variantId: string | null = null;
+  let itemType: string = ORDER_ITEM_TYPE.POS;
+  let productId = `pos-terminal:${args.ctx.vendorProfileId}`;
+
+  if (listingIdRaw) {
+    const resolved = await resolveTerminalChargeFromListing({
+      ctx: args.ctx,
+      listingId: listingIdRaw,
+      variantId: typeof args.variantId === "string" ? args.variantId : null,
+    });
+    amountCents = resolved.amountCents;
+    description = resolved.description;
+    listingId = resolved.listingId;
+    variantId = resolved.variantId;
+    itemType = orderItemTypeForListingType(resolved.listingType);
+    productId = resolved.productId;
+  } else {
+    const parsed = parseAmountCents(args.amountCents);
+    if (parsed == null) {
+      throw new Error("Enter an amount of at least $0.50, or choose a listing.");
+    }
+    amountCents = parsed;
+    description =
+      typeof args.description === "string" && args.description.trim()
+        ? args.description.trim().slice(0, 200)
+        : `Card reader sale · ${args.ctx.displayName}`;
+  }
 
   const fee = platformApplicationFeeCents(amountCents);
   const piData = connectDestinationPaymentIntentData(
@@ -262,31 +441,41 @@ export async function createVendorTerminalPaymentIntent(args: {
       totalCents: amountCents,
       items: {
         create: {
-          productId: `pos-terminal:${args.ctx.vendorProfileId}`,
+          productId,
           name: description,
           quantity: 1,
           priceCents: amountCents,
-          type: ORDER_ITEM_TYPE.POS,
+          type: itemType,
+          listingId: listingId ?? undefined,
+          variantId: variantId ?? undefined,
         },
       },
     },
   });
 
   const stripe = getConnectStripeClient();
-  const intent = await stripe.paymentIntents.create({
-    amount: amountCents,
-    currency: "usd",
-    payment_method_types: ["card_present"],
-    capture_method: "automatic",
-    ...piData,
-    on_behalf_of: args.ctx.connectAccountId,
-    metadata: {
-      orderId: order.id,
-      type: "vendor_pos_terminal",
-      vendorProfileId: args.ctx.vendorProfileId,
-      connectAccountId: args.ctx.connectAccountId,
-    },
-  });
+  let intent;
+  try {
+    intent = await stripe.paymentIntents.create({
+      amount: amountCents,
+      currency: "usd",
+      payment_method_types: ["card_present"],
+      capture_method: "automatic",
+      ...piData,
+      on_behalf_of: args.ctx.connectAccountId,
+      metadata: {
+        orderId: order.id,
+        type: "vendor_pos_terminal",
+        vendorProfileId: args.ctx.vendorProfileId,
+        connectAccountId: args.ctx.connectAccountId,
+        ...(listingId ? { listingId } : {}),
+        ...(variantId ? { variantId } : {}),
+      },
+    });
+  } catch (err) {
+    const hint = stripeTerminalKeyHint(err);
+    throw new Error(hint || stripeConnectErrorMessage(err));
+  }
 
   if (!intent.client_secret) {
     throw new Error("Stripe did not return a PaymentIntent client secret.");
@@ -302,6 +491,8 @@ export async function createVendorTerminalPaymentIntent(args: {
     clientSecret: intent.client_secret,
     paymentIntentId: intent.id,
     amountCents,
+    listingId: listingId ?? undefined,
+    variantId,
   };
 }
 

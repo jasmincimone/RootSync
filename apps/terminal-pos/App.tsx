@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View,
 } from "react-native";
 import {
   StripeTerminalProvider,
@@ -26,6 +25,14 @@ import {
 } from "./src/api";
 
 const DEFAULT_API = "https://rootsync.io";
+
+function formatUpdateEta(raw?: string | null): string {
+  if (!raw) return " (often 5–15 minutes)";
+  const m = /estimate(\d+)To(\d+)Minutes/i.exec(raw);
+  if (m) return ` (about ${m[1]}–${m[2]} minutes)`;
+  if (/estimateLessThan1Minute/i.test(raw)) return " (under 1 minute)";
+  return ` (${raw})`;
+}
 
 function LoginScreen({
   onLoggedIn,
@@ -140,8 +147,29 @@ function PosScreen({
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [updatingFirmware, setUpdatingFirmware] = useState(false);
+  const [posListings, setPosListings] = useState<
+    {
+      listingId: string;
+      variantId: string | null;
+      label: string;
+      priceCents: number;
+      listingType: string;
+    }[]
+  >([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [listingsError, setListingsError] = useState<string | null>(null);
+
   /** When true, a canceled discoverReaders result is expected (Connect / Stop scan). */
   const expectDiscoverCancelRef = useRef(false);
+  /** Prevents initialize/token storm when the SDK recreates hook fns each render. */
+  const didInitRef = useRef(false);
+  const locationIdRef = useRef<string | null>(null);
+  const connectInFlightRef = useRef(false);
+  const updateInProgressRef = useRef(false);
+  const connectReaderFnRef = useRef<
+    ((reader: Reader.Type) => Promise<void>) | null
+  >(null);
 
   const amountCents = useMemo(() => {
     const n = Number.parseFloat(dollars);
@@ -159,26 +187,72 @@ function PosScreen({
     confirmPaymentIntent,
     disconnectReader,
     cancelDiscovering,
+    cancelInstallingUpdate,
   } = useStripeTerminal({
     onUpdateDiscoveredReaders: (readers) => {
       setDiscovered(readers);
-      if (readers.length > 0) {
+      if (readers.length === 0 || connectInFlightRef.current) return;
+      const reader = readers[0];
+      const label = reader.serialNumber || reader.deviceType || "reader";
+      setStatus(`Found ${label} — connecting…`);
+      void connectReaderFnRef.current?.(reader);
+    },
+    onDidStartInstallingUpdate: (update) => {
+      updateInProgressRef.current = true;
+      setUpdatingFirmware(true);
+      const eta = formatUpdateEta(update?.estimatedUpdateTime);
+      setError(null);
+      setStatus(
+        `Required M2 firmware update in progress${eta}. ` +
+          "Leave this app open in the foreground, keep the phone next to the reader, and do not lock the screen until it finishes.",
+      );
+    },
+    onDidReportReaderSoftwareUpdateProgress: (progress) => {
+      updateInProgressRef.current = true;
+      setUpdatingFirmware(true);
+      const n = Number(progress);
+      const pct = Number.isFinite(n) ? Math.round(n * (n <= 1 ? 100 : 1)) : null;
+      setStatus(
+        pct != null
+          ? `M2 firmware update ${pct}% — keep the app open until this reaches 100%.`
+          : `M2 firmware update in progress (${progress}) — keep the app open.`,
+      );
+    },
+    onDidFinishInstallingUpdate: (result) => {
+      updateInProgressRef.current = false;
+      setUpdatingFirmware(false);
+      if (result?.error) {
+        const msg = result.error.message || "Reader software update failed.";
+        setError(msg);
         setStatus(
-          `Found ${readers.length} reader${readers.length === 1 ? "" : "s"} — tap Connect (scan can keep running).`,
+          /interrupted/i.test(msg)
+            ? "Firmware update was interrupted (app reload, Cancel, screen lock, or leaving Bluetooth range). Scan again and leave the app open for the full 5–15 minutes."
+            : "Reader update failed. Scan again and leave the app open until it completes.",
         );
+        connectInFlightRef.current = false;
+        setBusy(false);
+        return;
       }
+      setStatus("Firmware update finished — finishing connect…");
     },
   });
 
   useEffect(() => {
+    locationIdRef.current = locationId;
+  }, [locationId]);
+
+  useEffect(() => {
+    if (didInitRef.current) return;
+    didInitRef.current = true;
     let cancelled = false;
     (async () => {
       try {
-        // Preflight: surface RootSync/Stripe errors before the SDK wraps them.
-        // Shares a short-lived cache with tokenProvider so init isn't 2 API hits.
         const preData = await fetchConnectionToken(session);
         if (cancelled) return;
-        if (preData.locationId) setLocationId(preData.locationId);
+        if (preData.locationId) {
+          locationIdRef.current = preData.locationId;
+          setLocationId(preData.locationId);
+        }
 
         const result = await initialize();
         if (cancelled) return;
@@ -188,32 +262,33 @@ function PosScreen({
           return;
         }
         setReady(true);
-        setStatus("Terminal ready. Discover your M2 next.");
+        setStatus("Terminal ready. Tap Scan for M2.");
       } catch (e) {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : "Terminal initialize failed.";
         setError(msg);
         setStatus("Terminal failed to initialize.");
-        if (/session expired/i.test(msg)) {
-          onLogout();
-        }
+        if (/session expired/i.test(msg)) onLogout();
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [initialize, session, onLogout]);
+    // Intentionally once per mount — `initialize` identity changes every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.token]);
 
   function isDiscoverCanceledMessage(message?: string | null) {
     return /cancel+ed/i.test(message || "");
   }
 
   async function scanReaders() {
+    if (busy || connectInFlightRef.current) return;
     setError(null);
     setDiscovered([]);
     expectDiscoverCancelRef.current = false;
     setScanning(true);
-    setStatus("Scanning for Bluetooth readers… tap Connect when your M2 appears.");
+    setStatus("Scanning… leave this screen open; Connect starts automatically when found.");
     try {
       const result = await discoverReaders({
         discoveryMethod: "bluetoothScan",
@@ -222,20 +297,18 @@ function PosScreen({
       if (result.error) {
         const canceled =
           expectDiscoverCancelRef.current || isDiscoverCanceledMessage(result.error.message);
-        if (canceled) {
-          // Connect / Stop scan ended discovery on purpose — don't treat as failure.
-          return;
-        }
+        if (canceled) return;
         setError(result.error.message);
         setStatus("Discover failed.");
         return;
       }
-      setStatus("Scan finished — tap Connect on your M2 below.");
+      if (!connectInFlightRef.current && !connectedReader) {
+        setDiscovered([]);
+        setStatus("Scan timed out. Tap Scan for M2 again (keep the reader awake).");
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Discover failed.";
-      if (expectDiscoverCancelRef.current || isDiscoverCanceledMessage(msg)) {
-        return;
-      }
+      if (expectDiscoverCancelRef.current || isDiscoverCanceledMessage(msg)) return;
       setError(msg);
       setStatus("Discover failed.");
     } finally {
@@ -252,70 +325,170 @@ function PosScreen({
       // ignore
     }
     setScanning(false);
-    setStatus(
-      discovered.length > 0
-        ? "Scan stopped — tap Connect on your M2."
-        : "Scan stopped. Tap Scan for M2 to try again.",
-    );
+    setStatus("Scan stopped. Tap Scan for M2 to try again.");
   }
 
-  async function connect(reader: Reader.Type) {
-    if (!locationId) {
+  async function connectToReader(reader: Reader.Type) {
+    const loc = locationIdRef.current;
+    if (!loc) {
       setError("Missing Terminal location from RootSync. Try signing out/in.");
+      setStatus("Connect failed.");
       return;
     }
+    if (connectInFlightRef.current) return;
+    connectInFlightRef.current = true;
+    updateInProgressRef.current = false;
+    setUpdatingFirmware(false);
     setBusy(true);
     setError(null);
     setStatus(`Connecting to ${reader.serialNumber || reader.deviceType}…`);
-    // Connecting ends discovery; mark cancel as expected so scanReaders doesn't flash an error.
     expectDiscoverCancelRef.current = true;
     setScanning(false);
+
     try {
+      // Stop discovery before connect so scan + connect don't fight over Bluetooth.
+      try {
+        await cancelDiscovering();
+      } catch {
+        // ignore
+      }
+      await new Promise((r) => setTimeout(r, 400));
+
+      // No short timeout: first connect often installs a required firmware update (5–15 min).
+      // A previous 2-minute timeout was interrupting that update.
       const result = await connectReader({
         discoveryMethod: "bluetoothScan",
         reader,
-        locationId,
+        locationId: loc,
         autoReconnectOnUnexpectedDisconnect: true,
       });
       if (result.error) {
         setError(result.error.message);
-        setStatus("Connect failed.");
+        setStatus("Connect failed. Tap Scan for M2 and try again.");
         return;
       }
       setDiscovered([]);
       setStatus("Reader connected. Enter an amount and charge.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Connect failed.");
-      setStatus("Connect failed.");
+      setStatus("Connect failed. Tap Scan for M2 and try again.");
     } finally {
+      connectInFlightRef.current = false;
+      updateInProgressRef.current = false;
+      setUpdatingFirmware(false);
       setBusy(false);
     }
   }
 
-  async function charge() {
+  connectReaderFnRef.current = connectToReader;
+
+  async function cancelConnect() {
+    if (updateInProgressRef.current) {
+      setError(
+        "Canceling now will interrupt the firmware update. Only cancel if you must; then Scan again and leave the app open for the full update.",
+      );
+    }
+    expectDiscoverCancelRef.current = true;
+    try {
+      await cancelDiscovering();
+    } catch {
+      // ignore
+    }
+    try {
+      await cancelInstallingUpdate();
+    } catch {
+      // ignore
+    }
+    updateInProgressRef.current = false;
+    setUpdatingFirmware(false);
+    connectInFlightRef.current = false;
+    setBusy(false);
+    setScanning(false);
+    setStatus("Connect canceled. Tap Scan for M2 to try again.");
+  }
+
+  async function loadPosListings() {
+    setListingsLoading(true);
+    setListingsError(null);
+    try {
+      const res = await apiFetch(session, "/api/vendor/pos/listings");
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        listings?: {
+          listingId: string;
+          variantId: string | null;
+          label: string;
+          priceCents: number;
+          listingType: string;
+        }[];
+      };
+      if (!res.ok) {
+        setListingsError(data.error || `Could not load listings (HTTP ${res.status}).`);
+        setPosListings([]);
+        return;
+      }
+      setPosListings(data.listings || []);
+    } catch (e) {
+      setListingsError(e instanceof Error ? e.message : "Could not load listings.");
+      setPosListings([]);
+    } finally {
+      setListingsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!connectedReader) return;
+    void loadPosListings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectedReader?.serialNumber, session.token]);
+
+  async function charge(opts?: {
+    listingId?: string;
+    variantId?: string | null;
+    amountCents?: number;
+    description?: string;
+  }) {
     if (!connectedReader) {
       setError("Connect the M2 first.");
       return;
     }
-    if (amountCents == null || amountCents < 50) {
-      setError("Enter at least $0.50.");
+
+    const fromListing = Boolean(opts?.listingId);
+    const chargeCents = fromListing
+      ? opts?.amountCents ?? null
+      : opts?.amountCents ?? amountCents;
+    const chargeDescription = fromListing
+      ? opts?.description
+      : opts?.description ?? (description.trim() || undefined);
+
+    if (!fromListing && (chargeCents == null || chargeCents < 50)) {
+      setError("Enter at least $0.50, or tap a listing below.");
       return;
     }
+
     setBusy(true);
     setError(null);
     setStatus("Creating payment…");
     try {
       const intentRes = await apiFetch(session, "/api/vendor/pos/terminal-intent", {
         method: "POST",
-        body: JSON.stringify({
-          amountCents,
-          description: description.trim() || undefined,
-        }),
+        body: JSON.stringify(
+          fromListing
+            ? {
+                listingId: opts!.listingId,
+                variantId: opts!.variantId ?? undefined,
+              }
+            : {
+                amountCents: chargeCents,
+                description: chargeDescription,
+              },
+        ),
       });
       const intentData = (await intentRes.json().catch(() => ({}))) as {
         error?: string;
         clientSecret?: string;
         orderId?: string;
+        amountCents?: number;
       };
       if (!intentRes.ok || !intentData.clientSecret) {
         setError(intentData.error || "Could not create PaymentIntent.");
@@ -323,6 +496,7 @@ function PosScreen({
         return;
       }
 
+      const paidCents = intentData.amountCents ?? chargeCents ?? 0;
       setStatus("Present card on the M2…");
       const retrieved = await retrievePaymentIntent(intentData.clientSecret);
       if (retrieved.error || !retrieved.paymentIntent) {
@@ -350,9 +524,9 @@ function PosScreen({
       }
 
       setStatus(
-        `Paid $${(amountCents / 100).toFixed(2)} · order ${intentData.orderId || "ok"} · transfer to ${session.connectAccountId}`,
+        `Paid $${(paidCents / 100).toFixed(2)} · order ${intentData.orderId || "ok"} · transfer to ${session.connectAccountId}`,
       );
-      setDollars("");
+      if (!fromListing) setDollars("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Charge failed.");
       setStatus("Ready to try again.");
@@ -370,6 +544,13 @@ function PosScreen({
         Reader: {connectedReader?.serialNumber || connectedReader?.deviceType || "not connected"}
       </Text>
 
+      <Text style={styles.status}>{status}</Text>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {busy ? <ActivityIndicator style={{ marginTop: 12 }} /> : null}
+      <Text style={styles.hint}>
+        First connect installs a required Stripe firmware update (often 5–15 minutes). Keep this app open, phone unlocked, and next to the M2 until the percentage hits 100%. Do not pair the M2 in iOS Settings → Bluetooth — if it is listed there, Forget This Device, then Scan only in this app.
+      </Text>
+
       {!connectedReader ? (
         <>
           <Pressable
@@ -378,7 +559,7 @@ function PosScreen({
             onPress={() => void scanReaders()}
           >
             <Text style={styles.btnText}>
-              {scanning ? "Scanning…" : "Scan for M2"}
+              {scanning ? "Scanning…" : busy ? "Connecting…" : "Scan for M2"}
             </Text>
           </Pressable>
           {scanning ? (
@@ -390,12 +571,21 @@ function PosScreen({
               <Text style={styles.secondaryBtnText}>Stop scan</Text>
             </Pressable>
           ) : null}
+          {busy ? (
+            <Pressable style={styles.secondaryBtn} onPress={() => void cancelConnect()}>
+              <Text style={styles.secondaryBtnText}>
+                {updatingFirmware
+                  ? "Interrupt update (not recommended)"
+                  : "Cancel connect"}
+              </Text>
+            </Pressable>
+          ) : null}
           {(discovered || []).map((reader) => (
             <Pressable
               key={reader.serialNumber || String(reader.id)}
               style={[styles.btn, { marginTop: 10, backgroundColor: "#1c1917" }]}
               disabled={busy}
-              onPress={() => void connect(reader)}
+              onPress={() => void connectToReader(reader)}
             >
               <Text style={styles.btnText}>
                 Connect {reader.deviceType} {reader.serialNumber}
@@ -405,7 +595,45 @@ function PosScreen({
         </>
       ) : (
         <>
-          <Text style={styles.label}>Amount (USD)</Text>
+          <Text style={styles.label}>Your ACTIVE listings</Text>
+          <Text style={styles.hint}>
+            Live from RootSync — publish a new listing as ACTIVE and tap Refresh to sell it here.
+            Free items under $0.50 are hidden (card minimum).
+          </Text>
+          <Pressable
+            style={styles.secondaryBtn}
+            disabled={busy || listingsLoading}
+            onPress={() => void loadPosListings()}
+          >
+            <Text style={styles.secondaryBtnText}>
+              {listingsLoading ? "Refreshing…" : "Refresh listings"}
+            </Text>
+          </Pressable>
+          {listingsError ? <Text style={styles.error}>{listingsError}</Text> : null}
+          {!listingsLoading && posListings.length === 0 && !listingsError ? (
+            <Text style={styles.hint}>No ACTIVE listings at $0.50+ yet.</Text>
+          ) : null}
+          {posListings.map((item) => (
+            <Pressable
+              key={`${item.listingId}:${item.variantId || "base"}`}
+              style={[styles.btn, { marginTop: 10, backgroundColor: "#1c1917" }]}
+              disabled={busy}
+              onPress={() =>
+                void charge({
+                  listingId: item.listingId,
+                  variantId: item.variantId,
+                  amountCents: item.priceCents,
+                  description: item.label,
+                })
+              }
+            >
+              <Text style={styles.btnText}>
+                ${(item.priceCents / 100).toFixed(2)} · {item.label}
+              </Text>
+            </Pressable>
+          ))}
+
+          <Text style={[styles.label, { marginTop: 22 }]}>Custom amount</Text>
           <TextInput
             style={styles.input}
             keyboardType="decimal-pad"
@@ -421,7 +649,7 @@ function PosScreen({
             placeholder="Market day sale"
           />
           <Pressable style={styles.btn} disabled={busy} onPress={() => void charge()}>
-            <Text style={styles.btnText}>{busy ? "Processing…" : "Charge on M2"}</Text>
+            <Text style={styles.btnText}>{busy ? "Processing…" : "Charge custom amount"}</Text>
           </Pressable>
           <Pressable
             style={styles.secondaryBtn}
@@ -433,12 +661,9 @@ function PosScreen({
         </>
       )}
 
-      <Text style={styles.status}>{status}</Text>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {scanning || busy ? <ActivityIndicator style={{ marginTop: 12 }} /> : null}
-
       <Pressable
         style={[styles.secondaryBtn, { marginTop: 24 }]}
+        disabled={busy}
         onPress={() => {
           void clearPosSession().then(onLogout);
         }}
@@ -459,6 +684,8 @@ function AppShell() {
       setBooting(false);
     });
   }, []);
+
+  const onLogout = useCallback(() => setSession(null), []);
 
   const tokenProvider = useCallback(async () => {
     const current = session || (await loadPosSession());
@@ -489,7 +716,7 @@ function AppShell() {
   return (
     <StripeTerminalProvider logLevel="verbose" tokenProvider={tokenProvider}>
       <SafeAreaView style={styles.root}>
-        <PosScreen session={session} onLogout={() => setSession(null)} />
+        <PosScreen session={session} onLogout={onLogout} />
         <StatusBar style="dark" />
       </SafeAreaView>
     </StripeTerminalProvider>
@@ -537,5 +764,6 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { color: "#1c1917", fontWeight: "600" },
   status: { marginTop: 16, fontSize: 13, color: "#44403c", lineHeight: 18 },
+  hint: { marginTop: 10, fontSize: 12, color: "#78716c", lineHeight: 18 },
   error: { marginTop: 10, color: "#b91c1c", fontSize: 13 },
 });
