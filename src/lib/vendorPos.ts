@@ -6,7 +6,9 @@ import {
   stripeTerminalKeyHint,
 } from "@/lib/stripeConnectDemo";
 import { sendPosSaleReceiptEmail } from "@/lib/email";
+import { normalizePhoneForSms } from "@/lib/phone";
 import { platformApplicationFeeCents } from "@/lib/platformFee";
+import { isSmsSendAvailable, sendSms } from "@/lib/sms";
 import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 import { prisma } from "@/lib/prisma";
 import {
@@ -520,6 +522,7 @@ export type PosOrderSummary = {
   totalCents: number;
   createdAt: string;
   itemLabel: string;
+  items: { name: string; quantity: number; priceCents: number }[];
   paymentIntentId: string | null;
   sessionId: string | null;
 };
@@ -565,20 +568,40 @@ export async function listVendorPosOrders(
     itemLabel:
       o.items.map((i) => (i.quantity > 1 ? `${i.name} ×${i.quantity}` : i.name)).join(", ") ||
       "Sale",
+    items: o.items.map((i) => ({
+      name: i.name,
+      quantity: i.quantity,
+      priceCents: i.priceCents,
+    })),
     paymentIntentId: o.stripePaymentIntent,
     sessionId: o.stripeSessionId,
   }));
 }
 
-export async function sendVendorPosOrderReceiptEmail(args: {
-  ctx: VendorPosContext;
-  orderId: string;
-  toEmail: string;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+type PosOrderReceiptRow = {
+  id: string;
+  totalCents: number;
+  createdAt: Date;
+  stripePaymentIntent: string | null;
+  items: {
+    name: string;
+    quantity: number;
+    priceCents: number;
+    type: string;
+    productId: string;
+    listingId: string | null;
+    listing: { vendorProfileId: string } | null;
+  }[];
+};
+
+async function loadVendorPosOrderForReceipt(
+  ctx: VendorPosContext,
+  orderId: string,
+): Promise<{ ok: true; order: PosOrderReceiptRow } | { ok: false; error: string }> {
   const order = await prisma.order.findFirst({
     where: {
-      id: args.orderId,
-      userId: args.ctx.userId,
+      id: orderId,
+      userId: ctx.userId,
     },
     include: {
       items: {
@@ -602,10 +625,55 @@ export async function sendVendorPosOrderReceiptEmail(args: {
     order.items.some((i) => i.type === ORDER_ITEM_TYPE.POS) ||
     order.items.some((i) => i.productId.startsWith("pos-terminal:")) ||
     (Boolean(order.stripePaymentIntent) &&
-      order.items.some((i) => i.listing?.vendorProfileId === args.ctx.vendorProfileId));
+      order.items.some((i) => i.listing?.vendorProfileId === ctx.vendorProfileId));
   if (!isPos) {
     return { ok: false, error: "That order is not an in-person Terminal sale." };
   }
+
+  return { ok: true, order };
+}
+
+export function formatPosReceiptText(args: {
+  vendorDisplayName: string;
+  orderId: string;
+  totalCents: number;
+  items: { name: string; quantity: number; priceCents: number }[];
+  paidAt: Date;
+  paymentIntentId?: string | null;
+}): string {
+  const when = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(args.paidAt);
+  const lines = args.items.map((i) => {
+    const amt = ((i.priceCents * i.quantity) / 100).toFixed(2);
+    const qty = i.quantity > 1 ? ` x${i.quantity}` : "";
+    return `${i.name}${qty}  $${amt}`;
+  });
+  return [
+    args.vendorDisplayName,
+    "In-person sale (RootSync)",
+    when,
+    "----------------",
+    ...lines,
+    "----------------",
+    `TOTAL  $${(args.totalCents / 100).toFixed(2)}`,
+    `Order ${args.orderId}`,
+    args.paymentIntentId ? `Payment ${args.paymentIntentId}` : null,
+    "Thank you!",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export async function sendVendorPosOrderReceiptEmail(args: {
+  ctx: VendorPosContext;
+  orderId: string;
+  toEmail: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const loaded = await loadVendorPosOrderForReceipt(args.ctx, args.orderId);
+  if (!loaded.ok) return loaded;
+  const { order } = loaded;
 
   const sent = await sendPosSaleReceiptEmail({
     to: args.toEmail,
@@ -622,6 +690,47 @@ export async function sendVendorPosOrderReceiptEmail(args: {
   });
   if (!sent.ok) {
     return { ok: false, error: sent.error || "Could not send receipt." };
+  }
+  return { ok: true };
+}
+
+export async function sendVendorPosOrderReceiptSms(args: {
+  ctx: VendorPosContext;
+  orderId: string;
+  toPhone: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const loaded = await loadVendorPosOrderForReceipt(args.ctx, args.orderId);
+  if (!loaded.ok) return loaded;
+  const { order } = loaded;
+
+  const phone = normalizePhoneForSms(args.toPhone);
+  if (!phone) {
+    return { ok: false, error: "Enter a valid mobile number (US: 10 digits or +1…)." };
+  }
+  if (!isSmsSendAvailable()) {
+    return {
+      ok: false,
+      error: "SMS is not configured (TWILIO_ACCOUNT_SID / AUTH_TOKEN / FROM or Messaging Service).",
+    };
+  }
+
+  const text = formatPosReceiptText({
+    vendorDisplayName: args.ctx.displayName,
+    orderId: order.id,
+    totalCents: order.totalCents,
+    items: order.items,
+    paidAt: order.createdAt,
+    paymentIntentId: order.stripePaymentIntent,
+  });
+  // SMS body limit ~1600; keep short
+  const body =
+    text.length > 1400
+      ? `${args.ctx.displayName}: $${(order.totalCents / 100).toFixed(2)} charged. Order ${order.id}. Thank you!`
+      : text;
+
+  const sent = await sendSms(phone, body);
+  if (!sent.ok) {
+    return { ok: false, error: sent.error || "Could not send SMS receipt." };
   }
   return { ok: true };
 }

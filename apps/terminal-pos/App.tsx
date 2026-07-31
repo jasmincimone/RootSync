@@ -5,6 +5,7 @@ import {
   Pressable,
   SafeAreaView,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -168,11 +169,14 @@ function PosScreen({
       totalCents: number;
       createdAt: string;
       itemLabel: string;
+      items: { name: string; quantity: number; priceCents: number }[];
+      paymentIntentId: string | null;
     }[]
   >([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [receiptEmail, setReceiptEmail] = useState("");
+  const [receiptPhone, setReceiptPhone] = useState("");
   const [receiptBusy, setReceiptBusy] = useState(false);
 
   /** When true, a canceled discoverReaders result is expected (Connect / Stop scan). */
@@ -507,6 +511,8 @@ function PosScreen({
           totalCents: number;
           createdAt: string;
           itemLabel: string;
+          items?: { name: string; quantity: number; priceCents: number }[];
+          paymentIntentId?: string | null;
         }[];
         lastOrderId?: string | null;
       };
@@ -514,7 +520,12 @@ function PosScreen({
         setError(data.error || "Could not load recent sales.");
         return;
       }
-      setOrders(data.orders || []);
+      const next = (data.orders || []).map((o) => ({
+        ...o,
+        items: o.items || [],
+        paymentIntentId: o.paymentIntentId ?? null,
+      }));
+      setOrders(next);
       if (!selectedOrderId && data.lastOrderId) {
         setSelectedOrderId(data.lastOrderId);
       }
@@ -525,7 +536,38 @@ function PosScreen({
     }
   }
 
-  async function sendReceipt() {
+  const selectedOrder = useMemo(
+    () => orders.find((o) => o.id === selectedOrderId) || null,
+    [orders, selectedOrderId],
+  );
+
+  function buildReceiptText(order: NonNullable<typeof selectedOrder>) {
+    const when = new Date(order.createdAt).toLocaleString();
+    const lines = (order.items.length
+      ? order.items
+      : [{ name: order.itemLabel, quantity: 1, priceCents: order.totalCents }]
+    ).map((i) => {
+      const amt = ((i.priceCents * i.quantity) / 100).toFixed(2);
+      const qty = i.quantity > 1 ? ` x${i.quantity}` : "";
+      return `${i.name}${qty}  $${amt}`;
+    });
+    return [
+      session.displayName,
+      "In-person sale (RootSync)",
+      when,
+      "----------------",
+      ...lines,
+      "----------------",
+      `TOTAL  $${(order.totalCents / 100).toFixed(2)}`,
+      `Order ${order.id}`,
+      order.paymentIntentId ? `Payment ${order.paymentIntentId}` : null,
+      "Thank you!",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  async function sendReceiptEmail() {
     if (!selectedOrderId) {
       setError("Select a sale first.");
       return;
@@ -539,7 +581,7 @@ function PosScreen({
     try {
       const res = await apiFetch(session, `/api/vendor/pos/orders/${selectedOrderId}/receipt`, {
         method: "POST",
-        body: JSON.stringify({ email: receiptEmail.trim() }),
+        body: JSON.stringify({ channel: "email", email: receiptEmail.trim() }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
@@ -554,6 +596,53 @@ function PosScreen({
       setError(e instanceof Error ? e.message : "Could not send receipt.");
     } finally {
       setReceiptBusy(false);
+    }
+  }
+
+  async function sendReceiptSms() {
+    if (!selectedOrderId) {
+      setError("Select a sale first.");
+      return;
+    }
+    if (!receiptPhone.trim()) {
+      setError("Enter a mobile number for the SMS receipt.");
+      return;
+    }
+    setReceiptBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch(session, `/api/vendor/pos/orders/${selectedOrderId}/receipt`, {
+        method: "POST",
+        body: JSON.stringify({ channel: "sms", phone: receiptPhone.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok) {
+        setError(data.error || "Could not send SMS receipt.");
+        return;
+      }
+      setStatus(data.message || "SMS receipt sent.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not send SMS receipt.");
+    } finally {
+      setReceiptBusy(false);
+    }
+  }
+
+  async function shareOrPrintReceipt() {
+    if (!selectedOrder) {
+      setError("Select a sale first.");
+      return;
+    }
+    try {
+      await Share.share({
+        message: buildReceiptText(selectedOrder),
+        title: `Receipt · ${session.displayName}`,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not open share sheet.");
     }
   }
 
@@ -720,10 +809,60 @@ function PosScreen({
             );
           })}
 
-          <Text style={[styles.label, { marginTop: 18 }]}>Email receipt</Text>
+          <Text style={[styles.label, { marginTop: 18 }]}>Receipt</Text>
+          {!selectedOrder ? (
+            <Text style={styles.hint}>Select a sale above to preview and send a receipt.</Text>
+          ) : (
+            <View style={styles.receiptCard}>
+              <Text style={styles.receiptVendor}>{session.displayName}</Text>
+              <Text style={styles.receiptMeta}>In-person sale · RootSync</Text>
+              <Text style={styles.receiptMeta}>
+                {new Date(selectedOrder.createdAt).toLocaleString()}
+              </Text>
+              <View style={styles.receiptRule} />
+              {(selectedOrder.items.length
+                ? selectedOrder.items
+                : [
+                    {
+                      name: selectedOrder.itemLabel,
+                      quantity: 1,
+                      priceCents: selectedOrder.totalCents,
+                    },
+                  ]
+              ).map((line, idx) => (
+                <View key={`${line.name}-${idx}`} style={styles.receiptLine}>
+                  <Text style={styles.receiptLineName}>
+                    {line.name}
+                    {line.quantity > 1 ? ` ×${line.quantity}` : ""}
+                  </Text>
+                  <Text style={styles.receiptLineAmt}>
+                    ${((line.priceCents * line.quantity) / 100).toFixed(2)}
+                  </Text>
+                </View>
+              ))}
+              <View style={styles.receiptRule} />
+              <View style={styles.receiptLine}>
+                <Text style={styles.receiptTotal}>Total</Text>
+                <Text style={styles.receiptTotal}>
+                  ${(selectedOrder.totalCents / 100).toFixed(2)}
+                </Text>
+              </View>
+              <Text style={styles.receiptMeta}>Order {selectedOrder.id}</Text>
+            </View>
+          )}
+
+          <Pressable
+            style={styles.secondaryBtn}
+            disabled={!selectedOrder || receiptBusy}
+            onPress={() => void shareOrPrintReceipt()}
+          >
+            <Text style={styles.secondaryBtnText}>Share / Print receipt</Text>
+          </Pressable>
           <Text style={styles.hint}>
-            Select a sale above, enter the customer email, then send. Uses RootSync email (Resend).
+            Opens the system share sheet — on iPhone choose Print (AirPrint) or Messages/Mail.
           </Text>
+
+          <Text style={[styles.label, { marginTop: 14 }]}>Email receipt</Text>
           <TextInput
             style={styles.input}
             autoCapitalize="none"
@@ -736,10 +875,28 @@ function PosScreen({
           <Pressable
             style={styles.btn}
             disabled={receiptBusy || !selectedOrderId}
-            onPress={() => void sendReceipt()}
+            onPress={() => void sendReceiptEmail()}
           >
             <Text style={styles.btnText}>
               {receiptBusy ? "Sending…" : "Send receipt email"}
+            </Text>
+          </Pressable>
+
+          <Text style={[styles.label, { marginTop: 14 }]}>SMS receipt</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="phone-pad"
+            value={receiptPhone}
+            onChangeText={setReceiptPhone}
+            placeholder="(555) 123-4567"
+          />
+          <Pressable
+            style={[styles.btn, { backgroundColor: "#1c1917" }]}
+            disabled={receiptBusy || !selectedOrderId}
+            onPress={() => void sendReceiptSms()}
+          >
+            <Text style={styles.btnText}>
+              {receiptBusy ? "Sending…" : "Send receipt SMS"}
             </Text>
           </Pressable>
         </>
@@ -1001,4 +1158,28 @@ const styles = StyleSheet.create({
   },
   orderTitle: { fontSize: 15, fontWeight: "600", color: "#1c1917" },
   orderMeta: { marginTop: 4, fontSize: 12, color: "#78716c" },
+  receiptCard: {
+    marginTop: 10,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "rgba(28,25,23,0.12)",
+  },
+  receiptVendor: { fontSize: 18, fontWeight: "700", color: "#1c1917" },
+  receiptMeta: { marginTop: 4, fontSize: 12, color: "#78716c" },
+  receiptRule: {
+    height: 1,
+    backgroundColor: "rgba(28,25,23,0.12)",
+    marginVertical: 12,
+  },
+  receiptLine: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 6,
+  },
+  receiptLineName: { flex: 1, fontSize: 14, color: "#1c1917" },
+  receiptLineAmt: { fontSize: 14, color: "#1c1917" },
+  receiptTotal: { fontSize: 16, fontWeight: "700", color: "#1c1917" },
 });

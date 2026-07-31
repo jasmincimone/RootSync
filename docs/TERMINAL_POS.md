@@ -29,7 +29,9 @@ Stripe Dashboard **Products** are not the Terminal catalog. Terminal sells **Roo
 
 ### Sales & receipts (Terminal app)
 - **Sales** tab lists recent in-person orders from Postgres.  
-- Select a sale → enter customer email → **Send receipt email**.  
+- Select a sale → **receipt preview** on screen.  
+- **Share / Print** opens the system share sheet (AirPrint / Messages / Mail).  
+- **Email** via Resend; **SMS** via Twilio (`channel: email|sms` on the receipt API).  
 - After a successful charge, the app jumps to Sales with that order selected.
 
 Optional env: `STRIPE_TERMINAL_LOCATION_ID=tml_…` (platform Terminal location).
