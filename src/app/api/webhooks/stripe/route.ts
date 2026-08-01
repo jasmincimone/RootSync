@@ -4,6 +4,10 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { hookOrderVerified } from "@/lib/pulse/hooks";
 import {
+  decrementInventoryForPaidOrder,
+  markOrderPaidOnce,
+} from "@/lib/listingInventory";
+import {
   checkoutCompletedFields,
   shouldConfirmServiceBooking,
 } from "@/lib/stripeCheckoutWebhook";
@@ -109,15 +113,14 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
 
   if (!fields.orderId) return;
 
-  await prisma.order.update({
-    where: { id: fields.orderId },
-    data: {
-      status: "paid",
-      stripeSessionId: session.id,
-      stripePaymentIntent: fields.paymentIntentId,
-    },
+  const becamePaid = await markOrderPaidOnce({
+    orderId: fields.orderId,
+    stripeSessionId: session.id,
+    stripePaymentIntent: fields.paymentIntentId,
   });
+  if (!becamePaid) return;
 
+  await decrementInventoryForPaidOrder(fields.orderId);
   await hookOrderVerified(fields.orderId);
 
   if (shouldConfirmServiceBooking(fields)) {
@@ -136,13 +139,13 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
   const orderId = intent.metadata?.orderId?.trim();
   if (!orderId) return;
 
-  await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      status: "paid",
-      stripePaymentIntent: intent.id,
-    },
+  const becamePaid = await markOrderPaidOnce({
+    orderId,
+    stripePaymentIntent: intent.id,
   });
+  if (!becamePaid) return;
+
+  await decrementInventoryForPaidOrder(orderId);
   await hookOrderVerified(orderId);
 }
 

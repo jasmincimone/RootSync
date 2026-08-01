@@ -144,6 +144,11 @@ export function VendorOfferingForm({
     initial?.details.product?.requiresShipping ?? true,
   );
   const [sku, setSku] = useState(initial?.details.product?.sku ?? "");
+  const [inventoryQuantity, setInventoryQuantity] = useState(
+    initial?.details.product?.inventoryQuantity != null
+      ? String(initial.details.product.inventoryQuantity)
+      : "",
+  );
 
   const [serviceKind, setServiceKind] = useState<ServiceKind>(
     initial?.details.service?.serviceKind ?? SERVICE_KIND.ONE_TIME,
@@ -218,6 +223,9 @@ export function VendorOfferingForm({
         product: {
           requiresShipping,
           sku: sku.trim() || null,
+          inventoryQuantity: inventoryQuantity.trim()
+            ? Number.parseInt(inventoryQuantity, 10)
+            : null,
         },
       };
     }
@@ -298,6 +306,14 @@ export function VendorOfferingForm({
         payload.some((v) => !v.durationMinutes || v.durationMinutes <= 0)
       ) {
         setError("Each service option needs duration in minutes.");
+        return;
+      }
+    }
+
+    if (listingType === LISTING_TYPE.PRODUCT && inventoryQuantity.trim()) {
+      const qty = Number.parseInt(inventoryQuantity, 10);
+      if (!Number.isFinite(qty) || qty < 0) {
+        setError("Available quantity must be zero or a positive whole number.");
         return;
       }
     }
@@ -591,7 +607,7 @@ export function VendorOfferingForm({
         ) : null}
 
         {currentStepKey === "details" && listingType === LISTING_TYPE.PRODUCT ? (
-          <FormSection title="Product details" description="Shipping and SKU">
+          <FormSection title="Product details" description="Shipping, SKU, and inventory">
           <fieldset className="space-y-3">
             <label className="flex items-center gap-2 text-sm text-fix-text">
               <input
@@ -604,6 +620,25 @@ export function VendorOfferingForm({
             <div>
               <label className="block text-sm font-medium text-fix-text">SKU (optional)</label>
               <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-fix-text">
+                Available quantity (optional)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={inventoryQuantity}
+                onChange={(e) => setInventoryQuantity(e.target.value)}
+                placeholder="Leave blank for unlimited"
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-fix-text-muted">
+                How many units you have left to sell (e.g. pre-order stock). RootSync tracks this in
+                our database — Stripe Products do not. Each paid order decreases the count. Clear the
+                field for unlimited.
+              </p>
             </div>
           </fieldset>
           </FormSection>

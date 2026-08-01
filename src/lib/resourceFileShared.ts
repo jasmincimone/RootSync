@@ -126,6 +126,55 @@ export function toBlobResourceRef(pathname: string): string {
   return `${BLOB_RESOURCE_REF_PREFIX}${pathname}`;
 }
 
+const MAX_RESOURCE_REF_LEN = 2048;
+
+/**
+ * Accepts RootSync resource delivery refs:
+ * - `blob:vendor-resources/{uuid}.ext` (Vercel Blob client upload)
+ * - `/uploads/...` (local/dev server upload)
+ * - `https://...` / `http://...` (external hosted file)
+ *
+ * Do not use normalizeProductUrl for this — it rejects blob: and relative paths.
+ */
+export function normalizeResourceFileRef(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value !== "string") {
+    throw new Error("Resource file must be a string");
+  }
+  const t = value.trim();
+  if (!t) return null;
+  if (t.length > MAX_RESOURCE_REF_LEN) {
+    throw new Error("Resource file reference is too long");
+  }
+
+  if (isBlobResourceRef(t)) {
+    const pathname = blobPathnameFromRef(t);
+    if (!isValidResourceBlobPathname(pathname)) {
+      throw new Error("Invalid uploaded resource file reference.");
+    }
+    return `${BLOB_RESOURCE_REF_PREFIX}${pathname}`;
+  }
+
+  if (t.startsWith("/uploads/")) {
+    if (!/^\/uploads\/[A-Za-z0-9._\-\/]+$/.test(t)) {
+      throw new Error("Invalid local resource file path.");
+    }
+    return t;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(t);
+  } catch {
+    throw new Error("Resource file must be an uploaded file or a valid http(s) URL");
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("External resource links must use http or https");
+  }
+  return parsed.toString();
+}
+
 export function contentTypeForResourceExt(ext: string): string {
   const entry = Object.entries(RESOURCE_MIME_TO_EXT).find(([, e]) => e === ext);
   return entry?.[0] ?? "application/octet-stream";

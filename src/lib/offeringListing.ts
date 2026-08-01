@@ -138,7 +138,11 @@ export function syncListingFieldsFromOffering(
 
 export type VendorOfferingRow = Offering & {
   listing: Listing | null;
-  productDetails: { requiresShipping: boolean; sku: string | null } | null;
+  productDetails: {
+    requiresShipping: boolean;
+    sku: string | null;
+    inventoryQuantity: number | null;
+  } | null;
   serviceDetails: {
     serviceKind: string;
     durationMinutes: number | null;
@@ -179,6 +183,7 @@ export type VendorOfferingRow = Offering & {
     priceCents: number;
     durationMinutes: number | null;
     sku: string | null;
+    inventoryQuantity: number | null;
   }>;
 };
 

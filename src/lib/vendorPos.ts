@@ -12,6 +12,10 @@ import { isSmsSendAvailable, sendSms } from "@/lib/sms";
 import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 import { prisma } from "@/lib/prisma";
 import {
+  assertInventoryAvailable,
+  resolveAvailableInventory,
+} from "@/lib/listingInventory";
+import {
   OFFERING_STATUS,
   ORDER_ITEM_TYPE,
   VENDOR_STATUS,
@@ -172,8 +176,14 @@ async function resolveTerminalChargeFromListing(args: {
       offering: {
         select: {
           id: true,
+          productDetails: { select: { inventoryQuantity: true } },
           variants: {
-            select: { id: true, title: true, priceCents: true },
+            select: {
+              id: true,
+              title: true,
+              priceCents: true,
+              inventoryQuantity: true,
+            },
           },
         },
       },
@@ -192,6 +202,14 @@ async function resolveTerminalChargeFromListing(args: {
     if (variant.priceCents < 50) {
       throw new Error("This option is under $0.50 and can’t be charged on the card reader.");
     }
+    assertInventoryAvailable({
+      available: resolveAvailableInventory({
+        listingType: listing.listingType,
+        productInventory: listing.offering.productDetails?.inventoryQuantity,
+        variantInventory: variant.inventoryQuantity,
+      }),
+      quantity: 1,
+    });
     return {
       amountCents: variant.priceCents,
       description: `${listing.title} · ${variant.title}`.slice(0, 200),
@@ -208,6 +226,13 @@ async function resolveTerminalChargeFromListing(args: {
   if (listing.priceCents < 50) {
     throw new Error("This listing is under $0.50 and can’t be charged on the card reader.");
   }
+  assertInventoryAvailable({
+    available: resolveAvailableInventory({
+      listingType: listing.listingType,
+      productInventory: listing.offering.productDetails?.inventoryQuantity,
+    }),
+    quantity: 1,
+  });
   return {
     amountCents: listing.priceCents,
     description: listing.title.slice(0, 200),

@@ -12,6 +12,7 @@ export type VariantDraft = {
   priceDollars: string;
   durationMinutes: string;
   sku: string;
+  inventoryQuantity: string;
 };
 
 const inputClass =
@@ -24,6 +25,7 @@ function newDraft(): VariantDraft {
     priceDollars: "",
     durationMinutes: "",
     sku: "",
+    inventoryQuantity: "",
   };
 }
 
@@ -35,6 +37,7 @@ export function draftsFromSerialized(variants: SerializedOfferingVariant[]): Var
     priceDollars: (v.priceCents / 100).toFixed(2),
     durationMinutes: v.durationMinutes?.toString() ?? "",
     sku: v.sku ?? "",
+    inventoryQuantity: v.inventoryQuantity != null ? String(v.inventoryQuantity) : "",
   }));
 }
 
@@ -46,6 +49,7 @@ export function draftsToPayload(
   priceCents: number;
   durationMinutes?: number | null;
   sku?: string | null;
+  inventoryQuantity?: number | null;
   sortOrder: number;
 }> {
   return drafts.map((d, index) => {
@@ -58,6 +62,10 @@ export function draftsToPayload(
       priceCents,
       durationMinutes: listingType === LISTING_TYPE.SERVICE ? durationMinutes : null,
       sku: listingType === LISTING_TYPE.PRODUCT ? d.sku.trim() || null : null,
+      inventoryQuantity:
+        listingType === LISTING_TYPE.PRODUCT && d.inventoryQuantity.trim()
+          ? Number.parseInt(d.inventoryQuantity, 10)
+          : null,
       sortOrder: index,
     };
   });
@@ -230,6 +238,29 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                           ),
                         )
                       }
+                      className={inputClass}
+                    />
+                  </div>
+                ) : null}
+                {showSku ? (
+                  <div>
+                    <label className="block text-sm font-medium text-fix-text">Qty available</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={v.inventoryQuantity}
+                      disabled={disabled}
+                      onChange={(e) =>
+                        onChange(
+                          variants.map((row) =>
+                            row.clientKey === v.clientKey
+                              ? { ...row, inventoryQuantity: e.target.value }
+                              : row,
+                          ),
+                        )
+                      }
+                      placeholder="Blank = product stock"
                       className={inputClass}
                     />
                   </div>

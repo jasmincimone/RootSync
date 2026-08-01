@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, ORDER_ITEM_TYPE, orderItemTypeForListingType } from "@/lib/roles";
 import { publicListingWhere } from "@/lib/offeringListing";
 import { resolveOfferingVariant } from "@/lib/offeringVariants";
+import {
+  assertInventoryAvailable,
+  resolveAvailableInventory,
+} from "@/lib/listingInventory";
 import { discoverListingPath } from "@/config/discoverPaths";
 import {
   appBaseUrl,
@@ -31,12 +35,16 @@ export type MarketplaceListingCheckout = {
   offering: {
     paymentUrl: string | null;
     productUrl: string | null;
+    productDetails: {
+      inventoryQuantity: number | null;
+    } | null;
     variants: Array<{
       id: string;
       title: string;
       priceCents: number;
       durationMinutes: number | null;
       sku: string | null;
+      inventoryQuantity: number | null;
     }>;
     eventDetails: {
       capacity: number | null;
@@ -78,6 +86,7 @@ export async function loadListingForCheckout(
         select: {
           paymentUrl: true,
           productUrl: true,
+          productDetails: { select: { inventoryQuantity: true } },
           variants: {
             orderBy: { sortOrder: "asc" },
             select: {
@@ -86,6 +95,7 @@ export async function loadListingForCheckout(
               priceCents: true,
               durationMinutes: true,
               sku: true,
+              inventoryQuantity: true,
             },
           },
           eventDetails: { select: { capacity: true } },
@@ -139,6 +149,13 @@ export async function createMarketplaceListingCheckout(args: {
       );
     }
   }
+
+  const available = resolveAvailableInventory({
+    listingType: listing.listingType,
+    productInventory: listing.offering.productDetails?.inventoryQuantity,
+    variantInventory: variant?.inventoryQuantity,
+  });
+  assertInventoryAvailable({ available, quantity });
 
   const order = await prisma.order.create({
     data: {

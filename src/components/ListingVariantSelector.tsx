@@ -9,6 +9,7 @@ export type ListingVariant = {
   priceCents: number;
   durationMinutes: number | null;
   sku: string | null;
+  inventoryQuantity?: number | null;
 };
 
 type Props = {

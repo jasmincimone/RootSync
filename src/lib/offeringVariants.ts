@@ -8,6 +8,7 @@ export type OfferingVariantInput = {
   priceCents: number;
   durationMinutes?: number | null;
   sku?: string | null;
+  inventoryQuantity?: number | null;
   sortOrder: number;
 };
 
@@ -18,6 +19,7 @@ export type SerializedOfferingVariant = {
   priceCents: number;
   durationMinutes: number | null;
   sku: string | null;
+  inventoryQuantity: number | null;
 };
 
 function parseOptionalInt(value: unknown): number | null | undefined {
@@ -81,12 +83,15 @@ export function parseOfferingVariantsFromBody(
 
     const sku =
       typeof item.sku === "string" ? item.sku.trim() || null : item.sku === null ? null : undefined;
+    const inventoryQuantity =
+      "inventoryQuantity" in item ? parseOptionalInt(item.inventoryQuantity) ?? null : null;
 
     variants.push({
       title,
       priceCents,
       durationMinutes: durationMinutes ?? null,
       sku: sku ?? null,
+      inventoryQuantity,
       sortOrder:
         typeof item.sortOrder === "number" && Number.isInteger(item.sortOrder)
           ? item.sortOrder
@@ -105,6 +110,7 @@ export function serializeOfferingVariants(
     priceCents: number;
     durationMinutes: number | null;
     sku: string | null;
+    inventoryQuantity: number | null;
   }>,
 ): SerializedOfferingVariant[] {
   return variants.map((v) => ({
@@ -114,6 +120,7 @@ export function serializeOfferingVariants(
     priceCents: v.priceCents,
     durationMinutes: v.durationMinutes,
     sku: v.sku,
+    inventoryQuantity: v.inventoryQuantity,
   }));
 }
 
@@ -146,6 +153,7 @@ export async function syncOfferingVariants(
       priceCents: v.priceCents,
       durationMinutes: v.durationMinutes ?? null,
       sku: v.sku ?? null,
+      inventoryQuantity: v.inventoryQuantity ?? null,
     })),
   });
 
@@ -168,6 +176,7 @@ export async function resolveOfferingVariant(
   priceCents: number;
   durationMinutes: number | null;
   sku: string | null;
+  inventoryQuantity: number | null;
 } | null> {
   const variants = await prisma.offeringVariant.findMany({
     where: { offeringId },

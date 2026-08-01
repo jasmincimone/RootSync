@@ -50,7 +50,7 @@ type ListingDetailPanelsProps = {
   listingType: string;
   priceCents: number;
   variantCount: number;
-  product: { requiresShipping: boolean; sku: string | null } | null;
+  product: { requiresShipping: boolean; sku: string | null; inventoryQuantity: number | null } | null;
   service: {
     serviceKind: string;
     durationMinutes: number | null;
@@ -241,6 +241,16 @@ export function ListingTypeDetailCard({
             value={product.requiresShipping ? "Ships or local pickup" : "No shipping required"}
           />
           {product.sku?.trim() ? <DetailRow label="SKU" value={product.sku.trim()} /> : null}
+          {product.inventoryQuantity != null ? (
+            <DetailRow
+              label="Available"
+              value={
+                product.inventoryQuantity <= 0
+                  ? "Sold out"
+                  : `${product.inventoryQuantity} in stock`
+              }
+            />
+          ) : null}
         </dl>
       </Card>
     );

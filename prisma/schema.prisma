@@ -339,10 +339,12 @@ model Listing {
 }
 
 model ProductDetails {
-  offeringId       String  @id
-  offering         Offering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
-  requiresShipping Boolean @default(true)
-  sku              String?
+  offeringId         String  @id
+  offering           Offering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  requiresShipping   Boolean @default(true)
+  sku                String?
+  /// Remaining sellable units. Null = unlimited (not tracked). Managed in RootSync, not Stripe.
+  inventoryQuantity  Int?
 }
 
 model ServiceDetails {
@@ -619,6 +621,8 @@ model OfferingVariant {
   durationMinutes Int?
   /// Optional SKU for PRODUCT variants
   sku             String?
+  /// Remaining units for this option. Null = use product-level inventory or unlimited.
+  inventoryQuantity Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   bookings        Booking[]

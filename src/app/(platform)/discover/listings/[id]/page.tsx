@@ -34,7 +34,7 @@ const offeringDetailSelect = {
   status: true,
   paymentUrl: true,
   productUrl: true,
-  productDetails: { select: { requiresShipping: true, sku: true } },
+  productDetails: { select: { requiresShipping: true, sku: true, inventoryQuantity: true } },
   serviceDetails: {
     select: {
       serviceKind: true,
@@ -64,6 +64,7 @@ const offeringDetailSelect = {
       priceCents: true,
       durationMinutes: true,
       sku: true,
+      inventoryQuantity: true,
     },
   },
 };
@@ -130,6 +131,7 @@ function PurchasePanel({
   vendorId,
   stripeCheckoutReady,
   paymentLinkUrl,
+  inventoryQuantity,
   detailProps,
   className,
   returnTo,
@@ -153,11 +155,13 @@ function PurchasePanel({
     priceCents: number;
     durationMinutes: number | null;
     sku: string | null;
+    inventoryQuantity: number | null;
   }[];
   isOwnerPreview: boolean;
   vendorId: string;
   stripeCheckoutReady: boolean;
   paymentLinkUrl: string | null;
+  inventoryQuantity: number | null;
   detailProps: Omit<Parameters<typeof ListingDetailHighlights>[0], "priceCents" | "variantCount">;
   className?: string;
   returnTo?: string | null;
@@ -219,6 +223,7 @@ function PurchasePanel({
             paymentLinkUrl={paymentLinkUrl}
             productUrl={offering.productUrl}
             stripeCheckoutReady={stripeCheckoutReady}
+            inventoryQuantity={inventoryQuantity}
           />
         )}
 
@@ -383,6 +388,7 @@ export default async function DiscoverListingPage({
                 vendorId={v.id}
                 stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}
                 paymentLinkUrl={checkoutOptions.paymentLinkUrl}
+                inventoryQuantity={offering.productDetails?.inventoryQuantity ?? null}
                 detailProps={detailProps}
                 returnTo={returnTo}
                 profileName={v.displayName}
@@ -454,6 +460,7 @@ export default async function DiscoverListingPage({
                 vendorId={v.id}
                 stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}
                 paymentLinkUrl={checkoutOptions.paymentLinkUrl}
+                inventoryQuantity={offering.productDetails?.inventoryQuantity ?? null}
                 detailProps={detailProps}
                 className="overflow-hidden border-fix-border/15 p-0 shadow-soft"
                 returnTo={returnTo}

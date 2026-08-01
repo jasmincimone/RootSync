@@ -158,6 +158,8 @@ Examples:
 - Plants
 - Handmade Goods
 
+Vendors may optionally track **available quantity** on the Product (or per option/variant) in RootSync. Stripe Connect Products do not store inventory — RootSync decrements stock when an order is paid.
+
 ---
 
 ## Service

@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { deleteServiceBookingConfig } from "@/lib/serviceBookingConfig";
 
 import { normalizeProductUrl } from "@/lib/paymentUrl";
+import { normalizeResourceFileRef } from "@/lib/resourceFileShared";
 import {
   LISTING_TYPE,
   RESOURCE_SUBTYPE,
@@ -20,6 +21,8 @@ import {
 export type ProductDetailsInput = {
   requiresShipping?: boolean;
   sku?: string | null;
+  /** Remaining units; null = unlimited / not tracked */
+  inventoryQuantity?: number | null;
 };
 
 export type ServiceDetailsInput = {
@@ -161,6 +164,9 @@ export function parseOfferingDetailsFromBody(
           ? { requiresShipping: Boolean(product.requiresShipping) }
           : {}),
         sku: parseOptionalString(product.sku),
+        ...(product.inventoryQuantity !== undefined || "inventoryQuantity" in product
+          ? { inventoryQuantity: parseOptionalInt(product.inventoryQuantity) ?? null }
+          : {}),
       },
     };
   }
@@ -202,7 +208,7 @@ export function parseOfferingDetailsFromBody(
     const resource = (raw.resource ?? raw) as Record<string, unknown>;
     let fileUrl: string | null | undefined;
     if ("fileUrl" in resource) {
-      fileUrl = normalizeProductUrl(resource.fileUrl);
+      fileUrl = normalizeResourceFileRef(resource.fileUrl);
     }
     let resourceSubtype: ResourceSubtype | null | undefined;
     const st = resource.resourceSubtype;
@@ -267,6 +273,7 @@ export function serializeOfferingDetails(
     productDetails: {
       requiresShipping: boolean;
       sku: string | null;
+      inventoryQuantity: number | null;
     } | null;
     serviceDetails: {
       serviceKind: string;
@@ -300,6 +307,7 @@ export function serializeOfferingDetails(
       ? {
           requiresShipping: offering.productDetails.requiresShipping,
           sku: offering.productDetails.sku,
+          inventoryQuantity: offering.productDetails.inventoryQuantity,
         }
       : null,
     service: offering.serviceDetails
@@ -388,6 +396,7 @@ async function createDetailForType(
           offeringId,
           requiresShipping: details?.product?.requiresShipping ?? true,
           sku: details?.product?.sku ?? null,
+          inventoryQuantity: details?.product?.inventoryQuantity ?? null,
         },
       });
       break;
@@ -451,12 +460,16 @@ export async function upsertOfferingDetails(
           offeringId,
           requiresShipping: details.product.requiresShipping ?? true,
           sku: details.product.sku ?? null,
+          inventoryQuantity: details.product.inventoryQuantity ?? null,
         },
         update: {
           ...(details.product.requiresShipping !== undefined
             ? { requiresShipping: details.product.requiresShipping }
             : {}),
           ...(details.product.sku !== undefined ? { sku: details.product.sku } : {}),
+          ...(details.product.inventoryQuantity !== undefined
+            ? { inventoryQuantity: details.product.inventoryQuantity }
+            : {}),
         },
       });
       break;

@@ -23,6 +23,8 @@ type Props = {
   paymentLinkUrl?: string | null;
   productUrl?: string | null;
   stripeCheckoutReady?: boolean;
+  /** Product-level remaining stock; null/undefined = unlimited */
+  inventoryQuantity?: number | null;
   compact?: boolean;
 };
 
@@ -38,6 +40,7 @@ export function MarketplaceListingPurchase({
   paymentLinkUrl,
   productUrl,
   stripeCheckoutReady = false,
+  inventoryQuantity = null,
   compact = false,
 }: Props) {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
@@ -51,6 +54,13 @@ export function MarketplaceListingPurchase({
     ? variants.find((variant) => variant.id === selectedVariantId)
     : null;
   const effectivePriceCents = selectedVariant?.priceCents ?? priceCents;
+  const availableStock =
+    listingType === LISTING_TYPE.PRODUCT
+      ? selectedVariant?.inventoryQuantity != null
+        ? selectedVariant.inventoryQuantity
+        : inventoryQuantity
+      : null;
+  const soldOut = availableStock != null && availableStock <= 0;
   const isFreeResource =
     isResource && Number.isFinite(effectivePriceCents) && effectivePriceCents <= 0;
   const freeEventUnsupported =
@@ -70,6 +80,14 @@ export function MarketplaceListingPurchase({
       : "";
 
   function renderProductCheckout() {
+    if (soldOut) {
+      return (
+        <p className="w-full rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 px-4 py-3 text-sm font-medium text-fix-heading">
+          Sold out
+        </p>
+      );
+    }
+
     if (isFreeResource) {
       return (
         <ClaimFreeResourceButton
@@ -173,6 +191,12 @@ export function MarketplaceListingPurchase({
           onSelect={setSelectedVariantId}
           listingType={listingType}
         />
+      ) : null}
+
+      {availableStock != null && availableStock > 0 ? (
+        <p className="text-sm text-fix-text-muted">
+          {availableStock === 1 ? "1 left" : `${availableStock} available`}
+        </p>
       ) : null}
 
       <div className={compact ? "flex flex-col gap-2" : "flex flex-wrap items-center gap-2"}>
