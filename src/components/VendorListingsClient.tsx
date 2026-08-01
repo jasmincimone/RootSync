@@ -95,7 +95,7 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
     const previous = listings;
     setListings(next);
     try {
-      const res = await fetch("/api/vendor/listings/reorder", {
+      const res = await fetch("/api/vendor/listings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ listingIds: next.map((row) => row.id) }),

@@ -40,7 +40,10 @@ export async function GET() {
   }
 
   const offerings = await prisma.offering.findMany({
-    where: { vendorProfileId: gate.vendorProfileId },
+    where: {
+      vendorProfileId: gate.vendorProfileId,
+      listing: { isNot: null },
+    },
     include: vendorOfferingInclude,
   });
   const listings = offerings
@@ -51,6 +54,82 @@ export async function GET() {
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
   return NextResponse.json({ listings });
+}
+
+/**
+ * Reorder listings. Body: { listingIds: string[] } in desired display order.
+ * Lives here (not /listings/reorder) so it can’t collide with /listings/[id].
+ */
+export async function PATCH(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const limited = rateLimitResponse(request, "upload", {
+    userId: session.user.id,
+    scope: "vendor-listing-write",
+    message: "Too many listing changes. Try again shortly.",
+  });
+  if (limited) return limited;
+
+  const gate = await requireApprovedVendorGate(session.user.id);
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: 403 });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as { listingIds?: unknown };
+  const listingIds = Array.isArray(body.listingIds)
+    ? body.listingIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+    : [];
+
+  if (listingIds.length === 0) {
+    return NextResponse.json({ error: "listingIds must be a non-empty array." }, { status: 400 });
+  }
+
+  const uniqueIds = [...new Set(listingIds)];
+  if (uniqueIds.length !== listingIds.length) {
+    return NextResponse.json({ error: "listingIds must not contain duplicates." }, { status: 400 });
+  }
+
+  const owned = await prisma.listing.findMany({
+    where: { vendorProfileId: gate.vendorProfileId },
+    select: { id: true },
+  });
+  const ownedIds = new Set(owned.map((row) => row.id));
+  if (
+    uniqueIds.length !== ownedIds.size ||
+    uniqueIds.some((id) => !ownedIds.has(id))
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Listing order is out of date. Refresh the page, then try reordering again.",
+      },
+      { status: 409 },
+    );
+  }
+
+  try {
+    await prisma.$transaction(
+      uniqueIds.map((id, index) =>
+        prisma.listing.update({
+          where: { id },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+  } catch (e) {
+    console.error("[vendor listings reorder]", e);
+    return NextResponse.json(
+      {
+        error:
+          "Could not save listing order. If this keeps happening, the sortOrder migration may not have run yet.",
+      },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(request: NextRequest) {
