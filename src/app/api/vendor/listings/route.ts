@@ -91,11 +91,17 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "listingIds must not contain duplicates." }, { status: 400 });
   }
 
-  const owned = await prisma.listing.findMany({
-    where: { vendorProfileId: gate.vendorProfileId },
-    select: { id: true },
+  // Same set GET exposes (offerings that still have a Listing row).
+  const owned = await prisma.offering.findMany({
+    where: {
+      vendorProfileId: gate.vendorProfileId,
+      listing: { isNot: null },
+    },
+    select: { listing: { select: { id: true } } },
   });
-  const ownedIds = new Set(owned.map((row) => row.id));
+  const ownedIds = new Set(
+    owned.map((row) => row.listing?.id).filter((id): id is string => Boolean(id)),
+  );
   if (
     uniqueIds.length !== ownedIds.size ||
     uniqueIds.some((id) => !ownedIds.has(id))
@@ -110,20 +116,23 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    await prisma.$transaction(
-      uniqueIds.map((id, index) =>
-        prisma.listing.update({
-          where: { id },
-          data: { sortOrder: index },
-        }),
-      ),
-    );
+    // Raw SQL: works even if a long-lived next-dev PrismaClient was generated before
+    // Listing.sortOrder existed (field-level client cache drift).
+    for (let index = 0; index < uniqueIds.length; index++) {
+      await prisma.$executeRaw`
+        UPDATE "Listing"
+        SET "sortOrder" = ${index}, "updatedAt" = NOW()
+        WHERE "id" = ${uniqueIds[index]!}
+          AND "vendorProfileId" = ${gate.vendorProfileId}
+      `;
+    }
   } catch (e) {
     console.error("[vendor listings reorder]", e);
+    const detail = e instanceof Error ? e.message : String(e);
     return NextResponse.json(
       {
-        error:
-          "Could not save listing order. If this keeps happening, the sortOrder migration may not have run yet.",
+        error: "Could not save listing order.",
+        hint: detail.slice(0, 400),
       },
       { status: 500 },
     );

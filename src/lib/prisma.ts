@@ -2,7 +2,8 @@ import { Prisma, PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
-  prismaSchemaModels?: readonly string[];
+  /** Invalidates the HMR singleton when models or fields change after `prisma generate`. */
+  prismaSchemaId?: string;
 };
 
 /** CamelCase delegate keys Prisma exposes on the client (e.g. directoryListing). */
@@ -12,10 +13,24 @@ function expectedModelDelegates(): string[] {
   );
 }
 
+/**
+ * Fingerprint model + field names from the generated client.
+ * Delegate-only checks miss column adds (e.g. Listing.sortOrder) and leave a stale
+ * PrismaClient in globalThis across long-lived `next dev` processes.
+ */
+function currentSchemaId(): string {
+  return Prisma.dmmf.datamodel.models
+    .map((model) => `${model.name}:{${model.fields.map((field) => field.name).join(",")}}`)
+    .join("|");
+}
+
 function clientHasCurrentSchema(client: PrismaClient): boolean {
   const expected = expectedModelDelegates();
   const record = client as unknown as Record<string, unknown>;
-  return expected.every((delegate) => typeof record[delegate] !== "undefined");
+  if (!expected.every((delegate) => typeof record[delegate] !== "undefined")) {
+    return false;
+  }
+  return globalForPrisma.prismaSchemaId === currentSchemaId();
 }
 
 function createPrisma(): PrismaClient {
@@ -30,7 +45,7 @@ function replacePrismaClient(cached: PrismaClient | undefined): PrismaClient {
   }
   const fresh = createPrisma();
   globalForPrisma.prisma = fresh;
-  globalForPrisma.prismaSchemaModels = expectedModelDelegates();
+  globalForPrisma.prismaSchemaId = currentSchemaId();
   return fresh;
 }
 

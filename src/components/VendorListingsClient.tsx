@@ -103,7 +103,10 @@ export function VendorListingsClient({ hideHeader = false }: { hideHeader?: bool
       const data = await readJsonSafe(res);
       if (!res.ok) {
         setListings(previous);
-        setError(typeof data.error === "string" ? data.error : "Failed to reorder listings.");
+        const base =
+          typeof data.error === "string" ? data.error : "Failed to reorder listings.";
+        const hint = typeof data.hint === "string" ? data.hint.trim() : "";
+        setError(hint ? `${base} (${hint})` : base);
       }
     } catch (e) {
       setListings(previous);
