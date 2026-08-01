@@ -42,9 +42,15 @@ export async function GET() {
   const offerings = await prisma.offering.findMany({
     where: { vendorProfileId: gate.vendorProfileId },
     include: vendorOfferingInclude,
-    orderBy: { updatedAt: "desc" },
   });
-  return NextResponse.json({ listings: offerings.map(serializeVendorOffering) });
+  const listings = offerings
+    .map(serializeVendorOffering)
+    .sort((a, b) => {
+      const byOrder = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      if (byOrder !== 0) return byOrder;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  return NextResponse.json({ listings });
 }
 
 export async function POST(request: NextRequest) {

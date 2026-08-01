@@ -206,6 +206,7 @@ export function serializeVendorOffering(row: VendorOfferingRow) {
     vendorNotes: row.vendorNotes,
     scheduledPublishAt: row.scheduledPublishAt,
     publicSlug: row.listing?.publicSlug ?? null,
+    sortOrder: row.listing?.sortOrder ?? 0,
     visibility: row.listing?.visibility ?? LISTING_VISIBILITY.HIDDEN,
     details: serializeOfferingDetails(row),
     booking: serializeServiceBookingConfig(row),
@@ -239,6 +240,12 @@ export async function createOfferingWithListing(
     scheduledPublishAt: input.scheduledPublishAt ?? null,
   });
 
+  const nextSort = await prisma.listing.aggregate({
+    where: { vendorProfileId: input.vendorProfileId },
+    _max: { sortOrder: true },
+  });
+  const sortOrder = (nextSort._max.sortOrder ?? -1) + 1;
+
   const offering = await prisma.offering.create({
     data: {
       vendorProfileId: input.vendorProfileId,
@@ -263,6 +270,7 @@ export async function createOfferingWithListing(
           category: input.category ?? null,
           imageUrl: input.imageUrl ?? null,
           publicSlug: input.publicSlug ?? null,
+          sortOrder,
           ...listingVisibilityForOffering(resolved.status),
         },
       },

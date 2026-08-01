@@ -211,6 +211,7 @@ export function VendorOfferingForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const lowestVariantCents =
     variantDrafts.length > 0
@@ -443,6 +444,35 @@ export function VendorOfferingForm({
     } catch {
       setError("Something went wrong. Check your connection and try again.");
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (mode !== "edit" || !listingId) return;
+    const ok = window.confirm(
+      "Delete this listing permanently?\n\nThis cannot be undone. Prefer Archive if you might offer it again.",
+    );
+    if (!ok) return;
+
+    setDeleting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`/api/vendor/listings/${listingId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Failed to delete listing.");
+        setDeleting(false);
+        return;
+      }
+      setSuccess("Deleted.");
+      window.setTimeout(() => {
+        router.push("/account/vendor/listings");
+        router.refresh();
+      }, 500);
+    } catch {
+      setError("Something went wrong. Check your connection and try again.");
+      setDeleting(false);
     }
   }
 
@@ -1017,7 +1047,7 @@ export function VendorOfferingForm({
               type="button"
               variant="secondary"
               size="sm"
-              disabled={saving}
+              disabled={saving || deleting}
               onClick={() => setStep((s) => Math.max(0, s - 1))}
             >
               Back
@@ -1028,18 +1058,44 @@ export function VendorOfferingForm({
               type="button"
               variant="cta"
               size="sm"
-              disabled={saving}
+              disabled={saving || deleting}
               onClick={() => setStep((s) => Math.min(lastStepIndex, s + 1))}
             >
               Next
             </Button>
           ) : (
-            <Button type="submit" disabled={saving || !!success} variant="cta" size="sm">
+            <Button
+              type="submit"
+              disabled={saving || deleting || !!success}
+              variant="cta"
+              size="sm"
+            >
               {saving ? "Saving…" : mode === "create" ? "Create offering" : "Save changes"}
             </Button>
           )}
         </div>
       </form>
+
+      {mode === "edit" && listingId ? (
+        <div className="mt-8 space-y-3 border-t border-fix-border/15 pt-6">
+          <h3 className="text-sm font-semibold text-fix-heading">Delete listing</h3>
+          <p className="text-xs text-fix-text-muted">
+            Permanently removes this offering from RootSync. Prefer{" "}
+            <strong className="font-medium text-fix-heading">Archived</strong> if you might sell it
+            again. Past orders keep their history; listings with service bookings cannot be deleted.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={saving || deleting}
+            className="border-bark/30 text-bark hover:bg-bark/5"
+            onClick={() => void handleDelete()}
+          >
+            {deleting ? "Deleting…" : "Delete listing"}
+          </Button>
+        </div>
+      ) : null}
     </Card>
   );
 }

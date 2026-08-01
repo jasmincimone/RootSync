@@ -327,6 +327,8 @@ model Listing {
   /// PUBLIC | HIDDEN — see LISTING_VISIBILITY
   visibility      String   @default("HIDDEN")
   publishedAt     DateTime?
+  /// Vendor-controlled display order (lower = first on storefront / listings hub)
+  sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   orderItems      OrderItem[]
@@ -334,6 +336,7 @@ model Listing {
   vendorPulseReviews VendorPulseReview[]
 
   @@index([vendorProfileId])
+  @@index([vendorProfileId, sortOrder])
   @@index([listingType])
   @@index([visibility])
 }

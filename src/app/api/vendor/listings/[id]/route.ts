@@ -27,6 +27,7 @@ import { syncOfferingStripeProduct } from "@/lib/offeringStripeProduct";
 import { prisma } from "@/lib/prisma";
 import {
   EVENT_ATTENDANCE_MODE,
+  FAVORITE_TARGET_TYPE,
   LISTING_TYPE,
   OFFERING_STATUS,
   type ListingType,
@@ -398,19 +399,48 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const limited = rateLimitResponse(request, "upload", {
+    userId: session.user.id,
+    scope: "vendor-listing-write",
+    message: "Too many listing changes. Try again shortly.",
+  });
+  if (limited) return limited;
+
   const { id } = await params;
   const existing = await getVendorOfferingByListingId(session.user.id, id);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  await prisma.offering.delete({ where: { id: existing.offering.id } });
+  const bookingCount = await prisma.booking.count({
+    where: { listingId: existing.listing.id },
+  });
+  if (bookingCount > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "This listing has bookings, so it can’t be deleted. Set status to Archived instead.",
+      },
+      { status: 409 },
+    );
+  }
+
+  await prisma.$transaction([
+    prisma.favorite.deleteMany({
+      where: {
+        targetType: FAVORITE_TARGET_TYPE.LISTING,
+        targetId: existing.listing.id,
+      },
+    }),
+    prisma.offering.delete({ where: { id: existing.offering.id } }),
+  ]);
+
   return NextResponse.json({ ok: true });
 }

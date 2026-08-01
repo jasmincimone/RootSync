@@ -45,7 +45,7 @@ const publicVendorInclude = {
     include: {
       offering: { select: { paymentUrl: true, productUrl: true } },
     },
-    orderBy: { updatedAt: "desc" as const },
+    orderBy: [{ sortOrder: "asc" as const }, { updatedAt: "desc" as const }],
   },
 } satisfies Prisma.VendorProfileInclude;
 
