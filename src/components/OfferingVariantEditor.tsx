@@ -10,6 +10,7 @@ export type VariantDraft = {
   clientKey: string;
   title: string;
   priceDollars: string;
+  unitsIncluded: string;
   durationMinutes: string;
   sku: string;
   inventoryQuantity: string;
@@ -23,6 +24,7 @@ function newDraft(): VariantDraft {
     clientKey: crypto.randomUUID(),
     title: "",
     priceDollars: "",
+    unitsIncluded: "1",
     durationMinutes: "",
     sku: "",
     inventoryQuantity: "",
@@ -35,6 +37,7 @@ export function draftsFromSerialized(variants: SerializedOfferingVariant[]): Var
     clientKey: v.id,
     title: v.title,
     priceDollars: (v.priceCents / 100).toFixed(2),
+    unitsIncluded: String(Math.max(1, v.unitsIncluded ?? 1)),
     durationMinutes: v.durationMinutes?.toString() ?? "",
     sku: v.sku ?? "",
     inventoryQuantity: v.inventoryQuantity != null ? String(v.inventoryQuantity) : "",
@@ -47,6 +50,7 @@ export function draftsToPayload(
 ): Array<{
   title: string;
   priceCents: number;
+  unitsIncluded: number;
   durationMinutes?: number | null;
   sku?: string | null;
   inventoryQuantity?: number | null;
@@ -57,9 +61,14 @@ export function draftsToPayload(
     const durationMinutes = d.durationMinutes.trim()
       ? Number.parseInt(d.durationMinutes, 10)
       : null;
+    const unitsIncluded = Math.max(1, Number.parseInt(d.unitsIncluded || "1", 10) || 1);
     return {
       title: d.title.trim(),
       priceCents,
+      unitsIncluded:
+        listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE
+          ? unitsIncluded
+          : 1,
       durationMinutes: listingType === LISTING_TYPE.SERVICE ? durationMinutes : null,
       sku: listingType === LISTING_TYPE.PRODUCT ? d.sku.trim() || null : null,
       inventoryQuantity:
@@ -87,37 +96,64 @@ type Props = {
   disabled?: boolean;
 };
 
+function optionsHelp(listingType: string): { heading: string; body: string; empty: string; titlePh: string } {
+  if (listingType === LISTING_TYPE.EVENT) {
+    return {
+      heading: "Ticket tiers",
+      body: "One event, multiple ticket types — General Admission, VIP, Diamond, Platinum, Lifetime, etc. Shared schedule and attendance apply to all.",
+      empty:
+        "No ticket tiers yet — uses the single price above. Add options for General Admission, VIP, and more.",
+      titlePh: "e.g. General Admission",
+    };
+  }
+  if (listingType === LISTING_TYPE.PRODUCT) {
+    return {
+      heading: "Deals",
+      body: "Members pick one deal at checkout (price + how many items they get). Example: 2 for $5, 4 for $10, or 2 hats for $150. Pair with Options below so they configure each item (size, color, variety).",
+      empty:
+        "No deals yet — uses the single price above. Add deals like 2 for $5 / 4 for $10, or one-item priced choices.",
+      titlePh: "e.g. 2 for $5",
+    };
+  }
+  if (listingType === LISTING_TYPE.SERVICE) {
+    return {
+      heading: "Options & variations",
+      body: "One offering, multiple choices — each with its own name, price, and session length. Shared description, image, and availability apply to all.",
+      empty:
+        "No variations — uses the single price above. Add options for tiers like Seed Session / Garden Blueprint.",
+      titlePh: "e.g. Seed Session",
+    };
+  }
+  return {
+    heading: "Options & variations",
+    body: "One offering, multiple choices — each with its own name and price. Shared description and image apply to all.",
+    empty: "No variations — uses the single price above. Add options if you offer more than one price.",
+    titlePh: "e.g. Standard",
+  };
+}
+
 export function OfferingVariantEditor({ listingType, variants, onChange, disabled }: Props) {
   const showDuration = listingType === LISTING_TYPE.SERVICE;
   const showSku = listingType === LISTING_TYPE.PRODUCT;
   const isEvent = listingType === LISTING_TYPE.EVENT;
+  const help = optionsHelp(listingType);
+  const rowLabel = isEvent ? "Ticket" : showSku ? "Deal" : "Option";
 
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold text-fix-heading">
-          {isEvent ? "Ticket tiers" : "Options & variations"}
-        </h3>
-        <p className="mt-1 text-xs text-fix-text-muted">
-          {isEvent
-            ? "One event, multiple ticket types — General Admission, VIP, Diamond, Platinum, Lifetime, etc. Shared schedule and attendance apply to all."
-            : `One offering, multiple choices — each with its own name and price${
-                showDuration ? " and session length" : ""
-              }. Shared description, image, and availability apply to all. Describe what each option includes in your listing description above.`}
-        </p>
+        <h3 className="text-sm font-semibold text-fix-heading">{help.heading}</h3>
+        <p className="mt-1 text-xs text-fix-text-muted">{help.body}</p>
         {variants.length > 1 ? (
           <p className="mt-1 text-xs text-fix-text-muted">
-            Use the arrows to set the order Members see when choosing an option.
+            Use the arrows to set the order Members see when choosing a{" "}
+            {rowLabel.toLowerCase()}.
           </p>
         ) : null}
       </div>
 
       {variants.length === 0 ? (
-        <p className="text-sm text-fix-text-muted">
-          {isEvent
-            ? "No ticket tiers yet — uses the single price above. Add options for General Admission, VIP, and more."
-            : "No variations — uses the single price above. Add options for tiers like Seed Session / Garden Blueprint."}
-        </p>
+        <p className="text-sm text-fix-text-muted">{help.empty}</p>
       ) : (
         <ul className="space-y-3">
           {variants.map((v, index) => (
@@ -127,7 +163,7 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium uppercase tracking-wide text-fix-text-muted">
-                  Option {index + 1}
+                  {rowLabel} {index + 1}
                 </span>
                 <div className="flex items-center gap-1">
                   {variants.length > 1 ? (
@@ -137,7 +173,7 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                         disabled={disabled || index === 0}
                         onClick={() => onChange(moveVariant(variants, index, -1))}
                         className="rounded-lg border border-fix-border/20 p-1.5 text-fix-text-muted hover:bg-fix-surface disabled:opacity-40"
-                        aria-label={`Move option ${index + 1} up`}
+                        aria-label={`Move ${rowLabel.toLowerCase()} ${index + 1} up`}
                       >
                         <ArrowUp className="h-4 w-4" />
                       </button>
@@ -146,7 +182,7 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                         disabled={disabled || index === variants.length - 1}
                         onClick={() => onChange(moveVariant(variants, index, 1))}
                         className="rounded-lg border border-fix-border/20 p-1.5 text-fix-text-muted hover:bg-fix-surface disabled:opacity-40"
-                        aria-label={`Move option ${index + 1} down`}
+                        aria-label={`Move ${rowLabel.toLowerCase()} ${index + 1} down`}
                       >
                         <ArrowDown className="h-4 w-4" />
                       </button>
@@ -174,7 +210,7 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                       ),
                     )
                   }
-                  placeholder={isEvent ? "e.g. General Admission" : "e.g. Seed Session"}
+                  placeholder={help.titlePh}
                   className={inputClass}
                 />
               </div>
@@ -199,6 +235,34 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                     className={inputClass}
                   />
                 </div>
+                {showSku ? (
+                  <div>
+                    <label className="block text-sm font-medium text-fix-text">
+                      Items in this deal *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      step={1}
+                      value={v.unitsIncluded}
+                      disabled={disabled}
+                      onChange={(e) =>
+                        onChange(
+                          variants.map((row) =>
+                            row.clientKey === v.clientKey
+                              ? { ...row, unitsIncluded: e.target.value }
+                              : row,
+                          ),
+                        )
+                      }
+                      className={inputClass}
+                    />
+                    <p className="mt-1 text-xs text-fix-text-muted">
+                      Buyers configure options once per item (e.g. 2 = two hats / packs).
+                    </p>
+                  </div>
+                ) : null}
                 {showDuration ? (
                   <div>
                     <label className="block text-sm font-medium text-fix-text">Time (mins) *</label>
@@ -278,7 +342,7 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
         disabled={disabled}
         onClick={() => onChange([...variants, newDraft()])}
       >
-        {isEvent ? "Add ticket tier" : "Add option"}
+        {isEvent ? "Add ticket tier" : showSku ? "Add deal" : "Add option"}
       </Button>
     </div>
   );

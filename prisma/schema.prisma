@@ -303,6 +303,7 @@ model Offering {
   intakeQuestions    ServiceIntakeQuestion[]
   bookings           Booking[]
   variants           OfferingVariant[]
+  optionGroups       OfferingOptionGroup[]
 
   @@index([vendorProfileId])
   @@index([status])
@@ -465,6 +466,8 @@ model OrderItem {
   listing              Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
   variantId            String?
   variant              OfferingVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  /// Per-unit option choices for a deal, e.g. [{ unit: 1, choices: [{ groupName, valueLabel }] }]
+  unitSelections       Json?
   order                Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
@@ -612,7 +615,7 @@ model BookingIntakeAnswer {
   @@index([bookingId])
 }
 
-/// Priced option within an Offering (e.g. Seed Session $50/30min, Garden Blueprint $100/60min).
+/// Priced deal within an Offering (e.g. 2 packs $5, Seed Session $50/30min).
 model OfferingVariant {
   id              String   @id @default(cuid())
   offeringId      String
@@ -620,11 +623,13 @@ model OfferingVariant {
   sortOrder       Int      @default(0)
   title           String
   priceCents      Int
+  /// How many configurable units this deal includes (hats, packs, etc.). Default 1.
+  unitsIncluded   Int      @default(1)
   /// Session length for SERVICE variants; optional for products/resources
   durationMinutes Int?
   /// Optional SKU for PRODUCT variants
   sku             String?
-  /// Remaining units for this option. Null = use product-level inventory or unlimited.
+  /// Remaining deals for this option. Null = use product-level inventory or unlimited.
   inventoryQuantity Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -633,6 +638,36 @@ model OfferingVariant {
 
   @@index([offeringId])
   @@index([offeringId, sortOrder])
+}
+
+/// Option group on an Offering (Size, Color, Seed variety). Applied per unit in a deal.
+model OfferingOptionGroup {
+  id         String                @id @default(cuid())
+  offeringId String
+  offering   Offering              @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  sortOrder  Int                   @default(0)
+  name       String
+  values     OfferingOptionValue[]
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@index([offeringId])
+  @@index([offeringId, sortOrder])
+}
+
+model OfferingOptionValue {
+  id        String              @id @default(cuid())
+  groupId   String
+  group     OfferingOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sortOrder Int                 @default(0)
+  label     String
+  /// Optional image for this choice (e.g. seed photo)
+  imageUrl  String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@index([groupId])
+  @@index([groupId, sortOrder])
 }
 
 // ─── Growth Workspace (ADR-007) ─────────────────────────────────────────────

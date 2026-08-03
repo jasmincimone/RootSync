@@ -6,6 +6,8 @@ import { LISTING_TYPE, type ListingType } from "@/lib/roles";
 export type OfferingVariantInput = {
   title: string;
   priceCents: number;
+  /** Configurable units in this deal (default 1). */
+  unitsIncluded?: number;
   durationMinutes?: number | null;
   sku?: string | null;
   inventoryQuantity?: number | null;
@@ -17,6 +19,7 @@ export type SerializedOfferingVariant = {
   sortOrder: number;
   title: string;
   priceCents: number;
+  unitsIncluded: number;
   durationMinutes: number | null;
   sku: string | null;
   inventoryQuantity: number | null;
@@ -86,9 +89,19 @@ export function parseOfferingVariantsFromBody(
     const inventoryQuantity =
       "inventoryQuantity" in item ? parseOptionalInt(item.inventoryQuantity) ?? null : null;
 
+    let unitsIncluded = 1;
+    if ("unitsIncluded" in item) {
+      const parsed = parseOptionalInt(item.unitsIncluded);
+      if (parsed === undefined || parsed === null || parsed < 1 || parsed > 50) {
+        throw new Error(`Deal “${title}” needs units included between 1 and 50.`);
+      }
+      unitsIncluded = parsed;
+    }
+
     variants.push({
       title,
       priceCents,
+      unitsIncluded,
       durationMinutes: durationMinutes ?? null,
       sku: sku ?? null,
       inventoryQuantity,
@@ -108,6 +121,7 @@ export function serializeOfferingVariants(
     sortOrder: number;
     title: string;
     priceCents: number;
+    unitsIncluded?: number;
     durationMinutes: number | null;
     sku: string | null;
     inventoryQuantity: number | null;
@@ -118,6 +132,7 @@ export function serializeOfferingVariants(
     sortOrder: v.sortOrder,
     title: v.title,
     priceCents: v.priceCents,
+    unitsIncluded: Math.max(1, v.unitsIncluded ?? 1),
     durationMinutes: v.durationMinutes,
     sku: v.sku,
     inventoryQuantity: v.inventoryQuantity,
@@ -151,6 +166,7 @@ export async function syncOfferingVariants(
       sortOrder: v.sortOrder,
       title: v.title,
       priceCents: v.priceCents,
+      unitsIncluded: Math.max(1, v.unitsIncluded ?? 1),
       durationMinutes: v.durationMinutes ?? null,
       sku: v.sku ?? null,
       inventoryQuantity: v.inventoryQuantity ?? null,
@@ -174,6 +190,7 @@ export async function resolveOfferingVariant(
   id: string;
   title: string;
   priceCents: number;
+  unitsIncluded: number;
   durationMinutes: number | null;
   sku: string | null;
   inventoryQuantity: number | null;
@@ -184,11 +201,14 @@ export async function resolveOfferingVariant(
   });
   if (variants.length === 0) return null;
   if (!variantId) {
-    throw new Error("Choose an option before continuing.");
+    throw new Error("Choose a deal before continuing.");
   }
   const variant = variants.find((v) => v.id === variantId);
   if (!variant) {
-    throw new Error("Selected option is not available.");
+    throw new Error("Selected deal is not available.");
   }
-  return variant;
+  return {
+    ...variant,
+    unitsIncluded: Math.max(1, variant.unitsIncluded ?? 1),
+  };
 }

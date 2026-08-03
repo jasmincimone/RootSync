@@ -13,6 +13,12 @@ import {
   draftsToPayload,
   type VariantDraft,
 } from "@/components/OfferingVariantEditor";
+import {
+  OfferingOptionGroupsEditor,
+  optionGroupDraftsFromSerialized,
+  optionGroupDraftsToPayload,
+  type OptionGroupDraft,
+} from "@/components/OfferingOptionGroupsEditor";
 import { STICKY_SUBPAGE_BAR_STACK } from "@/components/account/StickySubpageBar";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,6 +26,7 @@ import { FormFeedback } from "@/components/ui/FormFeedback";
 import { RESOURCE_SUBTYPE_OPTIONS } from "@/config/resourceSubtypes";
 import { cn } from "@/lib/cn";
 import type { SerializedOfferingDetails } from "@/lib/offeringDetails";
+import type { SerializedOfferingOptionGroup } from "@/lib/offeringOptions";
 import type { SerializedOfferingVariant } from "@/lib/offeringVariants";
 import { formatPrice } from "@/lib/format";
 import {
@@ -66,6 +73,7 @@ type Props = {
     details: SerializedOfferingDetails;
     booking?: SerializedServiceBookingConfig;
     variants?: SerializedOfferingVariant[];
+    optionGroups?: SerializedOfferingOptionGroup[];
   };
 };
 
@@ -90,7 +98,7 @@ const inputClass =
 const WIZARD_STEP_LABELS: Record<WizardStepKey, string> = {
   basics: "Basics",
   details: "Details",
-  options: "Options",
+  options: "Deals & options",
   checkout: "Checkout",
   publish: "Publish",
 };
@@ -181,6 +189,9 @@ export function VendorOfferingForm({
   );
   const [variantDrafts, setVariantDrafts] = useState<VariantDraft[]>(
     draftsFromSerialized(initial?.variants ?? []),
+  );
+  const [optionGroupDrafts, setOptionGroupDrafts] = useState<OptionGroupDraft[]>(
+    optionGroupDraftsFromSerialized(initial?.optionGroups ?? []),
   );
 
   const [resourceSubtype, setResourceSubtype] = useState<ResourceSubtype | "">(
@@ -299,7 +310,14 @@ export function VendorOfferingForm({
     if (hasVariants) {
       const payload = draftsToPayload(variantDrafts, listingType);
       if (payload.length === 0 || payload.some((v) => !v.title || v.priceCents < 0)) {
-        setError("Each option needs a title and price.");
+        setError("Each deal needs a title and price.");
+        return;
+      }
+      if (
+        listingType === LISTING_TYPE.PRODUCT &&
+        payload.some((v) => !v.unitsIncluded || v.unitsIncluded < 1)
+      ) {
+        setError("Each deal needs at least 1 item included.");
         return;
       }
       if (
@@ -307,6 +325,14 @@ export function VendorOfferingForm({
         payload.some((v) => !v.durationMinutes || v.durationMinutes <= 0)
       ) {
         setError("Each service option needs duration in minutes.");
+        return;
+      }
+    }
+
+    const optionPayload = optionGroupDraftsToPayload(optionGroupDrafts);
+    if (optionGroupDrafts.length > 0) {
+      if (optionPayload.some((g) => !g.name || g.values.length === 0)) {
+        setError("Each option needs a name and at least one choice.");
         return;
       }
     }
@@ -418,6 +444,7 @@ export function VendorOfferingForm({
             }
           : {}),
         variants: draftsToPayload(variantDrafts, listingType),
+        optionGroups: optionPayload,
       };
 
       const url =
@@ -940,22 +967,44 @@ export function VendorOfferingForm({
 
         {currentStepKey === "options" ? (
           <FormSection
-            title={listingType === LISTING_TYPE.EVENT ? "Ticket tiers" : "Options & pricing"}
+            title={
+              listingType === LISTING_TYPE.EVENT
+                ? "Ticket tiers"
+                : listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE
+                  ? "Deals & item options"
+                  : "Deals & pricing"
+            }
             description={
               listingType === LISTING_TYPE.EVENT
                 ? "General Admission, VIP, Platinum — each with its own price"
-                : "Variations members can choose at checkout"
+                : listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE
+                  ? "Add Deal 1, Deal 2… then item options underneath (Size, Color, Variety) for every item in a deal"
+                  : "Variations members can choose at checkout"
             }
-            defaultOpen={variantDrafts.length > 0 || listingType === LISTING_TYPE.EVENT}
+            defaultOpen={
+              variantDrafts.length > 0 ||
+              optionGroupDrafts.length > 0 ||
+              listingType === LISTING_TYPE.EVENT ||
+              listingType === LISTING_TYPE.PRODUCT
+            }
           >
-          <fieldset className="space-y-3">
-            <OfferingVariantEditor
-              listingType={listingType}
-              variants={variantDrafts}
-              onChange={setVariantDrafts}
-              disabled={saving}
-            />
-          </fieldset>
+            <fieldset className="space-y-6">
+              <OfferingVariantEditor
+                listingType={listingType}
+                variants={variantDrafts}
+                onChange={setVariantDrafts}
+                disabled={saving}
+              />
+              {listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE ? (
+                <div className="border-t border-fix-border/15 pt-6">
+                  <OfferingOptionGroupsEditor
+                    groups={optionGroupDrafts}
+                    onChange={setOptionGroupDrafts}
+                    disabled={saving}
+                  />
+                </div>
+              ) : null}
+            </fieldset>
           </FormSection>
         ) : null}
 

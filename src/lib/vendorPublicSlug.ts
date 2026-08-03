@@ -26,6 +26,7 @@ const RESERVED_VENDOR_PUBLIC_SLUGS = new Set([
   "rootsync",
   "rootsyncai",
   "search",
+  "seed-pack-grow-guides",
   "seller-terms",
   "shops",
   "signup",

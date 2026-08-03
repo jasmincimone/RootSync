@@ -62,24 +62,35 @@ export async function decrementInventoryForPaidOrder(orderId: string): Promise<v
 
   for (const item of items) {
     if (!item.listing || item.listing.listingType !== LISTING_TYPE.PRODUCT) continue;
-    const qty = item.quantity;
-    if (qty < 1) continue;
+    const dealQty = item.quantity;
+    if (dealQty < 1) continue;
 
     if (item.variantId) {
       const variant = await prisma.offeringVariant.findUnique({
         where: { id: item.variantId },
-        select: { inventoryQuantity: true },
+        select: { inventoryQuantity: true, unitsIncluded: true },
       });
       if (variant?.inventoryQuantity != null) {
         await prisma.offeringVariant.updateMany({
           where: {
             id: item.variantId,
-            inventoryQuantity: { gte: qty },
+            inventoryQuantity: { gte: dealQty },
           },
-          data: { inventoryQuantity: { decrement: qty } },
+          data: { inventoryQuantity: { decrement: dealQty } },
         });
         continue;
       }
+      const units = dealQty * Math.max(1, variant?.unitsIncluded ?? 1);
+      const productQty = item.listing.offering.productDetails?.inventoryQuantity;
+      if (productQty == null) continue;
+      await prisma.productDetails.updateMany({
+        where: {
+          offeringId: item.listing.offeringId,
+          inventoryQuantity: { gte: units },
+        },
+        data: { inventoryQuantity: { decrement: units } },
+      });
+      continue;
     }
 
     const productQty = item.listing.offering.productDetails?.inventoryQuantity;
@@ -88,9 +99,9 @@ export async function decrementInventoryForPaidOrder(orderId: string): Promise<v
     await prisma.productDetails.updateMany({
       where: {
         offeringId: item.listing.offeringId,
-        inventoryQuantity: { gte: qty },
+        inventoryQuantity: { gte: dealQty },
       },
-      data: { inventoryQuantity: { decrement: qty } },
+      data: { inventoryQuantity: { decrement: dealQty } },
     });
   }
 }

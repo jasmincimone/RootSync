@@ -17,6 +17,7 @@ import {
   vendorOfferingInclude,
 } from "@/lib/offeringListing";
 import { parseServiceBookingConfigFromBody } from "@/lib/serviceBookingConfig";
+import { parseOfferingOptionGroupsFromBody } from "@/lib/offeringOptions";
 import { parseOfferingVariantsFromBody } from "@/lib/offeringVariants";
 import { publishOfferingIfDue } from "@/lib/publishScheduledOfferings";
 import { normalizePaymentUrlPatch, normalizeProductUrlPatch } from "@/lib/paymentUrl";
@@ -281,6 +282,16 @@ export async function PATCH(
     variants = parseOfferingVariantsFromBody(body, nextListingType);
   } catch (e) {
     return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Invalid offering deals" },
+      { status: 400 },
+    );
+  }
+
+  let optionGroups;
+  try {
+    optionGroups = parseOfferingOptionGroupsFromBody(body);
+  } catch (e) {
+    return NextResponse.json(
       { error: e instanceof Error ? e.message : "Invalid offering options" },
       { status: 400 },
     );
@@ -299,6 +310,7 @@ export async function PATCH(
     body.intakeQuestions !== undefined;
 
   const hasVariants = "variants" in body;
+  const hasOptionGroups = "optionGroups" in body;
 
   let publicSlugUpdate: string | null | undefined;
   if ("publicSlug" in body) {
@@ -319,6 +331,7 @@ export async function PATCH(
     !hasDetails &&
     !hasBookingConfig &&
     !hasVariants &&
+    !hasOptionGroups &&
     publicSlugUpdate === undefined &&
     previousListingType === nextListingType
   ) {
@@ -334,6 +347,7 @@ export async function PATCH(
         details: hasDetails ? details : undefined,
         bookingConfig: hasBookingConfig ? bookingConfig : undefined,
         variants: hasVariants ? variants : undefined,
+        optionGroups: hasOptionGroups ? optionGroups : undefined,
         ...(publicSlugUpdate !== undefined ? { publicSlug: publicSlugUpdate } : {}),
       });
       await publishOfferingIfDue(tx, existing.offering.id);

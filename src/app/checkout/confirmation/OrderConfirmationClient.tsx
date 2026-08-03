@@ -40,6 +40,10 @@ type OrderFromApi = {
     priceCents: number;
     type: string;
     format: string | null;
+    unitSelections?: Array<{
+      unit: number;
+      choices: Array<{ groupName: string; valueLabel: string }>;
+    }> | null;
   }>;
   booking?: {
     id: string;
@@ -320,12 +324,24 @@ export function OrderConfirmationClient() {
           <ul className="mt-4 divide-y divide-fix-border/15">
             {order.items.map((item) => (
               <li key={item.id} className="flex justify-between gap-3 py-3 first:pt-0">
-                <span className="text-fix-text">
-                  {item.name} × {item.quantity}
-                  <span className="ml-1.5 text-xs text-fix-text-muted">
-                    ({orderItemTypeLabel(item.type)})
+                <div className="min-w-0 text-fix-text">
+                  <span>
+                    {item.name} × {item.quantity}
+                    <span className="ml-1.5 text-xs text-fix-text-muted">
+                      ({orderItemTypeLabel(item.type)})
+                    </span>
                   </span>
-                </span>
+                  {item.unitSelections && item.unitSelections.length > 0 ? (
+                    <ul className="mt-1 space-y-0.5 text-xs text-fix-text-muted">
+                      {item.unitSelections.map((unit) => (
+                        <li key={unit.unit}>
+                          Item {unit.unit}:{" "}
+                          {unit.choices.map((c) => `${c.groupName} ${c.valueLabel}`).join(" · ")}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
                 <span className="font-medium text-fix-heading shrink-0">
                   {formatPrice(item.priceCents * item.quantity)}
                 </span>

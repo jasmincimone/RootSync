@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, ORDER_ITEM_TYPE, orderItemTypeForListingType } from "@/lib/roles";
 import { publicListingWhere } from "@/lib/offeringListing";
+import {
+  formatUnitSelectionsSummary,
+  serializeOfferingOptionGroups,
+  validateAndSnapshotUnitSelections,
+  type UnitSelectionSnapshot,
+} from "@/lib/offeringOptions";
 import { resolveOfferingVariant } from "@/lib/offeringVariants";
 import {
   assertInventoryAvailable,
@@ -42,9 +48,21 @@ export type MarketplaceListingCheckout = {
       id: string;
       title: string;
       priceCents: number;
+      unitsIncluded: number;
       durationMinutes: number | null;
       sku: string | null;
       inventoryQuantity: number | null;
+    }>;
+    optionGroups: Array<{
+      id: string;
+      sortOrder: number;
+      name: string;
+      values: Array<{
+        id: string;
+        sortOrder: number;
+        label: string;
+        imageUrl: string | null;
+      }>;
     }>;
     eventDetails: {
       capacity: number | null;
@@ -93,9 +111,27 @@ export async function loadListingForCheckout(
               id: true,
               title: true,
               priceCents: true,
+              unitsIncluded: true,
               durationMinutes: true,
               sku: true,
               inventoryQuantity: true,
+            },
+          },
+          optionGroups: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              id: true,
+              sortOrder: true,
+              name: true,
+              values: {
+                orderBy: { sortOrder: "asc" },
+                select: {
+                  id: true,
+                  sortOrder: true,
+                  label: true,
+                  imageUrl: true,
+                },
+              },
             },
           },
           eventDetails: { select: { capacity: true } },
@@ -122,13 +158,29 @@ export async function createMarketplaceListingCheckout(args: {
   userId?: string;
   origin: string;
   variantId?: string | null;
+  unitSelections?: unknown;
 }): Promise<{ url: string; orderId: string }> {
   const { listing, quantity, email, userId, origin } = args;
   const variant = await resolveOfferingVariant(listing.offeringId, args.variantId);
+  const unitsIncluded = variant?.unitsIncluded ?? 1;
+  const optionGroups = serializeOfferingOptionGroups(listing.offering.optionGroups ?? []);
+  let unitSelections: UnitSelectionSnapshot[] | null = null;
+  try {
+    unitSelections = validateAndSnapshotUnitSelections({
+      unitsIncluded,
+      optionGroups,
+      raw: args.unitSelections,
+    });
+  } catch (e) {
+    throw e instanceof Error ? e : new Error("Invalid option selections.");
+  }
+
   const unitPriceCents = variant?.priceCents ?? listing.priceCents;
   const lineName = variant ? `${listing.title} — ${variant.title}` : listing.title;
+  const selectionSummary = formatUnitSelectionsSummary(unitSelections);
   const subtotalCents = unitPriceCents * quantity;
   const baseUrl = appBaseUrl(origin);
+  const stockUnits = quantity * unitsIncluded;
 
   const eventCapacity = listing.offering.eventDetails?.capacity;
   if (listing.listingType === LISTING_TYPE.EVENT && eventCapacity != null) {
@@ -155,7 +207,10 @@ export async function createMarketplaceListingCheckout(args: {
     productInventory: listing.offering.productDetails?.inventoryQuantity,
     variantInventory: variant?.inventoryQuantity,
   });
-  assertInventoryAvailable({ available, quantity });
+  // Deal-level inventory counts deals; product inventory counts individual units.
+  const inventoryQty =
+    variant?.inventoryQuantity != null ? quantity : stockUnits;
+  assertInventoryAvailable({ available, quantity: inventoryQty });
 
   const order = await prisma.order.create({
     data: {
@@ -173,6 +228,7 @@ export async function createMarketplaceListingCheckout(args: {
           type: orderItemTypeForListingType(listing.listingType),
           listingId: listing.id,
           variantId: variant?.id ?? null,
+          unitSelections: unitSelections ?? undefined,
         },
       },
     },
@@ -198,6 +254,10 @@ export async function createMarketplaceListingCheckout(args: {
   const stripe = getConnectStripeClient();
   const images = listingImageUrl(listing.imageUrl, baseUrl);
   const applicationFeeCents = platformApplicationFeeCents(subtotalCents);
+  const stripeDescription = [selectionSummary, listing.description]
+    .filter(Boolean)
+    .join(" — ")
+    .slice(0, 500);
 
   const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
     mode: "payment",
@@ -210,7 +270,7 @@ export async function createMarketplaceListingCheckout(args: {
           unit_amount: unitPriceCents,
           product_data: {
             name: lineName,
-            description: listing.description.slice(0, 500) || undefined,
+            description: stripeDescription || undefined,
             images,
           },
         },
@@ -223,6 +283,9 @@ export async function createMarketplaceListingCheckout(args: {
       listingId: listing.id,
       vendorProfileId: listing.vendorProfile.id,
       ...(variant ? { variantId: variant.id } : {}),
+      ...(selectionSummary
+        ? { unitSelections: selectionSummary.slice(0, 450) }
+        : {}),
     },
     payment_intent_data: connectDestinationPaymentIntentData(
       subtotalCents,

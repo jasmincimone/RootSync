@@ -62,9 +62,27 @@ const offeringDetailSelect = {
       id: true,
       title: true,
       priceCents: true,
+      unitsIncluded: true,
       durationMinutes: true,
       sku: true,
       inventoryQuantity: true,
+    },
+  },
+  optionGroups: {
+    orderBy: { sortOrder: "asc" as const },
+    select: {
+      id: true,
+      sortOrder: true,
+      name: true,
+      values: {
+        orderBy: { sortOrder: "asc" as const },
+        select: {
+          id: true,
+          sortOrder: true,
+          label: true,
+          imageUrl: true,
+        },
+      },
     },
   },
 };
@@ -127,6 +145,7 @@ function PurchasePanel({
   listing,
   offering,
   variants,
+  optionGroups,
   isOwnerPreview,
   vendorId,
   stripeCheckoutReady,
@@ -153,10 +172,22 @@ function PurchasePanel({
     id: string;
     title: string;
     priceCents: number;
+    unitsIncluded: number;
     durationMinutes: number | null;
     sku: string | null;
     inventoryQuantity: number | null;
   }[];
+  optionGroups: Array<{
+    id: string;
+    sortOrder: number;
+    name: string;
+    values: Array<{
+      id: string;
+      sortOrder: number;
+      label: string;
+      imageUrl: string | null;
+    }>;
+  }>;
   isOwnerPreview: boolean;
   vendorId: string;
   stripeCheckoutReady: boolean;
@@ -220,6 +251,7 @@ function PurchasePanel({
             listingType={listing.listingType}
             priceCents={listing.priceCents}
             variants={variants}
+            optionGroups={optionGroups}
             paymentLinkUrl={paymentLinkUrl}
             productUrl={offering.productUrl}
             stripeCheckoutReady={stripeCheckoutReady}
@@ -281,7 +313,11 @@ export default async function DiscoverListingPage({
   );
   const v = listing.vendorProfile;
   const offering = listing.offering;
-  const variants = offering.variants ?? [];
+  const variants = (offering.variants ?? []).map((variant) => ({
+    ...variant,
+    unitsIncluded: Math.max(1, variant.unitsIncluded ?? 1),
+  }));
+  const optionGroups = offering.optionGroups ?? [];
 
   const vendorPulse = !isOwnerPreview ? await loadVendorPulseSummary(v.id) : null;
 
@@ -379,11 +415,34 @@ export default async function DiscoverListingPage({
               </div>
             </div>
 
+            <section aria-labelledby="listing-description" className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft sm:p-8">
+              <h2 id="listing-description" className="text-base font-semibold text-fix-heading">
+                About this listing
+              </h2>
+              <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-fix-text">
+                {listing.description}
+              </p>
+              {listing.publicSlug === "seed-packs" ? (
+                <p className="mt-5">
+                  <Link
+                    href="/seed-pack-grow-guides"
+                    className="text-sm font-semibold text-fix-link hover:text-fix-link-hover"
+                  >
+                    Seed pack grow guides →
+                  </Link>
+                  <span className="mt-1 block text-xs text-fix-text-muted">
+                    Scan or tap for growing instructions for each seed type.
+                  </span>
+                </p>
+              ) : null}
+            </section>
+
             <div className="lg:hidden">
               <PurchasePanel
                 listing={listing}
                 offering={offering}
                 variants={variants}
+                optionGroups={optionGroups}
                 isOwnerPreview={isOwnerPreview}
                 vendorId={v.id}
                 stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}
@@ -399,15 +458,6 @@ export default async function DiscoverListingPage({
             </div>
 
             <ListingTypeDetailCard {...detailProps} />
-
-            <section aria-labelledby="listing-description" className="rounded-2xl border border-fix-border/15 bg-fix-surface p-6 shadow-soft sm:p-8">
-              <h2 id="listing-description" className="text-base font-semibold text-fix-heading">
-                About this listing
-              </h2>
-              <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-fix-text">
-                {listing.description}
-              </p>
-            </section>
 
             <section
               aria-labelledby="listing-vendor"
@@ -456,6 +506,7 @@ export default async function DiscoverListingPage({
                 listing={listing}
                 offering={offering}
                 variants={variants}
+                optionGroups={optionGroups}
                 isOwnerPreview={isOwnerPreview}
                 vendorId={v.id}
                 stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}

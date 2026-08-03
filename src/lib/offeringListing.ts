@@ -9,7 +9,11 @@ import {
   vendorOfferingInclude,
 } from "@/lib/offeringDetails";
 import {
-  parseOfferingVariantsFromBody,
+  serializeOfferingOptionGroups,
+  syncOfferingOptionGroups,
+  type OfferingOptionGroupInput,
+} from "@/lib/offeringOptions";
+import {
   serializeOfferingVariants,
   syncOfferingVariants,
   type OfferingVariantInput,
@@ -44,6 +48,7 @@ export type OfferingListingInput = {
   details?: OfferingDetailsPayload;
   bookingConfig?: ServiceBookingConfigInput;
   variants?: OfferingVariantInput[];
+  optionGroups?: OfferingOptionGroupInput[];
 };
 
 export function isListingType(value: string): value is ListingType {
@@ -181,9 +186,21 @@ export type VendorOfferingRow = Offering & {
     sortOrder: number;
     title: string;
     priceCents: number;
+    unitsIncluded?: number;
     durationMinutes: number | null;
     sku: string | null;
     inventoryQuantity: number | null;
+  }>;
+  optionGroups: Array<{
+    id: string;
+    sortOrder: number;
+    name: string;
+    values: Array<{
+      id: string;
+      sortOrder: number;
+      label: string;
+      imageUrl: string | null;
+    }>;
   }>;
 };
 
@@ -211,6 +228,7 @@ export function serializeVendorOffering(row: VendorOfferingRow) {
     details: serializeOfferingDetails(row),
     booking: serializeServiceBookingConfig(row),
     variants: serializeOfferingVariants(row.variants ?? []),
+    optionGroups: serializeOfferingOptionGroups(row.optionGroups ?? []),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -304,6 +322,10 @@ export async function createOfferingWithListing(
     }
   }
 
+  if (input.optionGroups !== undefined) {
+    await syncOfferingOptionGroups(prisma, offering.id, input.optionGroups);
+  }
+
   return prisma.offering.findUniqueOrThrow({
     where: { id: offering.id },
     include: vendorOfferingInclude,
@@ -319,6 +341,7 @@ export async function updateOfferingAndSyncListing(
     details?: OfferingDetailsPayload;
     bookingConfig?: ServiceBookingConfigInput;
     variants?: OfferingVariantInput[];
+    optionGroups?: OfferingOptionGroupInput[];
     publicSlug?: string | null;
   },
 ) {
@@ -370,6 +393,10 @@ export async function updateOfferingAndSyncListing(
         data: { priceCents: minVariantPrice },
       });
     }
+  }
+
+  if (options?.optionGroups !== undefined) {
+    await syncOfferingOptionGroups(prisma, offeringId, options.optionGroups);
   }
 
   const full = await prisma.offering.findUniqueOrThrow({

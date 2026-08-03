@@ -13,6 +13,10 @@ type Props = {
   className?: string;
   fullWidth?: boolean;
   variantId?: string | null;
+  unitSelections?: Array<{
+    unit: number;
+    choices: Array<{ groupId: string; valueId: string }>;
+  }> | null;
   disabled?: boolean;
 };
 
@@ -23,6 +27,7 @@ export function BuyNowButton({
   className,
   fullWidth = false,
   variantId = null,
+  unitSelections = null,
   disabled = false,
 }: Props) {
   const { data: session, status } = useSession();
@@ -44,6 +49,7 @@ export function BuyNowButton({
         body: JSON.stringify({
           email: checkoutEmail,
           ...(variantId ? { variantId } : {}),
+          ...(unitSelections && unitSelections.length > 0 ? { unitSelections } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));

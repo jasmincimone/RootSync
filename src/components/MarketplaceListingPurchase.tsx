@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BuyNowButton } from "@/components/BuyNowButton";
 import { BuyNowLink } from "@/components/BuyNowLink";
 import { ClaimFreeResourceButton } from "@/components/ClaimFreeResourceButton";
 import {
-  ListingVariantSelector,
-  type ListingVariant,
-} from "@/components/ListingVariantSelector";
+  emptyUnitSelections,
+  ListingDealConfigurator,
+  type ListingDeal,
+  type UnitSelectionDraft,
+} from "@/components/ListingDealConfigurator";
 import { ButtonLink } from "@/components/ui/Button";
 import { discoverBookPath } from "@/config/discoverPaths";
 import { cn } from "@/lib/cn";
+import type { SerializedOfferingOptionGroup } from "@/lib/offeringOptions";
 import { LISTING_TYPE } from "@/lib/roles";
 
 type Props = {
@@ -19,7 +22,8 @@ type Props = {
   publicSlug?: string | null;
   listingType: string;
   priceCents?: number;
-  variants: ListingVariant[];
+  variants: ListingDeal[];
+  optionGroups?: SerializedOfferingOptionGroup[];
   paymentLinkUrl?: string | null;
   productUrl?: string | null;
   stripeCheckoutReady?: boolean;
@@ -37,6 +41,7 @@ export function MarketplaceListingPurchase({
   listingType,
   priceCents = 0,
   variants,
+  optionGroups = [],
   paymentLinkUrl,
   productUrl,
   stripeCheckoutReady = false,
@@ -46,6 +51,10 @@ export function MarketplaceListingPurchase({
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     variants[0]?.id ?? null,
   );
+  const [unitSelections, setUnitSelections] = useState<UnitSelectionDraft[]>(() =>
+    emptyUnitSelections(variants[0]?.unitsIncluded ?? 1, optionGroups),
+  );
+
   const isService = listingType === LISTING_TYPE.SERVICE;
   const isEvent = listingType === LISTING_TYPE.EVENT;
   const isResource = listingType === LISTING_TYPE.RESOURCE;
@@ -73,11 +82,27 @@ export function MarketplaceListingPurchase({
   const hasPaymentLink = !!paymentLinkUrl?.trim();
   const hasStripeCheckout = stripeCheckoutReady;
   const variantBlocked = needsVariant && !selectedVariantId;
+  const optionsIncomplete =
+    optionGroups.length > 0 &&
+    (unitSelections.length !== (selectedVariant?.unitsIncluded ?? 1) ||
+      unitSelections.some((row) =>
+        optionGroups.some(
+          (g) => !row.choices.some((c) => c.groupId === g.id && c.valueId),
+        ),
+      ));
+  const checkoutBlocked = variantBlocked || optionsIncomplete;
   const checkoutUnavailable = !hasStripeCheckout && !hasPaymentLink;
   const externalFulfillmentNote =
     isEvent || isResource
       ? " The Vendor handles access and fulfillment for external purchases."
       : "";
+
+  useEffect(() => {
+    if (!selectedVariantId) return;
+    const deal = variants.find((v) => v.id === selectedVariantId);
+    if (!deal) return;
+    setUnitSelections(emptyUnitSelections(deal.unitsIncluded, optionGroups));
+  }, [selectedVariantId, variants, optionGroups]);
 
   function renderProductCheckout() {
     if (soldOut) {
@@ -95,7 +120,7 @@ export function MarketplaceListingPurchase({
           variantId={selectedVariantId}
           size={compact ? "sm" : "md"}
           fullWidth={compact}
-          disabled={variantBlocked}
+          disabled={checkoutBlocked}
         />
       );
     }
@@ -118,9 +143,10 @@ export function MarketplaceListingPurchase({
           <BuyNowButton
             listingId={listingId}
             variantId={selectedVariantId}
+            unitSelections={optionGroups.length > 0 ? unitSelections : null}
             size={compact ? "sm" : "md"}
             fullWidth={compact}
-            disabled={variantBlocked}
+            disabled={checkoutBlocked}
             label={buyLabel}
           />
           <a
@@ -148,9 +174,10 @@ export function MarketplaceListingPurchase({
         <BuyNowButton
           listingId={listingId}
           variantId={selectedVariantId}
+          unitSelections={optionGroups.length > 0 ? unitSelections : null}
           size={compact ? "sm" : "md"}
           fullWidth={compact}
-          disabled={variantBlocked}
+          disabled={checkoutBlocked}
           label={buyLabel}
         />
       );
@@ -182,13 +209,18 @@ export function MarketplaceListingPurchase({
     );
   }
 
+  const showConfigurator = needsVariant || optionGroups.length > 0;
+
   return (
     <div className={compact ? "flex flex-col gap-3" : "flex flex-col gap-4"}>
-      {needsVariant ? (
-        <ListingVariantSelector
-          variants={variants}
-          selectedId={selectedVariantId}
-          onSelect={setSelectedVariantId}
+      {showConfigurator ? (
+        <ListingDealConfigurator
+          deals={variants}
+          optionGroups={isService || isEvent ? [] : optionGroups}
+          selectedDealId={selectedVariantId}
+          onSelectDeal={setSelectedVariantId}
+          unitSelections={unitSelections}
+          onChangeUnitSelections={setUnitSelections}
           listingType={listingType}
         />
       ) : null}
@@ -234,17 +266,19 @@ export function MarketplaceListingPurchase({
         ) : null}
         {isService && !checkoutUnavailable ? (
           <p className="w-full text-xs text-fix-text-muted">
-            Sign in to complete booking. Choose an option above, then continue to payment.
+            Sign in to complete booking. Choose a deal above, then continue to payment.
           </p>
         ) : isFreeResource && variants.length > 0 ? (
           <p className="w-full text-xs text-fix-text-muted">
-            Choose an option above, then download.
+            Choose a deal above, then download.
           </p>
-        ) : !isService && !isFreeResource && variants.length > 0 && !checkoutUnavailable ? (
+        ) : !isService && !isFreeResource && showConfigurator && !checkoutUnavailable ? (
           <p className="w-full text-xs text-fix-text-muted">
             {isEvent
               ? "Choose a ticket tier above, then continue to checkout."
-              : "Choose an option above, then continue to checkout."}
+              : optionGroups.length > 0
+                ? "Choose a deal and options for each item, then continue to checkout."
+                : "Choose a deal above, then continue to checkout."}
           </p>
         ) : null}
       </div>

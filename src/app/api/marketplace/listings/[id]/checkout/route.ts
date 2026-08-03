@@ -46,6 +46,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const rawVariantId = body.variantId;
     const variantId = typeof rawVariantId === "string" ? rawVariantId.trim() : "";
+    const unitSelections = body.unitSelections;
 
     const listing = await loadListingForCheckout(listingId);
     if (!listing) {
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       userId: session?.user?.id,
       origin: request.nextUrl.origin,
       variantId: variantId || null,
+      unitSelections,
     });
 
     return NextResponse.json(result);
@@ -79,6 +81,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       /^Only \d+ tickets? remaining\.$/.test(message)
     ) {
       return NextResponse.json({ error: message }, { status: 409 });
+    }
+    if (
+      /choose|option|deal|items in this deal|invalid choice|unknown option/i.test(message)
+    ) {
+      return NextResponse.json({ error: message }, { status: 400 });
     }
     return NextResponse.json({ error: message }, { status: 500 });
   }

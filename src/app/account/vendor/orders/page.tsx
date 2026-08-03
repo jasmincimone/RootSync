@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Card } from "@/components/ui/Card";
 import { authOptions } from "@/lib/authOptions";
 import { formatPrice } from "@/lib/format";
+import { formatUnitSelectionsSummary, type UnitSelectionSnapshot } from "@/lib/offeringOptions";
 import { prisma } from "@/lib/prisma";
 import { ROLES, VENDOR_STATUS } from "@/lib/roles";
 
@@ -71,6 +72,11 @@ export default async function VendorOrdersPage() {
                     ×{line.quantity} • {formatPrice(line.priceCents * line.quantity)}
                   </div>
                 </div>
+                {line.unitSelections ? (
+                  <p className="mt-2 text-xs text-fix-text-muted">
+                    {formatUnitSelectionsSummary(line.unitSelections as UnitSelectionSnapshot[])}
+                  </p>
+                ) : null}
               </Card>
             </li>
           ))}

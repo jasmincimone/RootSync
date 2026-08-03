@@ -104,6 +104,7 @@ export async function GET(request: NextRequest) {
       priceCents: i.priceCents,
       type: i.type,
       format: i.format,
+      unitSelections: i.unitSelections ?? null,
     })),
     booking: order.booking
       ? {

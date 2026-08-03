@@ -64,6 +64,7 @@ export default function EditVendorListingPage() {
         details: l.details ?? emptyDetails,
         booking: l.booking ?? { availabilityRules: [], intakeQuestions: [] },
         variants: l.variants ?? [],
+        optionGroups: l.optionGroups ?? [],
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");

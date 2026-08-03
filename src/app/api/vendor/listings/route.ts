@@ -16,6 +16,7 @@ import {
   vendorOfferingInclude,
 } from "@/lib/offeringListing";
 import { parseServiceBookingConfigFromBody } from "@/lib/serviceBookingConfig";
+import { parseOfferingOptionGroupsFromBody } from "@/lib/offeringOptions";
 import { parseOfferingVariantsFromBody } from "@/lib/offeringVariants";
 import { publishOfferingIfDue } from "@/lib/publishScheduledOfferings";
 import { normalizePaymentUrl, normalizeProductUrl } from "@/lib/paymentUrl";
@@ -269,6 +270,16 @@ export async function POST(request: NextRequest) {
     variants = parseOfferingVariantsFromBody(body, type);
   } catch (e) {
     return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Invalid offering deals" },
+      { status: 400 },
+    );
+  }
+
+  let optionGroups;
+  try {
+    optionGroups = parseOfferingOptionGroupsFromBody(body);
+  } catch (e) {
+    return NextResponse.json(
       { error: e instanceof Error ? e.message : "Invalid offering options" },
       { status: 400 },
     );
@@ -307,6 +318,7 @@ export async function POST(request: NextRequest) {
         details,
         bookingConfig,
         variants,
+        optionGroups,
       });
       await publishOfferingIfDue(tx, created.id);
       return tx.offering.findUniqueOrThrow({

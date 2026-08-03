@@ -359,6 +359,12 @@ export const vendorOfferingInclude = {
   variants: {
     orderBy: { sortOrder: "asc" as const },
   },
+  optionGroups: {
+    orderBy: { sortOrder: "asc" as const },
+    include: {
+      values: { orderBy: { sortOrder: "asc" as const } },
+    },
+  },
 } satisfies Prisma.OfferingInclude;
 
 async function deleteDetailForType(
