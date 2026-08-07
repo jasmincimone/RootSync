@@ -73,9 +73,16 @@ type OrderFromApi = {
 export function OrderConfirmationClient() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
+  const clearCartFlag = searchParams.get("clear_cart");
   const [order, setOrder] = useState<OrderFromApi | null>(null);
   const [loading, setLoading] = useState(!!sessionId);
   const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (clearCartFlag === "1") {
+      void import("@/lib/cart").then(({ clearCart }) => clearCart());
+    }
+  }, [clearCartFlag]);
 
   useEffect(() => {
     if (!sessionId) {

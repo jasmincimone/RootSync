@@ -4,6 +4,7 @@ const RESERVED_VENDOR_PUBLIC_SLUGS = new Set([
   "account",
   "ai-disclaimer",
   "api",
+  "cart",
   "checkout",
   "community",
   "connect-store",

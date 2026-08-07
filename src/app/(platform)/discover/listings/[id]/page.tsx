@@ -166,6 +166,7 @@ function PurchasePanel({
     listingType: string;
     priceCents: number;
     category: string | null;
+    imageUrl?: string | null;
   };
   offering: { paymentUrl: string | null; productUrl: string | null };
   variants: {
@@ -247,11 +248,15 @@ function PurchasePanel({
         ) : (
           <MarketplaceListingPurchase
             listingId={listing.id}
+            listingTitle={listing.title}
+            imageUrl={listing.imageUrl}
             publicSlug={listing.publicSlug}
             listingType={listing.listingType}
             priceCents={listing.priceCents}
             variants={variants}
             optionGroups={optionGroups}
+            vendorProfileId={vendorId}
+            vendorDisplayName={profileName ?? "Vendor"}
             paymentLinkUrl={paymentLinkUrl}
             productUrl={offering.productUrl}
             stripeCheckoutReady={stripeCheckoutReady}

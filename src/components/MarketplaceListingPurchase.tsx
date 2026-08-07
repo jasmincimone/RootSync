@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 import { BuyNowButton } from "@/components/BuyNowButton";
 import { BuyNowLink } from "@/components/BuyNowLink";
@@ -11,19 +12,26 @@ import {
   type ListingDeal,
   type UnitSelectionDraft,
 } from "@/components/ListingDealConfigurator";
+import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/Button";
 import { discoverBookPath } from "@/config/discoverPaths";
+import { addLineToCart } from "@/lib/cart";
 import { cn } from "@/lib/cn";
+import { formatPrice } from "@/lib/format";
 import type { SerializedOfferingOptionGroup } from "@/lib/offeringOptions";
 import { LISTING_TYPE } from "@/lib/roles";
 
 type Props = {
   listingId: string;
+  listingTitle: string;
+  imageUrl?: string | null;
   publicSlug?: string | null;
   listingType: string;
   priceCents?: number;
   variants: ListingDeal[];
   optionGroups?: SerializedOfferingOptionGroup[];
+  vendorProfileId: string;
+  vendorDisplayName: string;
   paymentLinkUrl?: string | null;
   productUrl?: string | null;
   stripeCheckoutReady?: boolean;
@@ -37,11 +45,15 @@ const secondaryCheckoutClass =
 
 export function MarketplaceListingPurchase({
   listingId,
+  listingTitle,
+  imageUrl = null,
   publicSlug = null,
   listingType,
   priceCents = 0,
   variants,
   optionGroups = [],
+  vendorProfileId,
+  vendorDisplayName,
   paymentLinkUrl,
   productUrl,
   stripeCheckoutReady = false,
@@ -54,6 +66,8 @@ export function MarketplaceListingPurchase({
   const [unitSelections, setUnitSelections] = useState<UnitSelectionDraft[]>(() =>
     emptyUnitSelections(variants[0]?.unitsIncluded ?? 1, optionGroups),
   );
+  const [cartMessage, setCartMessage] = useState<string | null>(null);
+  const [cartError, setCartError] = useState<string | null>(null);
 
   const isService = listingType === LISTING_TYPE.SERVICE;
   const isEvent = listingType === LISTING_TYPE.EVENT;
@@ -104,6 +118,61 @@ export function MarketplaceListingPurchase({
     setUnitSelections(emptyUnitSelections(deal.unitsIncluded, optionGroups));
   }, [selectedVariantId, variants, optionGroups]);
 
+  const canAddToCart =
+    hasStripeCheckout &&
+    !isService &&
+    !isEvent &&
+    !isFreeResource &&
+    !soldOut &&
+    !checkoutBlocked;
+
+  function buildDetailLabel(): string {
+    const parts: string[] = [];
+    if (selectedVariant?.title) parts.push(selectedVariant.title);
+    if (optionGroups.length > 0 && unitSelections.length > 0) {
+      const labels = unitSelections.map((unit) => {
+        const choices = unit.choices
+          .map((choice) => {
+            const group = optionGroups.find((g) => g.id === choice.groupId);
+            const value = group?.values.find((v) => v.id === choice.valueId);
+            if (!group || !value) return null;
+            return `${group.name}: ${value.label}`;
+          })
+          .filter(Boolean);
+        return unitSelections.length > 1
+          ? `Item ${unit.unit} (${choices.join(", ")})`
+          : choices.join(", ");
+      });
+      parts.push(labels.join(" · "));
+    }
+    return parts.filter(Boolean).join(" · ");
+  }
+
+  function handleAddToCart() {
+    setCartError(null);
+    setCartMessage(null);
+    if (!canAddToCart) return;
+    const result = addLineToCart({
+      listingId,
+      listingTitle,
+      imageUrl,
+      vendorProfileId,
+      vendorDisplayName,
+      listingType,
+      variantId: selectedVariantId,
+      variantTitle: selectedVariant?.title ?? null,
+      unitSelections: optionGroups.length > 0 ? unitSelections : null,
+      unitPriceCents: effectivePriceCents,
+      detailLabel: buildDetailLabel() || formatPrice(effectivePriceCents),
+      quantity: 1,
+    });
+    if (!result.ok) {
+      setCartError(result.error);
+      return;
+    }
+    setCartMessage("Added to cart.");
+  }
+
   function renderProductCheckout() {
     if (soldOut) {
       return (
@@ -136,6 +205,18 @@ export function MarketplaceListingPurchase({
 
     const buyLabel = isEvent ? "Get tickets" : "Buy now";
     const linkLabel = isEvent ? "Ticket link" : "Pay Link";
+    const addToCartButton = canAddToCart ? (
+      <Button
+        type="button"
+        variant="secondary"
+        size={compact ? "sm" : "md"}
+        className={compact ? "w-full" : undefined}
+        disabled={checkoutBlocked}
+        onClick={handleAddToCart}
+      >
+        Add to cart
+      </Button>
+    ) : null;
 
     if (hasStripeCheckout && hasPaymentLink) {
       return (
@@ -149,6 +230,7 @@ export function MarketplaceListingPurchase({
             disabled={checkoutBlocked}
             label={buyLabel}
           />
+          {addToCartButton}
           <a
             href={paymentLinkUrl!}
             target="_blank"
@@ -171,15 +253,18 @@ export function MarketplaceListingPurchase({
 
     if (hasStripeCheckout) {
       return (
-        <BuyNowButton
-          listingId={listingId}
-          variantId={selectedVariantId}
-          unitSelections={optionGroups.length > 0 ? unitSelections : null}
-          size={compact ? "sm" : "md"}
-          fullWidth={compact}
-          disabled={checkoutBlocked}
-          label={buyLabel}
-        />
+        <>
+          <BuyNowButton
+            listingId={listingId}
+            variantId={selectedVariantId}
+            unitSelections={optionGroups.length > 0 ? unitSelections : null}
+            size={compact ? "sm" : "md"}
+            fullWidth={compact}
+            disabled={checkoutBlocked}
+            label={buyLabel}
+          />
+          {addToCartButton}
+        </>
       );
     }
 
@@ -250,6 +335,15 @@ export function MarketplaceListingPurchase({
         ) : (
           renderProductCheckout()
         )}
+        {cartMessage ? (
+          <p className="w-full text-sm text-forest">
+            {cartMessage}{" "}
+            <Link href="/cart" className="font-semibold underline hover:text-fix-link-hover">
+              View cart
+            </Link>
+          </p>
+        ) : null}
+        {cartError ? <p className="w-full text-sm text-bark">{cartError}</p> : null}
         {productUrl ? (
           <a
             href={productUrl}

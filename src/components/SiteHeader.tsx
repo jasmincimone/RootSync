@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
 
 import { HeaderAccountMenu } from "@/components/HeaderAccountMenu";
+import { HeaderCartLink } from "@/components/HeaderCartLink";
 import { BrandPngIcon } from "@/components/ui/BrandPngIcon";
 import { PulseIcon } from "@/components/pulse/PulseIcon";
 import { PLATFORM_PRIMARY_NAV_LINKS } from "@/config/platformNav";
@@ -103,7 +104,8 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <HeaderCartLink />
           <HeaderAccountMenu />
         </div>
       </Container>

@@ -307,3 +307,205 @@ export async function createMarketplaceListingCheckout(args: {
 
   return { url: session.url, orderId: order.id };
 }
+
+export type MarketplaceCartCheckoutItem = {
+  listingId: string;
+  quantity: number;
+  variantId?: string | null;
+  unitSelections?: unknown;
+};
+
+type PreparedCartLine = {
+  listing: MarketplaceListingCheckout;
+  quantity: number;
+  variantId: string | null;
+  unitPriceCents: number;
+  lineName: string;
+  unitSelections: UnitSelectionSnapshot[] | null;
+  selectionSummary: string;
+};
+
+async function prepareCartLine(item: MarketplaceCartCheckoutItem): Promise<PreparedCartLine> {
+  const quantity = Math.floor(item.quantity);
+  if (!Number.isFinite(quantity) || quantity < 1 || quantity > 99) {
+    throw new Error("Each cart item quantity must be between 1 and 99.");
+  }
+
+  const listing = await loadListingForCheckout(item.listingId);
+  if (!listing) {
+    throw new Error("A cart item is no longer available.");
+  }
+
+  if (
+    listing.listingType === LISTING_TYPE.SERVICE ||
+    listing.listingType === LISTING_TYPE.EVENT
+  ) {
+    throw new Error(
+      `${listing.title} can’t go in the cart — book or buy tickets from the listing page.`,
+    );
+  }
+
+  const variant = await resolveOfferingVariant(listing.offeringId, item.variantId);
+  const unitsIncluded = variant?.unitsIncluded ?? 1;
+  const optionGroups = serializeOfferingOptionGroups(listing.offering.optionGroups ?? []);
+  const unitSelections = validateAndSnapshotUnitSelections({
+    unitsIncluded,
+    optionGroups,
+    raw: item.unitSelections,
+  });
+
+  const unitPriceCents = variant?.priceCents ?? listing.priceCents;
+  const lineName = variant ? `${listing.title} — ${variant.title}` : listing.title;
+  const selectionSummary = formatUnitSelectionsSummary(unitSelections);
+
+  const available = resolveAvailableInventory({
+    listingType: listing.listingType,
+    productInventory: listing.offering.productDetails?.inventoryQuantity,
+    variantInventory: variant?.inventoryQuantity,
+  });
+  const inventoryQty =
+    variant?.inventoryQuantity != null ? quantity : quantity * unitsIncluded;
+  assertInventoryAvailable({ available, quantity: inventoryQty });
+
+  return {
+    listing,
+    quantity,
+    variantId: variant?.id ?? null,
+    unitPriceCents,
+    lineName,
+    unitSelections,
+    selectionSummary,
+  };
+}
+
+/**
+ * Same-vendor multi-item checkout → one Stripe Connect destination charge.
+ */
+export async function createMarketplaceCartCheckout(args: {
+  items: MarketplaceCartCheckoutItem[];
+  email: string;
+  userId?: string;
+  origin: string;
+}): Promise<{ url: string; orderId: string }> {
+  if (!Array.isArray(args.items) || args.items.length === 0) {
+    throw new Error("Your cart is empty.");
+  }
+  if (args.items.length > 40) {
+    throw new Error("Cart is too large. Remove some items and try again.");
+  }
+
+  const prepared: PreparedCartLine[] = [];
+  for (const item of args.items) {
+    if (!item?.listingId || typeof item.listingId !== "string") {
+      throw new Error("Cart contains an invalid listing.");
+    }
+    prepared.push(await prepareCartLine(item));
+  }
+
+  const vendorProfileId = prepared[0]!.listing.vendorProfile.id;
+  if (prepared.some((row) => row.listing.vendorProfile.id !== vendorProfileId)) {
+    throw new Error("Checkout one vendor at a time. Clear mixed-vendor items from your cart.");
+  }
+
+  const connectAccountId = prepared[0]!.listing.vendorProfile.user.stripeConnectAccountId;
+  let useConnect = false;
+  if (connectAccountId) {
+    try {
+      const onboarding = await fetchConnectAccountStatus(connectAccountId);
+      useConnect = onboarding.readyToProcessPayments;
+    } catch {
+      useConnect = false;
+    }
+  }
+  if (!useConnect || !connectAccountId) {
+    throw new Error(
+      "This vendor is not ready to accept card payments on RootSync yet. Try Buy now on a single listing, or use their payment link.",
+    );
+  }
+
+  const subtotalCents = prepared.reduce(
+    (sum, row) => sum + row.unitPriceCents * row.quantity,
+    0,
+  );
+  if (subtotalCents <= 0) {
+    throw new Error("Cart total must be greater than zero.");
+  }
+
+  const baseUrl = appBaseUrl(args.origin);
+  const order = await prisma.order.create({
+    data: {
+      userId: args.userId ?? null,
+      email: args.email,
+      status: "pending",
+      subtotalCents,
+      totalCents: subtotalCents,
+      items: {
+        create: prepared.map((row) => ({
+          productId: row.listing.id,
+          name: row.lineName,
+          quantity: row.quantity,
+          priceCents: row.unitPriceCents,
+          type: orderItemTypeForListingType(row.listing.listingType),
+          listingId: row.listing.id,
+          variantId: row.variantId,
+          unitSelections: row.unitSelections ?? undefined,
+        })),
+      },
+    },
+  });
+
+  const stripe = getConnectStripeClient();
+  const applicationFeeCents = platformApplicationFeeCents(subtotalCents);
+  const vendorName = prepared[0]!.listing.vendorProfile.displayName;
+
+  const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
+    mode: "payment",
+    customer_email: args.email,
+    line_items: prepared.map((row) => {
+      const images = listingImageUrl(row.listing.imageUrl, baseUrl);
+      const description = [row.selectionSummary, row.listing.description]
+        .filter(Boolean)
+        .join(" — ")
+        .slice(0, 500);
+      return {
+        quantity: row.quantity,
+        price_data: {
+          currency: "usd",
+          unit_amount: row.unitPriceCents,
+          product_data: {
+            name: row.lineName,
+            description: description || undefined,
+            images,
+          },
+        },
+      };
+    }),
+    success_url: `${baseUrl}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}&clear_cart=1`,
+    cancel_url: `${baseUrl}/cart`,
+    metadata: {
+      orderId: order.id,
+      vendorProfileId,
+      cart: "1",
+      itemCount: String(prepared.length),
+      vendorName: vendorName.slice(0, 100),
+    },
+    payment_intent_data: connectDestinationPaymentIntentData(
+      subtotalCents,
+      connectAccountId,
+      applicationFeeCents,
+    ),
+  };
+
+  const session = await stripe.checkout.sessions.create(sessionParams);
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { stripeSessionId: session.id },
+  });
+
+  if (!session.url) {
+    throw new Error("Stripe Checkout session missing URL");
+  }
+
+  return { url: session.url, orderId: order.id };
+}

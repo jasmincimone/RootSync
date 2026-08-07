@@ -7,7 +7,6 @@ const nextConfig = {
     return [
       { source: "/marketplace", destination: "/discover", permanent: true },
       { source: "/marketplace/:path*", destination: "/discover/:path*", permanent: true },
-      { source: "/cart", destination: "/discover", permanent: false },
       { source: "/products/:path*", destination: "/discover", permanent: false },
       { source: "/checkout", destination: "/discover", permanent: false },
       // /shops index → Discover. Per-slug routes stay in app/ so VendorProfile.shopSlug
