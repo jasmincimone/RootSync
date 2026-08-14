@@ -19,6 +19,7 @@ type Props = {
     choices: Array<{ groupId: string; valueId: string }>;
   }> | null;
   disabled?: boolean;
+  quantity?: number;
   fulfillmentMode?: CheckoutFulfillmentMode | null;
   requiresFulfillmentChoice?: boolean;
 };
@@ -32,6 +33,7 @@ export function BuyNowButton({
   variantId = null,
   unitSelections = null,
   disabled = false,
+  quantity = 1,
   fulfillmentMode = null,
   requiresFulfillmentChoice = false,
 }: Props) {
@@ -57,6 +59,7 @@ export function BuyNowButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: checkoutEmail,
+          quantity,
           ...(variantId ? { variantId } : {}),
           ...(unitSelections && unitSelections.length > 0 ? { unitSelections } : {}),
           ...(requiresFulfillmentChoice && fulfillmentMode ? { fulfillmentMode } : {}),

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Minus, Plus } from "lucide-react";
 
 import { BuyNowButton } from "@/components/BuyNowButton";
 import { BuyNowLink } from "@/components/BuyNowLink";
@@ -15,7 +16,7 @@ import {
 } from "@/components/ListingDealConfigurator";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/Button";
-import { discoverBookPath } from "@/config/discoverPaths";
+import { discoverBookPath, discoverVendorListingsPath } from "@/config/discoverPaths";
 import { addLineToCart } from "@/lib/cart";
 import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 import { cn } from "@/lib/cn";
@@ -81,6 +82,7 @@ export function MarketplaceListingPurchase({
   const [cartMessage, setCartMessage] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
   const [fulfillmentMode, setFulfillmentMode] = useState<CheckoutFulfillmentMode | null>(null);
+  const [quantity, setQuantity] = useState(1);
 
   const isService = listingType === LISTING_TYPE.SERVICE;
   const isEvent = listingType === LISTING_TYPE.EVENT;
@@ -126,16 +128,30 @@ export function MarketplaceListingPurchase({
     !isFreeResource &&
     !soldOut &&
     !checkoutBlocked;
+  const maxQuantity = Math.max(1, Math.min(99, availableStock ?? 99));
+  // In-app checkout carries a quantity; external pay links cannot.
+  const showQuantityPicker =
+    hasStripeCheckout &&
+    (listingType === LISTING_TYPE.PRODUCT || isEvent) &&
+    !soldOut &&
+    !isFreeResource &&
+    !freeEventUnsupported;
   const externalFulfillmentNote =
     isEvent || isResource
       ? " The Vendor handles access and fulfillment for external purchases."
       : "";
+
+  function changeQuantity(next: number) {
+    if (!Number.isFinite(next)) return;
+    setQuantity(Math.max(1, Math.min(maxQuantity, Math.floor(next))));
+  }
 
   useEffect(() => {
     if (!selectedVariantId) return;
     const deal = variants.find((v) => v.id === selectedVariantId);
     if (!deal) return;
     setUnitSelections(emptyUnitSelections(deal.unitsIncluded, optionGroups));
+    setQuantity(1);
   }, [selectedVariantId, variants, optionGroups]);
 
   function buildDetailLabel(): string {
@@ -177,7 +193,7 @@ export function MarketplaceListingPurchase({
       unitSelections: optionGroups.length > 0 ? unitSelections : null,
       unitPriceCents: effectivePriceCents,
       detailLabel: buildDetailLabel() || formatPrice(effectivePriceCents),
-      quantity: 1,
+      quantity,
       requiresShipping,
       offersLocalPickup,
       shippingFlatCents,
@@ -187,7 +203,7 @@ export function MarketplaceListingPurchase({
       setCartError(result.error);
       return;
     }
-    setCartMessage("Added to cart.");
+    setCartMessage(quantity > 1 ? `Added ${quantity} to cart.` : "Added to cart.");
   }
 
   function renderProductCheckout() {
@@ -230,6 +246,7 @@ export function MarketplaceListingPurchase({
       fullWidth: compact,
       disabled: checkoutBlocked,
       label: buyLabel,
+      quantity,
       fulfillmentMode,
       requiresFulfillmentChoice: requiresShipping && hasStripeCheckout,
     };
@@ -341,6 +358,54 @@ export function MarketplaceListingPurchase({
         </p>
       ) : null}
 
+      {showQuantityPicker ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <span id={`qty-label-${listingId}`} className="text-sm font-medium text-fix-text">
+            {isEvent ? "Tickets" : "Quantity"}
+          </span>
+          <div
+            className="inline-flex items-center gap-1 rounded-full border border-fix-border/25 bg-fix-surface p-1 ring-1 ring-inset ring-fix-border/15"
+            role="group"
+            aria-labelledby={`qty-label-${listingId}`}
+          >
+            <button
+              type="button"
+              onClick={() => changeQuantity(quantity - 1)}
+              disabled={quantity <= 1}
+              aria-label={isEvent ? "Remove one ticket" : "Decrease quantity"}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-fix-heading transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Minus className="h-4 w-4" aria-hidden />
+            </button>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={maxQuantity}
+              value={quantity}
+              onChange={(e) => changeQuantity(Number.parseInt(e.target.value, 10))}
+              onBlur={(e) => changeQuantity(Number.parseInt(e.target.value, 10) || 1)}
+              aria-label={isEvent ? "Ticket quantity" : "Quantity"}
+              className="w-12 border-0 bg-transparent text-center text-sm font-semibold text-fix-heading focus:outline-none focus-visible:ring-2 focus-visible:ring-amber [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <button
+              type="button"
+              onClick={() => changeQuantity(quantity + 1)}
+              disabled={quantity >= maxQuantity}
+              aria-label={isEvent ? "Add one ticket" : "Increase quantity"}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-fix-heading transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+          {quantity > 1 ? (
+            <span className="text-sm text-fix-text-muted">
+              {formatPrice(effectivePriceCents * quantity)} total
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className={compact ? "flex flex-col gap-2" : "flex flex-wrap items-center gap-2"}>
         {isService ? (
           hasStripeCheckout || hasPaymentLink ? (
@@ -360,6 +425,15 @@ export function MarketplaceListingPurchase({
         ) : (
           renderProductCheckout()
         )}
+        {!compact ? (
+          <ButtonLink
+            href={discoverVendorListingsPath({ id: vendorProfileId, publicSlug: vendorPublicSlug })}
+            variant="secondary"
+            size="md"
+          >
+            Keep shopping
+          </ButtonLink>
+        ) : null}
         {cartMessage ? (
           <p className="w-full text-sm text-forest">
             {cartMessage}{" "}
