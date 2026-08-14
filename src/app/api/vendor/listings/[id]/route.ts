@@ -154,6 +154,7 @@ export async function PATCH(
       ? legacyListingStatusToOfferingStatus(status)
       : (existing.offering.status as typeof OFFERING_STATUS[keyof typeof OFFERING_STATUS]);
 
+
   if (typeof status === "string" && isOfferingStatus(nextStatus)) {
     try {
       const resolved = resolveOfferingScheduleOnSave({

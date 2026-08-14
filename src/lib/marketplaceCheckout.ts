@@ -20,6 +20,9 @@ import {
 } from "@/lib/stripeConnectDemo";
 import { platformApplicationFeeCents } from "@/lib/platformFee";
 import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
+import type Stripe from "stripe";
+
+import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 
 export type MarketplaceListingCheckout = {
   id: string;
@@ -33,6 +36,9 @@ export type MarketplaceListingCheckout = {
   vendorProfile: {
     id: string;
     displayName: string;
+    pickupLocation: string | null;
+    shippingFlatCents: number | null;
+    offersLocalPickup: boolean;
     user: {
       id: string;
       stripeConnectAccountId: string | null;
@@ -43,6 +49,8 @@ export type MarketplaceListingCheckout = {
     productUrl: string | null;
     productDetails: {
       inventoryQuantity: number | null;
+      requiresShipping: boolean;
+      shippingFlatCents: number | null;
     } | null;
     variants: Array<{
       id: string;
@@ -92,6 +100,9 @@ export async function loadListingForCheckout(
         select: {
           id: true,
           displayName: true,
+          pickupLocation: true,
+          shippingFlatCents: true,
+          offersLocalPickup: true,
           user: {
             select: {
               id: true,
@@ -104,7 +115,13 @@ export async function loadListingForCheckout(
         select: {
           paymentUrl: true,
           productUrl: true,
-          productDetails: { select: { inventoryQuantity: true } },
+          productDetails: {
+            select: {
+              inventoryQuantity: true,
+              requiresShipping: true,
+              shippingFlatCents: true,
+            },
+          },
           variants: {
             orderBy: { sortOrder: "asc" },
             select: {
@@ -151,6 +168,87 @@ function listingImageUrl(imageUrl: string | null, baseUrl: string): string[] | u
   }
 }
 
+function listingRequiresShipping(listing: MarketplaceListingCheckout): boolean {
+  return Boolean(listing.offering.productDetails?.requiresShipping);
+}
+
+/** Listing override when set; otherwise vendor profile flat rate (null → $0). */
+export function resolveListingShippingFlatCents(listing: MarketplaceListingCheckout): number {
+  const override = listing.offering.productDetails?.shippingFlatCents;
+  if (typeof override === "number" && Number.isFinite(override)) {
+    return Math.max(0, Math.round(override));
+  }
+  return Math.max(0, Math.round(listing.vendorProfile.shippingFlatCents ?? 0));
+}
+
+/**
+ * Stripe Checkout shipping for physical product lines.
+ * Platform fee stays on product subtotal; shipping amount goes to the connected vendor.
+ * `fulfillmentMode` narrows options so buyers choose pickup vs ship on-site before Stripe.
+ */
+export function stripeShippingSessionFields(args: {
+  requiresShipping: boolean;
+  shippingFlatCents: number | null;
+  offersLocalPickup: boolean;
+  pickupLocation: string | null;
+  fulfillmentMode: CheckoutFulfillmentMode;
+}): Pick<
+  Stripe.Checkout.SessionCreateParams,
+  "shipping_address_collection" | "shipping_options"
+> {
+  if (!args.requiresShipping) return {};
+
+  if (args.fulfillmentMode === "pickup") {
+    if (!args.offersLocalPickup) {
+      throw new Error("This vendor does not offer pickup. Choose ship / deliver instead.");
+    }
+    const loc = args.pickupLocation?.trim();
+    const pickupName = loc
+      ? `Local pickup — ${loc}`.slice(0, 100)
+      : "Local pickup / in person";
+    return {
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            type: "fixed_amount",
+            fixed_amount: { amount: 0, currency: "usd" },
+            display_name: pickupName,
+          },
+        },
+      ],
+    };
+  }
+
+  const flatCents = Math.max(0, Math.round(args.shippingFlatCents ?? 0));
+  return {
+    shipping_address_collection: { allowed_countries: ["US"] },
+    shipping_options: [
+      {
+        shipping_rate_data: {
+          type: "fixed_amount",
+          fixed_amount: { amount: flatCents, currency: "usd" },
+          display_name: "Standard shipping",
+        },
+      },
+    ],
+  };
+}
+
+function assertFulfillmentModeForShipping(
+  requiresShipping: boolean,
+  fulfillmentMode: CheckoutFulfillmentMode | null | undefined,
+  offersLocalPickup: boolean,
+): CheckoutFulfillmentMode | null {
+  if (!requiresShipping) return null;
+  if (fulfillmentMode !== "pickup" && fulfillmentMode !== "ship") {
+    throw new Error("Choose pickup / in person or ship / deliver before checkout.");
+  }
+  if (fulfillmentMode === "pickup" && !offersLocalPickup) {
+    throw new Error("This vendor does not offer pickup. Choose ship / deliver instead.");
+  }
+  return fulfillmentMode;
+}
+
 export async function createMarketplaceListingCheckout(args: {
   listing: MarketplaceListingCheckout;
   quantity: number;
@@ -159,8 +257,15 @@ export async function createMarketplaceListingCheckout(args: {
   origin: string;
   variantId?: string | null;
   unitSelections?: unknown;
+  fulfillmentMode?: CheckoutFulfillmentMode | null;
 }): Promise<{ url: string; orderId: string }> {
   const { listing, quantity, email, userId, origin } = args;
+  const needsShipping = listingRequiresShipping(listing);
+  const fulfillmentMode = assertFulfillmentModeForShipping(
+    needsShipping,
+    args.fulfillmentMode,
+    listing.vendorProfile.offersLocalPickup,
+  );
   const variant = await resolveOfferingVariant(listing.offeringId, args.variantId);
   const unitsIncluded = variant?.unitsIncluded ?? 1;
   const optionGroups = serializeOfferingOptionGroups(listing.offering.optionGroups ?? []);
@@ -286,12 +391,22 @@ export async function createMarketplaceListingCheckout(args: {
       ...(selectionSummary
         ? { unitSelections: selectionSummary.slice(0, 450) }
         : {}),
+      ...(fulfillmentMode ? { fulfillmentMode } : {}),
     },
     payment_intent_data: connectDestinationPaymentIntentData(
       subtotalCents,
       connectAccountId,
       applicationFeeCents,
     ),
+    ...(fulfillmentMode
+      ? stripeShippingSessionFields({
+          requiresShipping: needsShipping,
+          shippingFlatCents: resolveListingShippingFlatCents(listing),
+          offersLocalPickup: listing.vendorProfile.offersLocalPickup,
+          pickupLocation: listing.vendorProfile.pickupLocation,
+          fulfillmentMode,
+        })
+      : {}),
   };
 
   const session = await stripe.checkout.sessions.create(sessionParams);
@@ -386,6 +501,7 @@ export async function createMarketplaceCartCheckout(args: {
   email: string;
   userId?: string;
   origin: string;
+  fulfillmentMode?: CheckoutFulfillmentMode | null;
 }): Promise<{ url: string; orderId: string }> {
   if (!Array.isArray(args.items) || args.items.length === 0) {
     throw new Error("Your cart is empty.");
@@ -457,6 +573,17 @@ export async function createMarketplaceCartCheckout(args: {
   const stripe = getConnectStripeClient();
   const applicationFeeCents = platformApplicationFeeCents(subtotalCents);
   const vendorName = prepared[0]!.listing.vendorProfile.displayName;
+  const vendor = prepared[0]!.listing.vendorProfile;
+  const cartNeedsShipping = prepared.some((row) => listingRequiresShipping(row.listing));
+  const fulfillmentMode = assertFulfillmentModeForShipping(
+    cartNeedsShipping,
+    args.fulfillmentMode,
+    vendor.offersLocalPickup,
+  );
+  // One package from one vendor: charge the highest listing shipping rate in the cart.
+  const cartShippingFlatCents = prepared
+    .filter((row) => listingRequiresShipping(row.listing))
+    .reduce((max, row) => Math.max(max, resolveListingShippingFlatCents(row.listing)), 0);
 
   const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
     mode: "payment",
@@ -488,12 +615,22 @@ export async function createMarketplaceCartCheckout(args: {
       cart: "1",
       itemCount: String(prepared.length),
       vendorName: vendorName.slice(0, 100),
+      ...(fulfillmentMode ? { fulfillmentMode } : {}),
     },
     payment_intent_data: connectDestinationPaymentIntentData(
       subtotalCents,
       connectAccountId,
       applicationFeeCents,
     ),
+    ...(fulfillmentMode
+      ? stripeShippingSessionFields({
+          requiresShipping: cartNeedsShipping,
+          shippingFlatCents: cartShippingFlatCents,
+          offersLocalPickup: vendor.offersLocalPickup,
+          pickupLocation: vendor.pickupLocation,
+          fulfillmentMode,
+        })
+      : {}),
   };
 
   const session = await stripe.checkout.sessions.create(sessionParams);

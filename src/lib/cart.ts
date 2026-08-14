@@ -21,6 +21,7 @@ export type CartLine = {
   imageUrl: string | null;
   vendorProfileId: string;
   vendorDisplayName: string;
+  vendorPublicSlug: string | null;
   listingType: string;
   variantId: string | null;
   variantTitle: string | null;
@@ -29,16 +30,42 @@ export type CartLine = {
   quantity: number;
   /** Human summary of deal + options for the bag UI */
   detailLabel: string;
+  /** Physical product that needs pickup vs ship choice */
+  requiresShipping: boolean;
+  /** Effective ship rate for this line (listing override or vendor default) */
+  shippingFlatCents: number | null;
 };
 
 export type CartState = {
   vendorProfileId: string | null;
   vendorDisplayName: string | null;
+  vendorPublicSlug: string | null;
+  /** Vendor pickup availability for the cart's vendor (from last add) */
+  offersLocalPickup: boolean;
+  shippingFlatCents: number | null;
+  pickupLocation: string | null;
   lines: CartLine[];
 };
 
 export function emptyCart(): CartState {
-  return { vendorProfileId: null, vendorDisplayName: null, lines: [] };
+  return {
+    vendorProfileId: null,
+    vendorDisplayName: null,
+    vendorPublicSlug: null,
+    offersLocalPickup: true,
+    shippingFlatCents: null,
+    pickupLocation: null,
+    lines: [],
+  };
+}
+
+/** Highest ship rate among shippable lines (one package from one vendor). */
+function cartShippingFromLines(lines: CartLine[]): number | null {
+  const rates = lines
+    .filter((line) => line.requiresShipping)
+    .map((line) => Math.max(0, line.shippingFlatCents ?? 0));
+  if (rates.length === 0) return null;
+  return Math.max(...rates);
 }
 
 export function cartLineCount(cart: CartState): number {
@@ -68,10 +95,8 @@ export function readCart(): CartState {
     if (!raw) return emptyCart();
     const parsed = JSON.parse(raw) as CartState;
     if (!parsed || !Array.isArray(parsed.lines)) return emptyCart();
-    return {
-      vendorProfileId: parsed.vendorProfileId ?? null,
-      vendorDisplayName: parsed.vendorDisplayName ?? null,
-      lines: parsed.lines.filter(
+    const lines = parsed.lines
+      .filter(
         (line) =>
           line &&
           typeof line.key === "string" &&
@@ -79,7 +104,29 @@ export function readCart(): CartState {
           typeof line.unitPriceCents === "number" &&
           typeof line.quantity === "number" &&
           line.quantity > 0,
-      ),
+      )
+      .map((line) => ({
+        ...line,
+        vendorPublicSlug:
+          typeof line.vendorPublicSlug === "string" ? line.vendorPublicSlug : null,
+        requiresShipping:
+          typeof line.requiresShipping === "boolean"
+            ? line.requiresShipping
+            : line.listingType === "PRODUCT",
+        shippingFlatCents:
+          typeof line.shippingFlatCents === "number" ? line.shippingFlatCents : null,
+      }));
+    return {
+      vendorProfileId: parsed.vendorProfileId ?? null,
+      vendorDisplayName: parsed.vendorDisplayName ?? null,
+      vendorPublicSlug:
+        typeof parsed.vendorPublicSlug === "string" ? parsed.vendorPublicSlug : null,
+      offersLocalPickup: parsed.offersLocalPickup !== false,
+      shippingFlatCents:
+        cartShippingFromLines(lines) ??
+        (typeof parsed.shippingFlatCents === "number" ? parsed.shippingFlatCents : null),
+      pickupLocation: typeof parsed.pickupLocation === "string" ? parsed.pickupLocation : null,
+      lines,
     };
   } catch {
     return emptyCart();
@@ -94,6 +141,10 @@ export function writeCart(cart: CartState): void {
       : {
           vendorProfileId: cart.vendorProfileId,
           vendorDisplayName: cart.vendorDisplayName,
+          vendorPublicSlug: cart.vendorPublicSlug,
+          offersLocalPickup: cart.offersLocalPickup,
+          shippingFlatCents: cart.shippingFlatCents,
+          pickupLocation: cart.pickupLocation,
           lines: cart.lines,
         };
   window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(next));
@@ -108,7 +159,13 @@ export type AddToCartResult =
   | { ok: true; cart: CartState }
   | { ok: false; error: string };
 
-export function addLineToCart(input: Omit<CartLine, "key" | "quantity"> & { quantity?: number }): AddToCartResult {
+export function addLineToCart(
+  input: Omit<CartLine, "key" | "quantity"> & {
+    quantity?: number;
+    offersLocalPickup?: boolean;
+    pickupLocation?: string | null;
+  },
+): AddToCartResult {
   const quantity = Math.max(1, Math.min(99, input.quantity ?? 1));
   const cart = readCart();
 
@@ -126,6 +183,13 @@ export function addLineToCart(input: Omit<CartLine, "key" | "quantity"> & { quan
   });
 
   const existing = cart.lines.find((line) => line.key === key);
+  const {
+    offersLocalPickup = true,
+    pickupLocation = null,
+    quantity: _ignoredQty,
+    ...lineFields
+  } = input;
+
   const lines = existing
     ? cart.lines.map((line) =>
         line.key === key
@@ -135,7 +199,7 @@ export function addLineToCart(input: Omit<CartLine, "key" | "quantity"> & { quan
     : [
         ...cart.lines,
         {
-          ...input,
+          ...lineFields,
           key,
           quantity,
         },
@@ -144,6 +208,10 @@ export function addLineToCart(input: Omit<CartLine, "key" | "quantity"> & { quan
   const next: CartState = {
     vendorProfileId: input.vendorProfileId,
     vendorDisplayName: input.vendorDisplayName,
+    vendorPublicSlug: input.vendorPublicSlug,
+    offersLocalPickup,
+    shippingFlatCents: cartShippingFromLines(lines),
+    pickupLocation,
     lines,
   };
   writeCart(next);
@@ -162,7 +230,7 @@ export function updateCartLineQuantity(key: string, quantity: number): CartState
   const next: CartState =
     lines.length === 0
       ? emptyCart()
-      : { ...cart, lines };
+      : { ...cart, lines, shippingFlatCents: cartShippingFromLines(lines) };
   writeCart(next);
   return next;
 }
@@ -170,7 +238,10 @@ export function updateCartLineQuantity(key: string, quantity: number): CartState
 export function removeCartLine(key: string): CartState {
   const cart = readCart();
   const lines = cart.lines.filter((line) => line.key !== key);
-  const next = lines.length === 0 ? emptyCart() : { ...cart, lines };
+  const next =
+    lines.length === 0
+      ? emptyCart()
+      : { ...cart, lines, shippingFlatCents: cartShippingFromLines(lines) };
   writeCart(next);
   return next;
 }

@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -18,6 +19,8 @@ type Props = {
     choices: Array<{ groupId: string; valueId: string }>;
   }> | null;
   disabled?: boolean;
+  fulfillmentMode?: CheckoutFulfillmentMode | null;
+  requiresFulfillmentChoice?: boolean;
 };
 
 export function BuyNowButton({
@@ -29,6 +32,8 @@ export function BuyNowButton({
   variantId = null,
   unitSelections = null,
   disabled = false,
+  fulfillmentMode = null,
+  requiresFulfillmentChoice = false,
 }: Props) {
   const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
@@ -40,6 +45,10 @@ export function BuyNowButton({
   const needsEmail = status !== "loading" && !sessionEmail;
 
   async function startCheckout(checkoutEmail: string) {
+    if (requiresFulfillmentChoice && !fulfillmentMode) {
+      setError("Choose pickup / in person or ship / deliver before checkout.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -50,6 +59,7 @@ export function BuyNowButton({
           email: checkoutEmail,
           ...(variantId ? { variantId } : {}),
           ...(unitSelections && unitSelections.length > 0 ? { unitSelections } : {}),
+          ...(requiresFulfillmentChoice && fulfillmentMode ? { fulfillmentMode } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -67,6 +77,10 @@ export function BuyNowButton({
   }
 
   function handleClick() {
+    if (requiresFulfillmentChoice && !fulfillmentMode) {
+      setError("Choose pickup / in person or ship / deliver before checkout.");
+      return;
+    }
     if (needsEmail && !showEmail) {
       setShowEmail(true);
       return;

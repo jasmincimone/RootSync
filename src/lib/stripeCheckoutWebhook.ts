@@ -58,3 +58,80 @@ export function connectDestinationPaymentIntentData(
     transfer_data: { destination },
   };
 }
+
+type CheckoutShippingAddress = {
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+};
+
+type CheckoutShippingDetails = {
+  name?: string | null;
+  address?: CheckoutShippingAddress | null;
+} | null;
+
+/** Stripe Checkout Session fields used to persist shipping after pay. */
+export type CheckoutSessionShippingLike = {
+  amount_total?: number | null;
+  shipping_cost?: { amount_total?: number | null } | null;
+  shipping_details?: CheckoutShippingDetails;
+  collected_information?: {
+    shipping_details?: CheckoutShippingDetails;
+  } | null;
+};
+
+/**
+ * Map Stripe Checkout shipping + totals onto Order columns.
+ * Platform fee stays on product subtotal; shippingCents is the chosen rate.
+ */
+export function orderShippingFieldsFromCheckoutSession(
+  session: CheckoutSessionShippingLike,
+): {
+  shippingCents?: number;
+  totalCents?: number;
+  shippingName?: string | null;
+  shippingLine1?: string | null;
+  shippingLine2?: string | null;
+  shippingCity?: string | null;
+  shippingState?: string | null;
+  shippingPostal?: string | null;
+  shippingCountry?: string | null;
+} {
+  const details =
+    session.shipping_details ?? session.collected_information?.shipping_details ?? null;
+  const address = details?.address ?? null;
+  const shippingCents =
+    typeof session.shipping_cost?.amount_total === "number"
+      ? Math.max(0, Math.round(session.shipping_cost.amount_total))
+      : undefined;
+  const totalCents =
+    typeof session.amount_total === "number"
+      ? Math.max(0, Math.round(session.amount_total))
+      : undefined;
+
+  const hasAddress = Boolean(
+    details?.name?.trim() ||
+      address?.line1?.trim() ||
+      address?.city?.trim() ||
+      address?.postal_code?.trim(),
+  );
+
+  return {
+    ...(shippingCents !== undefined ? { shippingCents } : {}),
+    ...(totalCents !== undefined ? { totalCents } : {}),
+    ...(hasAddress
+      ? {
+          shippingName: details?.name?.trim() || null,
+          shippingLine1: address?.line1?.trim() || null,
+          shippingLine2: address?.line2?.trim() || null,
+          shippingCity: address?.city?.trim() || null,
+          shippingState: address?.state?.trim() || null,
+          shippingPostal: address?.postal_code?.trim() || null,
+          shippingCountry: address?.country?.trim() || null,
+        }
+      : {}),
+  };
+}

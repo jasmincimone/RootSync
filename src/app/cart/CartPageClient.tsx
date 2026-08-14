@@ -5,32 +5,37 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 
 import { Container } from "@/components/Container";
+import { FulfillmentModePicker } from "@/components/FulfillmentModePicker";
 import { ListingImage } from "@/components/ListingImage";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { discoverVendorListingsPath } from "@/config/discoverPaths";
 import {
   CART_CHANGED_EVENT,
   cartSubtotalCents,
   clearCart,
+  emptyCart,
   readCart,
   removeCartLine,
   updateCartLineQuantity,
   type CartState,
 } from "@/lib/cart";
+import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 import { formatPrice } from "@/lib/format";
 import { ShoppingBag } from "lucide-react";
 
 export function CartPageClient() {
   const { data: session, status } = useSession();
   const [cart, setCart] = useState<CartState>(() =>
-    typeof window === "undefined" ? { vendorProfileId: null, vendorDisplayName: null, lines: [] } : readCart(),
+    typeof window === "undefined" ? emptyCart() : readCart(),
   );
   const [email, setEmail] = useState("");
   const [showEmail, setShowEmail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fulfillmentMode, setFulfillmentMode] = useState<CheckoutFulfillmentMode | null>(null);
 
   useEffect(() => {
     function sync() {
@@ -48,8 +53,19 @@ export function CartPageClient() {
   const sessionEmail = session?.user?.email?.trim() ?? "";
   const needsEmail = status !== "loading" && !sessionEmail;
   const subtotal = cartSubtotalCents(cart);
+  const needsFulfillmentChoice = cart.lines.some((line) => line.requiresShipping);
+  const keepShoppingHref = cart.vendorProfileId
+    ? discoverVendorListingsPath({
+        id: cart.vendorProfileId,
+        publicSlug: cart.vendorPublicSlug,
+      })
+    : "/discover";
 
   async function checkout(checkoutEmail: string) {
+    if (needsFulfillmentChoice && !fulfillmentMode) {
+      setError("Choose pickup / in person or ship / deliver before checkout.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -58,6 +74,7 @@ export function CartPageClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: checkoutEmail,
+          fulfillmentMode: needsFulfillmentChoice ? fulfillmentMode : undefined,
           items: cart.lines.map((line) => ({
             listingId: line.listingId,
             quantity: line.quantity,
@@ -81,6 +98,10 @@ export function CartPageClient() {
   }
 
   function handleCheckoutClick() {
+    if (needsFulfillmentChoice && !fulfillmentMode) {
+      setError("Choose pickup / in person or ship / deliver before checkout.");
+      return;
+    }
     if (needsEmail && !showEmail) {
       setShowEmail(true);
       return;
@@ -191,6 +212,19 @@ export function CartPageClient() {
           <span className="font-semibold text-fix-heading">{formatPrice(subtotal)}</span>
         </div>
 
+        {needsFulfillmentChoice ? (
+          <FulfillmentModePicker
+            value={fulfillmentMode}
+            onChange={(mode) => {
+              setFulfillmentMode(mode);
+              setError(null);
+            }}
+            offersLocalPickup={cart.offersLocalPickup}
+            pickupLocation={cart.pickupLocation}
+            shippingFlatCents={cart.shippingFlatCents}
+          />
+        ) : null}
+
         {showEmail && needsEmail ? (
           <div>
             <label htmlFor="cart-email" className="block text-sm font-medium text-fix-text">
@@ -223,7 +257,7 @@ export function CartPageClient() {
                 ? "Continue to checkout"
                 : "Checkout"}
           </Button>
-          <ButtonLink href="/discover" variant="secondary" size="md">
+          <ButtonLink href={keepShoppingHref} variant="secondary" size="md">
             Keep shopping
           </ButtonLink>
         </div>

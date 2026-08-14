@@ -457,6 +457,83 @@ export async function sendPosSaleReceiptEmail(input: {
   return { ok: true };
 }
 
+export async function sendAdminShippableOrderEmail(input: {
+  to: string[];
+  orderId: string;
+  buyerEmail: string;
+  totalCents: number;
+  shippingCents: number;
+  shippingName: string | null;
+  shippingLine1: string | null;
+  shippingLine2: string | null;
+  shippingCity: string | null;
+  shippingState: string | null;
+  shippingPostal: string | null;
+  shippingCountry: string | null;
+  itemLines: { name: string; quantity: number }[];
+  vendorName?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (!key || !from) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[email] shippable order alert (email not configured)", input.orderId);
+      return { ok: true };
+    }
+    return { ok: false, error: "Email is not configured (RESEND_API_KEY / EMAIL_FROM)." };
+  }
+
+  const recipients = [...new Set(input.to.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  if (recipients.length === 0) {
+    return { ok: false, error: "No admin email recipients." };
+  }
+
+  const queueUrl = `${appOrigin()}/account/admin/shipping`;
+  const addr = [
+    input.shippingName,
+    input.shippingLine1,
+    input.shippingLine2,
+    [input.shippingCity, input.shippingState, input.shippingPostal].filter(Boolean).join(", "),
+    input.shippingCountry,
+  ]
+    .filter((part) => part?.trim())
+    .map((part) => escapeHtml(part!))
+    .join("<br/>");
+
+  const items = input.itemLines
+    .map((line) => `<li>${escapeHtml(line.name)}${line.quantity > 1 ? ` × ${line.quantity}` : ""}</li>`)
+    .join("");
+
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;color:#1c1917;">
+      <h1 style="font-size:20px;margin:0 0 8px;">New order to ship</h1>
+      <p style="margin:0 0 16px;color:#57534e;">${
+        input.vendorName ? escapeHtml(input.vendorName) + " · " : ""
+      }${formatPrice(input.totalCents)}${
+        input.shippingCents > 0 ? ` · shipping ${formatPrice(input.shippingCents)}` : ""
+      }</p>
+      <p style="margin:0 0 8px;font-size:14px;"><strong>Ship to</strong><br/>${addr || "Address missing"}</p>
+      <p style="margin:0 0 8px;font-size:14px;"><strong>Buyer</strong> ${escapeHtml(input.buyerEmail)}</p>
+      <ul style="padding-left:18px;font-size:14px;">${items}</ul>
+      <p style="margin:20px 0 0;"><a href="${queueUrl}">Open shipping queue</a></p>
+      <p style="margin:16px 0 0;font-size:12px;color:#78716c;">Order ${escapeHtml(input.orderId)}</p>
+    </div>
+  `;
+
+  const resend = new Resend(key);
+  const { error } = await resend.emails.send({
+    from,
+    to: recipients,
+    subject: `Ship order · ${formatPrice(input.totalCents)}`,
+    html,
+  });
+  if (error) {
+    console.error("[email] admin shipping alert Resend error:", error);
+    return { ok: false, error: error.message || "Could not send shipping alert." };
+  }
+  return { ok: true };
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

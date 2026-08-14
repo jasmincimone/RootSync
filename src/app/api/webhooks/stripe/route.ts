@@ -9,6 +9,7 @@ import {
 } from "@/lib/listingInventory";
 import {
   checkoutCompletedFields,
+  orderShippingFieldsFromCheckoutSession,
   shouldConfirmServiceBooking,
 } from "@/lib/stripeCheckoutWebhook";
 import {
@@ -113,6 +114,14 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
 
   if (!fields.orderId) return;
 
+  const shippingUpdate = orderShippingFieldsFromCheckoutSession(session);
+  if (Object.keys(shippingUpdate).length > 0) {
+    await prisma.order.update({
+      where: { id: fields.orderId },
+      data: shippingUpdate,
+    });
+  }
+
   const becamePaid = await markOrderPaidOnce({
     orderId: fields.orderId,
     stripeSessionId: session.id,
@@ -122,6 +131,8 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
 
   await decrementInventoryForPaidOrder(fields.orderId);
   await hookOrderVerified(fields.orderId);
+  const { notifyAdminsOfShippableOrder } = await import("@/lib/shippingFulfillment");
+  await notifyAdminsOfShippableOrder(fields.orderId);
 
   if (shouldConfirmServiceBooking(fields)) {
     const { confirmPaidServiceBookingFromStripeSession } = await import("@/lib/confirmBooking");

@@ -145,6 +145,7 @@ export type VendorOfferingRow = Offering & {
   listing: Listing | null;
   productDetails: {
     requiresShipping: boolean;
+    shippingFlatCents: number | null;
     sku: string | null;
     inventoryQuantity: number | null;
   } | null;

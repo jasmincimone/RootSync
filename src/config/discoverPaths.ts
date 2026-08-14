@@ -15,6 +15,13 @@ export function discoverVendorPath(vendor: DiscoverVendorRef): string {
   return `${DISCOVER_BASE}/vendors/${segment}`;
 }
 
+/** Vendor storefront scrolled to published listings (buy loop). */
+export const VENDOR_LISTINGS_HASH = "vendor-listings-heading";
+
+export function discoverVendorListingsPath(vendor: DiscoverVendorRef): string {
+  return `${discoverVendorPath(vendor)}#${VENDOR_LISTINGS_HASH}`;
+}
+
 /**
  * Public share / storefront URL. Prefer root vanity `/{publicSlug}` when claimed;
  * otherwise the Discover vendor path. Keep Discover paths for in-app browse.

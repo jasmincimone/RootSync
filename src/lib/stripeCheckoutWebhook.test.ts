@@ -6,6 +6,7 @@ import { platformApplicationFeeCents } from "@/lib/platformFee";
 import {
   checkoutCompletedFields,
   connectDestinationPaymentIntentData,
+  orderShippingFieldsFromCheckoutSession,
   shouldConfirmServiceBooking,
 } from "@/lib/stripeCheckoutWebhook";
 
@@ -103,5 +104,52 @@ describe("connectDestinationPaymentIntentData", () => {
       /acct_/,
     );
     assert.throws(() => connectDestinationPaymentIntentData(0, "acct_vendor", 0), /positive/);
+  });
+});
+
+describe("orderShippingFieldsFromCheckoutSession", () => {
+  it("maps shipping cost, total, and address", () => {
+    const fields = orderShippingFieldsFromCheckoutSession({
+      amount_total: 1850,
+      shipping_cost: { amount_total: 850 },
+      shipping_details: {
+        name: " Jane Doe ",
+        address: {
+          line1: " 1 Main St ",
+          line2: null,
+          city: "Austin",
+          state: "TX",
+          postal_code: "78701",
+          country: "US",
+        },
+      },
+    });
+    assert.deepEqual(fields, {
+      shippingCents: 850,
+      totalCents: 1850,
+      shippingName: "Jane Doe",
+      shippingLine1: "1 Main St",
+      shippingLine2: null,
+      shippingCity: "Austin",
+      shippingState: "TX",
+      shippingPostal: "78701",
+      shippingCountry: "US",
+    });
+  });
+
+  it("reads collected_information.shipping_details when present", () => {
+    const fields = orderShippingFieldsFromCheckoutSession({
+      amount_total: 1000,
+      shipping_cost: { amount_total: 0 },
+      collected_information: {
+        shipping_details: {
+          name: "Pickup",
+          address: { line1: "Booth 4", city: "Austin", state: "TX", postal_code: "78701", country: "US" },
+        },
+      },
+    });
+    assert.equal(fields.shippingCents, 0);
+    assert.equal(fields.shippingName, "Pickup");
+    assert.equal(fields.shippingLine1, "Booth 4");
   });
 });

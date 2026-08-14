@@ -188,6 +188,10 @@ model VendorProfile {
   website         String?
   /// Default external checkout URL (Stripe Payment Link, PayPal, etc.) for listings
   paymentLinkUrl  String?
+  /// Flat standard shipping for products that require shipping (null = $0)
+  shippingFlatCents Int?
+  /// When true, Stripe Checkout offers a $0 Local pickup option alongside standard shipping
+  offersLocalPickup Boolean @default(true)
   /// WGS84 — set in vendor profile for map pin (optional)
   latitude        Float?
   longitude       Float?
@@ -346,6 +350,8 @@ model ProductDetails {
   offeringId         String  @id
   offering           Offering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
   requiresShipping   Boolean @default(true)
+  /// Optional override for this product; null = use VendorProfile.shippingFlatCents
+  shippingFlatCents  Int?
   sku                String?
   /// Remaining sellable units. Null = unlimited (not tracked). Managed in RootSync, not Stripe.
   inventoryQuantity  Int?
@@ -439,6 +445,8 @@ model Order {
   shippedAt           DateTime?
   /// When buyer confirmation email (e.g. event join details) was sent — idempotency for webhooks
   buyerConfirmationEmailedAt DateTime?
+  /// Admin “needs shipment” alert emailed — idempotency for webhooks / by-session
+  shippingAlertEmailedAt DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   user                User?     @relation(fields: [userId], references: [id], onDelete: SetNull)

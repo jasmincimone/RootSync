@@ -107,9 +107,10 @@ Use it when:
 
 | Doc concept | Code artifact | Status | Notes |
 |-------------|---------------|--------|-------|
-| Checkout | `marketplaceCheckout.ts`, `/api/marketplace/listings/[id]/checkout` | **Partial** | Marketplace listings; destination charge when Connect ready |
+| Checkout | `marketplaceCheckout.ts`, `/api/marketplace/listings/[id]/checkout`, cart checkout | **Aligned** (MVP) | Destination charge; flat Standard shipping + Local pickup when `ProductDetails.requiresShipping` |
 | Checkout (legacy) | Cart + `/api/checkout-session`, `ShopCatalogListing` | **Legacy** | Platform shop catalog path |
 | Stripe Connect | `User.stripeConnectAccountId`, Payment Hub + Connect APIs | **Aligned** (MVP) | Vendor Payment Hub owns onboarding |
+| Shipping (MVP) | `VendorProfile.shippingFlatCents` + optional `ProductDetails.shippingFlatCents` override; Order shipping columns | **Aligned** (MVP) | Cart uses max listing rate for one package; fee on product subtotal only; admin queue + email at `/account/admin/shipping` |
 | Booking | `Booking`, `ServiceAvailabilityRule`, `BookingIntakeAnswer` | **Aligned** | Cancel + full refund; calendar + Meet |
 | Order | `Order`, `OrderItem` | **Aligned** | Supports marketplace + service bookings; `refunded` status |
 

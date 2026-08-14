@@ -21,6 +21,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { ShopMediaCarousel } from "@/components/ShopMediaCarousel";
 import { UserAvatar } from "@/components/UserAvatar";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
+import { ScrollToHash } from "@/components/ScrollToHash";
 import { discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { isFavorited } from "@/lib/favorites";
@@ -159,6 +160,7 @@ export default async function PublicVendorProfilePage({
 
   return (
     <div>
+      <ScrollToHash />
       <section className="border-b border-fix-border/15 bg-gradient-to-b from-fix-bg-muted/60 via-fix-bg-muted/30 to-fix-surface">
         <Container className="px-4 py-6 sm:px-6 sm:py-10">
           <DiscoverDetailTopBack returnTo={returnTo} title={vendor.displayName} />
@@ -315,7 +317,7 @@ export default async function PublicVendorProfilePage({
         >
           <h2
             id="vendor-listings-heading"
-            className="text-base font-semibold tracking-tight text-fix-heading sm:text-lg"
+            className="scroll-mt-24 text-base font-semibold tracking-tight text-fix-heading sm:text-lg"
           >
             Listings
           </h2>

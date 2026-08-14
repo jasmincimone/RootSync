@@ -18,7 +18,7 @@ import { PulseRatingBadge } from "@/components/pulse/PulseRatingDisplay";
 import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurchase";
 import { ListingImage } from "@/components/ListingImage";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
-import { discoverListingPath, discoverVendorPath } from "@/config/discoverPaths";
+import { discoverListingPath, discoverVendorListingsPath, discoverVendorPath } from "@/config/discoverPaths";
 import { authOptions } from "@/lib/authOptions";
 import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
 import { isFavorited } from "@/lib/favorites";
@@ -34,7 +34,7 @@ const offeringDetailSelect = {
   status: true,
   paymentUrl: true,
   productUrl: true,
-  productDetails: { select: { requiresShipping: true, sku: true, inventoryQuantity: true } },
+  productDetails: { select: { requiresShipping: true, shippingFlatCents: true, sku: true, inventoryQuantity: true } },
   serviceDetails: {
     select: {
       serviceKind: true,
@@ -100,6 +100,8 @@ async function loadListingForPage(publicRef: string, viewerUserId: string | unde
         pickupLocation: true,
         website: true,
         paymentLinkUrl: true,
+        shippingFlatCents: true,
+        offersLocalPickup: true,
         user: {
           select: { stripeConnectAccountId: true },
         },
@@ -148,9 +150,14 @@ function PurchasePanel({
   optionGroups,
   isOwnerPreview,
   vendorId,
+  vendorPublicSlug = null,
   stripeCheckoutReady,
   paymentLinkUrl,
   inventoryQuantity,
+  requiresShipping = false,
+  offersLocalPickup = true,
+  pickupLocation = null,
+  shippingFlatCents = null,
   detailProps,
   className,
   returnTo,
@@ -191,9 +198,14 @@ function PurchasePanel({
   }>;
   isOwnerPreview: boolean;
   vendorId: string;
+  vendorPublicSlug?: string | null;
   stripeCheckoutReady: boolean;
   paymentLinkUrl: string | null;
   inventoryQuantity: number | null;
+  requiresShipping?: boolean;
+  offersLocalPickup?: boolean;
+  pickupLocation?: string | null;
+  shippingFlatCents?: number | null;
   detailProps: Omit<Parameters<typeof ListingDetailHighlights>[0], "priceCents" | "variantCount">;
   className?: string;
   returnTo?: string | null;
@@ -257,10 +269,15 @@ function PurchasePanel({
             optionGroups={optionGroups}
             vendorProfileId={vendorId}
             vendorDisplayName={profileName ?? "Vendor"}
+            vendorPublicSlug={vendorPublicSlug}
             paymentLinkUrl={paymentLinkUrl}
             productUrl={offering.productUrl}
             stripeCheckoutReady={stripeCheckoutReady}
             inventoryQuantity={inventoryQuantity}
+            requiresShipping={requiresShipping}
+            offersLocalPickup={offersLocalPickup}
+            pickupLocation={pickupLocation}
+            shippingFlatCents={shippingFlatCents}
           />
         )}
 
@@ -342,11 +359,14 @@ export default async function DiscoverListingPage({
   };
 
   const vendorPath = discoverVendorPath(v);
+  const vendorListingsPath = discoverVendorListingsPath(v);
   const backOptions = {
     profileName: v.displayName,
     currentVendorPath: vendorPath,
   };
-  const discoverBack = resolveDiscoverBackLink(returnTo, backOptions);
+  // Product listings always return to this vendor's listings, not Discover search results.
+  const listingBackTo = vendorListingsPath;
+  const discoverBack = resolveDiscoverBackLink(listingBackTo, backOptions);
   const backPathname = (discoverBack.href.split("#")[0] ?? discoverBack.href).split("?")[0] || discoverBack.href;
   const vendorPathname = (vendorPath.split("#")[0] ?? vendorPath).split("?")[0] || vendorPath;
   const backIsCurrentVendor = backPathname === vendorPathname;
@@ -355,7 +375,7 @@ export default async function DiscoverListingPage({
     <div className="bg-fix-bg-muted/30">
       <Container className="pt-3 sm:pt-4">
         <DiscoverDetailTopBack
-          returnTo={returnTo}
+          returnTo={listingBackTo}
           title={listing.title}
           profileName={v.displayName}
           currentVendorPath={vendorPath}
@@ -373,7 +393,7 @@ export default async function DiscoverListingPage({
                 <span className="mx-2">/</span>
               </>
             ) : null}
-            <Link href={vendorPath} className="text-fix-link hover:text-fix-link-hover">
+            <Link href={vendorListingsPath} className="text-fix-link hover:text-fix-link-hover">
               {v.displayName}
             </Link>
             <span className="mx-2">/</span>
@@ -450,11 +470,18 @@ export default async function DiscoverListingPage({
                 optionGroups={optionGroups}
                 isOwnerPreview={isOwnerPreview}
                 vendorId={v.id}
+                vendorPublicSlug={v.publicSlug}
                 stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}
                 paymentLinkUrl={checkoutOptions.paymentLinkUrl}
                 inventoryQuantity={offering.productDetails?.inventoryQuantity ?? null}
+                requiresShipping={Boolean(offering.productDetails?.requiresShipping)}
+                offersLocalPickup={v.offersLocalPickup}
+                pickupLocation={v.pickupLocation}
+                shippingFlatCents={
+                  offering.productDetails?.shippingFlatCents ?? v.shippingFlatCents
+                }
                 detailProps={detailProps}
-                returnTo={returnTo}
+                returnTo={listingBackTo}
                 profileName={v.displayName}
                 currentVendorPath={vendorPath}
               favoriteSaved={favoriteSaved}
@@ -514,12 +541,19 @@ export default async function DiscoverListingPage({
                 optionGroups={optionGroups}
                 isOwnerPreview={isOwnerPreview}
                 vendorId={v.id}
+                vendorPublicSlug={v.publicSlug}
                 stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}
                 paymentLinkUrl={checkoutOptions.paymentLinkUrl}
                 inventoryQuantity={offering.productDetails?.inventoryQuantity ?? null}
+                requiresShipping={Boolean(offering.productDetails?.requiresShipping)}
+                offersLocalPickup={v.offersLocalPickup}
+                pickupLocation={v.pickupLocation}
+                shippingFlatCents={
+                  offering.productDetails?.shippingFlatCents ?? v.shippingFlatCents
+                }
                 detailProps={detailProps}
                 className="overflow-hidden border-fix-border/15 p-0 shadow-soft"
-                returnTo={returnTo}
+                returnTo={listingBackTo}
                 profileName={v.displayName}
                 currentVendorPath={vendorPath}
               favoriteSaved={favoriteSaved}

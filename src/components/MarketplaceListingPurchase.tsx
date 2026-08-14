@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BuyNowButton } from "@/components/BuyNowButton";
 import { BuyNowLink } from "@/components/BuyNowLink";
 import { ClaimFreeResourceButton } from "@/components/ClaimFreeResourceButton";
+import { FulfillmentModePicker } from "@/components/FulfillmentModePicker";
 import {
   emptyUnitSelections,
   ListingDealConfigurator,
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/Button";
 import { discoverBookPath } from "@/config/discoverPaths";
 import { addLineToCart } from "@/lib/cart";
+import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 import { cn } from "@/lib/cn";
 import { formatPrice } from "@/lib/format";
 import type { SerializedOfferingOptionGroup } from "@/lib/offeringOptions";
@@ -32,11 +34,16 @@ type Props = {
   optionGroups?: SerializedOfferingOptionGroup[];
   vendorProfileId: string;
   vendorDisplayName: string;
+  vendorPublicSlug?: string | null;
   paymentLinkUrl?: string | null;
   productUrl?: string | null;
   stripeCheckoutReady?: boolean;
   /** Product-level remaining stock; null/undefined = unlimited */
   inventoryQuantity?: number | null;
+  requiresShipping?: boolean;
+  offersLocalPickup?: boolean;
+  pickupLocation?: string | null;
+  shippingFlatCents?: number | null;
   compact?: boolean;
 };
 
@@ -54,10 +61,15 @@ export function MarketplaceListingPurchase({
   optionGroups = [],
   vendorProfileId,
   vendorDisplayName,
+  vendorPublicSlug = null,
   paymentLinkUrl,
   productUrl,
   stripeCheckoutReady = false,
   inventoryQuantity = null,
+  requiresShipping = false,
+  offersLocalPickup = true,
+  pickupLocation = null,
+  shippingFlatCents = null,
   compact = false,
 }: Props) {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
@@ -68,6 +80,7 @@ export function MarketplaceListingPurchase({
   );
   const [cartMessage, setCartMessage] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
+  const [fulfillmentMode, setFulfillmentMode] = useState<CheckoutFulfillmentMode | null>(null);
 
   const isService = listingType === LISTING_TYPE.SERVICE;
   const isEvent = listingType === LISTING_TYPE.EVENT;
@@ -106,6 +119,13 @@ export function MarketplaceListingPurchase({
       ));
   const checkoutBlocked = variantBlocked || optionsIncomplete;
   const checkoutUnavailable = !hasStripeCheckout && !hasPaymentLink;
+  const canAddToCart =
+    hasStripeCheckout &&
+    !isService &&
+    !isEvent &&
+    !isFreeResource &&
+    !soldOut &&
+    !checkoutBlocked;
   const externalFulfillmentNote =
     isEvent || isResource
       ? " The Vendor handles access and fulfillment for external purchases."
@@ -117,14 +137,6 @@ export function MarketplaceListingPurchase({
     if (!deal) return;
     setUnitSelections(emptyUnitSelections(deal.unitsIncluded, optionGroups));
   }, [selectedVariantId, variants, optionGroups]);
-
-  const canAddToCart =
-    hasStripeCheckout &&
-    !isService &&
-    !isEvent &&
-    !isFreeResource &&
-    !soldOut &&
-    !checkoutBlocked;
 
   function buildDetailLabel(): string {
     const parts: string[] = [];
@@ -158,6 +170,7 @@ export function MarketplaceListingPurchase({
       imageUrl,
       vendorProfileId,
       vendorDisplayName,
+      vendorPublicSlug,
       listingType,
       variantId: selectedVariantId,
       variantTitle: selectedVariant?.title ?? null,
@@ -165,6 +178,10 @@ export function MarketplaceListingPurchase({
       unitPriceCents: effectivePriceCents,
       detailLabel: buildDetailLabel() || formatPrice(effectivePriceCents),
       quantity: 1,
+      requiresShipping,
+      offersLocalPickup,
+      shippingFlatCents,
+      pickupLocation,
     });
     if (!result.ok) {
       setCartError(result.error);
@@ -205,6 +222,17 @@ export function MarketplaceListingPurchase({
 
     const buyLabel = isEvent ? "Get tickets" : "Buy now";
     const linkLabel = isEvent ? "Ticket link" : "Pay Link";
+    const buyNowProps = {
+      listingId,
+      variantId: selectedVariantId,
+      unitSelections: optionGroups.length > 0 ? unitSelections : null,
+      size: (compact ? "sm" : "md") as "sm" | "md",
+      fullWidth: compact,
+      disabled: checkoutBlocked,
+      label: buyLabel,
+      fulfillmentMode,
+      requiresFulfillmentChoice: requiresShipping && hasStripeCheckout,
+    };
     const addToCartButton = canAddToCart ? (
       <Button
         type="button"
@@ -217,19 +245,23 @@ export function MarketplaceListingPurchase({
         Add to cart
       </Button>
     ) : null;
+    const fulfillmentPicker =
+      requiresShipping && hasStripeCheckout ? (
+        <FulfillmentModePicker
+          className="w-full"
+          value={fulfillmentMode}
+          onChange={setFulfillmentMode}
+          offersLocalPickup={offersLocalPickup}
+          pickupLocation={pickupLocation}
+          shippingFlatCents={shippingFlatCents}
+        />
+      ) : null;
 
     if (hasStripeCheckout && hasPaymentLink) {
       return (
         <>
-          <BuyNowButton
-            listingId={listingId}
-            variantId={selectedVariantId}
-            unitSelections={optionGroups.length > 0 ? unitSelections : null}
-            size={compact ? "sm" : "md"}
-            fullWidth={compact}
-            disabled={checkoutBlocked}
-            label={buyLabel}
-          />
+          {fulfillmentPicker}
+          <BuyNowButton {...buyNowProps} />
           {addToCartButton}
           <a
             href={paymentLinkUrl!}
@@ -254,15 +286,8 @@ export function MarketplaceListingPurchase({
     if (hasStripeCheckout) {
       return (
         <>
-          <BuyNowButton
-            listingId={listingId}
-            variantId={selectedVariantId}
-            unitSelections={optionGroups.length > 0 ? unitSelections : null}
-            size={compact ? "sm" : "md"}
-            fullWidth={compact}
-            disabled={checkoutBlocked}
-            label={buyLabel}
-          />
+          {fulfillmentPicker}
+          <BuyNowButton {...buyNowProps} />
           {addToCartButton}
         </>
       );

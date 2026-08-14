@@ -50,7 +50,12 @@ type ListingDetailPanelsProps = {
   listingType: string;
   priceCents: number;
   variantCount: number;
-  product: { requiresShipping: boolean; sku: string | null; inventoryQuantity: number | null } | null;
+  product: {
+    requiresShipping: boolean;
+    shippingFlatCents?: number | null;
+    sku: string | null;
+    inventoryQuantity: number | null;
+  } | null;
   service: {
     serviceKind: string;
     durationMinutes: number | null;

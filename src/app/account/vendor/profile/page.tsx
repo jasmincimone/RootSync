@@ -43,6 +43,8 @@ export default async function VendorProfilePage() {
             contactEmail: profile.contactEmail,
             pickupLocation: profile.pickupLocation,
             website: profile.website,
+            shippingFlatCents: profile.shippingFlatCents,
+            offersLocalPickup: profile.offersLocalPickup,
             latitude: profile.latitude,
             longitude: profile.longitude,
           }}

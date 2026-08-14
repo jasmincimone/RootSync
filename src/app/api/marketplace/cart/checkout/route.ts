@@ -6,6 +6,7 @@ import {
   createMarketplaceCartCheckout,
   type MarketplaceCartCheckoutItem,
 } from "@/lib/marketplaceCheckout";
+import { parseCheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 import { rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
       email,
       userId: session?.user?.id,
       origin: request.nextUrl.origin,
+      fulfillmentMode: parseCheckoutFulfillmentMode(body.fulfillmentMode),
     });
 
     return NextResponse.json(result);
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
       );
     }
     if (
-      /empty|invalid|available|vendor|quantity|option|deal|cart|book or buy|sold out|stock/i.test(
+      /empty|invalid|available|vendor|quantity|option|deal|cart|book or buy|sold out|stock|pickup|ship|deliver|choose/i.test(
         message,
       )
     ) {

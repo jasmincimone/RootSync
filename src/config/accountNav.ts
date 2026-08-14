@@ -192,6 +192,12 @@ export const ACCOUNT_ADMIN_NAV: AccountNavItem[] = [
     description: "Manage accounts",
     icon: Users,
   },
+  {
+    href: "/account/admin/shipping",
+    label: "Shipping queue",
+    description: "Orders to mail",
+    icon: Package,
+  },
 ];
 
 export const ACCOUNT_VENDOR_APPLY_NAV: AccountNavItem = {

@@ -52,10 +52,39 @@ export default async function VendorPosInstallPage() {
           </h1>
           <p className="mt-2 text-sm text-fix-text-muted">
             This phone app connects to your Stripe Reader M2 over Bluetooth. It is separate from the
-            RootSync website. Expo Go and the normal App Store search will not find it until RootSync
-            publishes an install link.
+            RootSync website.
           </p>
         </div>
+
+        <Card className="space-y-3 border-amber-700/25 bg-amber-50/80 p-5">
+          <h2 className="text-sm font-semibold text-fix-heading">
+            Seeing “Unavailable” in the App Store?
+          </h2>
+          <p className="text-sm text-fix-text">
+            RootSync Terminal is <strong className="font-semibold text-fix-heading">not a public
+            App Store listing</strong> yet. Searching the App Store (or opening a generic store
+            link) commonly shows <strong className="font-semibold text-fix-heading">Unavailable</strong>
+            — that is expected, not a broken checkout.
+          </p>
+          <ul className="list-disc space-y-2 pl-5 text-sm text-fix-text-muted">
+            <li>
+              Do <strong className="text-fix-heading">not</strong> use Expo Go — it will not run
+              this app.
+            </li>
+            <li>
+              Take card payments now on the website:{" "}
+              <Link href="/account/vendor/pos" className="font-medium text-fix-link">
+                Counter POS
+              </Link>{" "}
+              (no M2 app required).
+            </li>
+            <li>
+              Install the companion app only via a RootSync{" "}
+              <strong className="text-fix-heading">TestFlight</strong> invite or the official
+              install link below (once published).
+            </li>
+          </ul>
+        </Card>
 
         <Card className="space-y-3 border-forest/20 bg-forest/5 p-5">
           <h2 className="text-sm font-semibold text-fix-heading">Before you install</h2>
@@ -199,6 +228,11 @@ export default async function VendorPosInstallPage() {
         <Card className="space-y-3 p-5">
           <h2 className="text-base font-semibold text-fix-heading">Troubleshooting</h2>
           <ul className="list-disc space-y-2 pl-5 text-sm text-fix-text-muted">
+            <li>
+              <strong className="text-fix-heading">App Store says Unavailable:</strong> expected —
+              the app is not public yet. Use Counter POS on the website, or install via TestFlight /
+              the RootSync link on this page — not Expo Go or a store search.
+            </li>
             <li>
               <strong className="text-fix-heading">Can’t find the app in the App Store:</strong> use
               the install / TestFlight link from RootSync — it is not a generic public listing until

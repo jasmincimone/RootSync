@@ -6,6 +6,7 @@ import {
   createMarketplaceListingCheckout,
   loadListingForCheckout,
 } from "@/lib/marketplaceCheckout";
+import { parseCheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 import { rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       origin: request.nextUrl.origin,
       variantId: variantId || null,
       unitSelections,
+      fulfillmentMode: parseCheckoutFulfillmentMode(body.fulfillmentMode),
     });
 
     return NextResponse.json(result);
@@ -83,7 +85,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: message }, { status: 409 });
     }
     if (
-      /choose|option|deal|items in this deal|invalid choice|unknown option/i.test(message)
+      /choose|option|deal|items in this deal|invalid choice|unknown option|pickup|ship|deliver/i.test(
+        message,
+      )
     ) {
       return NextResponse.json({ error: message }, { status: 400 });
     }

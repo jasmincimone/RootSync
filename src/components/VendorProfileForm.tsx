@@ -15,6 +15,8 @@ type Profile = {
   contactEmail: string | null;
   pickupLocation: string | null;
   website: string | null;
+  shippingFlatCents: number | null;
+  offersLocalPickup: boolean;
   latitude: number | null;
   longitude: number | null;
 };
@@ -28,6 +30,10 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
   const [contactEmail, setContactEmail] = useState(initial.contactEmail ?? "");
   const [pickupLocation, setPickupLocation] = useState(initial.pickupLocation ?? "");
   const [website, setWebsite] = useState(initial.website ?? "");
+  const [shippingDollars, setShippingDollars] = useState(
+    initial.shippingFlatCents != null ? (initial.shippingFlatCents / 100).toFixed(2) : "",
+  );
+  const [offersLocalPickup, setOffersLocalPickup] = useState(initial.offersLocalPickup);
   const [latitude, setLatitude] = useState(
     initial.latitude != null ? String(initial.latitude) : ""
   );
@@ -82,6 +88,18 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
     setSaveSuccess(null);
     setSaving(true);
     try {
+      let shippingFlatCents: number | null = null;
+      const shippingTrim = shippingDollars.trim();
+      if (shippingTrim !== "") {
+        const dollars = Number.parseFloat(shippingTrim);
+        if (!Number.isFinite(dollars) || dollars < 0 || dollars > 10_000) {
+          setError("Standard shipping must be between $0 and $10,000.");
+          setSaving(false);
+          return;
+        }
+        shippingFlatCents = Math.round(dollars * 100);
+      }
+
       const res = await fetch("/api/vendor/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -92,6 +110,8 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
           contactEmail,
           pickupLocation,
           website: website.trim() === "" ? null : website.trim(),
+          shippingFlatCents,
+          offersLocalPickup,
           latitude: latitude.trim() === "" ? null : latitude.trim(),
           longitude: longitude.trim() === "" ? null : longitude.trim(),
         }),
@@ -191,6 +211,46 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
           onChange={(e) => setPickupLocation(e.target.value)}
           className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
         />
+        <p className="mt-1 text-xs text-fix-text-muted">
+          Shown on your vendor page and used as the Local pickup label at checkout when enabled.
+        </p>
+      </div>
+      <div className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 p-4 space-y-4">
+        <div>
+          <div className="text-sm font-medium text-fix-heading">Product shipping</div>
+          <p className="mt-1 text-xs text-fix-text-muted">
+            Buyers choose <strong className="font-medium text-fix-heading">Pickup / in person</strong> or{" "}
+            <strong className="font-medium text-fix-heading">Ship / deliver</strong> before checkout.
+            This is your default ship rate — leave blank for $0. Heavy listings can override it under
+            Product details.
+          </p>
+        </div>
+        <div>
+          <label htmlFor="shippingFlat" className="block text-sm font-medium text-fix-text">
+            Standard shipping (USD)
+          </label>
+          <input
+            id="shippingFlat"
+            type="text"
+            inputMode="decimal"
+            placeholder="e.g. 8.00"
+            value={shippingDollars}
+            onChange={(e) => setShippingDollars(e.target.value)}
+            className="mt-1 w-full max-w-xs rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
+          />
+        </div>
+        <label className="flex items-start gap-2 text-sm text-fix-text">
+          <input
+            type="checkbox"
+            checked={offersLocalPickup}
+            onChange={(e) => setOffersLocalPickup(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Offer <strong className="font-medium text-fix-heading">Local pickup</strong> ($0) at
+            checkout
+          </span>
+        </label>
       </div>
       <div>
         <label htmlFor="website" className="block text-sm font-medium text-fix-text">

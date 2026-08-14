@@ -109,6 +109,33 @@ export async function PATCH(request: NextRequest) {
     publicSlugUpdate = parsed.slug;
   }
 
+  let shippingFlatCentsUpdate: number | null | undefined;
+  if (raw.shippingFlatCents !== undefined) {
+    if (raw.shippingFlatCents === null || raw.shippingFlatCents === "") {
+      shippingFlatCentsUpdate = null;
+    } else {
+      const n =
+        typeof raw.shippingFlatCents === "number"
+          ? raw.shippingFlatCents
+          : parseInt(String(raw.shippingFlatCents).trim(), 10);
+      if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
+        return NextResponse.json(
+          { error: "Standard shipping must be between $0 and $10,000." },
+          { status: 400 },
+        );
+      }
+      shippingFlatCentsUpdate = Math.round(n);
+    }
+  }
+
+  let offersLocalPickupUpdate: boolean | undefined;
+  if (raw.offersLocalPickup !== undefined) {
+    if (typeof raw.offersLocalPickup !== "boolean") {
+      return NextResponse.json({ error: "Invalid local pickup setting." }, { status: 400 });
+    }
+    offersLocalPickupUpdate = raw.offersLocalPickup;
+  }
+
   try {
     await prisma.vendorProfile.update({
       where: { userId: session.user.id },
@@ -121,6 +148,8 @@ export async function PATCH(request: NextRequest) {
         ...(lngInBody && { longitude: longitudeUpdate }),
         ...(raw.website !== undefined && { website: websiteUpdate }),
         ...(raw.publicSlug !== undefined && { publicSlug: publicSlugUpdate }),
+        ...(raw.shippingFlatCents !== undefined && { shippingFlatCents: shippingFlatCentsUpdate }),
+        ...(offersLocalPickupUpdate !== undefined && { offersLocalPickup: offersLocalPickupUpdate }),
       },
     });
   } catch (err) {

@@ -11,6 +11,7 @@ import { BookingMeetLink } from "@/components/BookingMeetLink";
 import { PostPurchaseNextSteps } from "@/components/PostPurchaseNextSteps";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { OrderStatusBadge } from "@/components/ui/StatusBadge";
+import { discoverVendorListingsPath } from "@/config/discoverPaths";
 import { formatPrice } from "@/lib/format";
 import { isResourceOrderItem, orderItemTypeLabel } from "@/lib/roles";
 
@@ -32,6 +33,11 @@ type OrderFromApi = {
   trackingNumber: string | null;
   shippedAt: string | null;
   createdAt: string;
+  vendor?: {
+    id: string;
+    displayName: string;
+    publicSlug: string | null;
+  } | null;
   items: Array<{
     id: string;
     productId: string;
@@ -167,6 +173,13 @@ export function OrderConfirmationClient() {
     order.shippingCity &&
     order.shippingState &&
     order.shippingPostal;
+
+  const continueShoppingHref = order.vendor
+    ? discoverVendorListingsPath(order.vendor)
+    : "/discover";
+  const continueShoppingLabel = order.vendor
+    ? `Continue shopping at ${order.vendor.displayName}`
+    : "Browse Discover";
 
   return (
     <Container className="py-12 sm:py-16">
@@ -419,8 +432,8 @@ export function OrderConfirmationClient() {
           <PostPurchaseNextSteps orderHref={`/account/orders/${order.id}`} />
 
           <div className="mt-4 flex flex-wrap gap-3">
-            <ButtonLink href="/discover" size="md" variant="secondary">
-              Browse Discover
+            <ButtonLink href={continueShoppingHref} size="md" variant="secondary">
+              {continueShoppingLabel}
             </ButtonLink>
             <Link
               href="/"

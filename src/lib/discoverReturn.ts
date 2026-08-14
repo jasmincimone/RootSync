@@ -102,10 +102,14 @@ function backLabelsForPath(
   const profileName = options?.profileName?.trim();
 
   if (VENDOR_PROFILE_PATH.test(pathname)) {
-    const name =
-      currentVendor && pathname === currentVendor && profileName ? profileName : "profile";
-    const backLabel = name === "profile" ? "Profile" : name;
-    return { backLabel, label: `Back to ${name}` };
+    const isCurrentVendor = Boolean(currentVendor && pathname === currentVendor && profileName);
+    if (isCurrentVendor && profileName) {
+      return {
+        backLabel: profileName,
+        label: `Back to ${profileName}'s storefront`,
+      };
+    }
+    return { backLabel: "Profile", label: "Back to vendor page" };
   }
 
   if (MEMBER_PROFILE_PATH.test(pathname)) {

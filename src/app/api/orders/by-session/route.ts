@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fulfillPaidEventTicketOrder } from "@/lib/fulfillEventTicket";
 import { getStripeClient } from "@/lib/stripe";
+import { orderShippingFieldsFromCheckoutSession } from "@/lib/stripeCheckoutWebhook";
 
 /**
  * Confirmation-page lookup. Requires a real Stripe Checkout session id that
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
     // Mirror webhook mark-paid if webhook is delayed
     const orderId = stripeSession.metadata?.orderId;
     if (orderId) {
+      const shippingUpdate = orderShippingFieldsFromCheckoutSession(stripeSession);
       await prisma.order.updateMany({
         where: { id: orderId, status: { not: "paid" } },
         data: {
@@ -37,8 +39,16 @@ export async function GET(request: NextRequest) {
             typeof stripeSession.payment_intent === "string"
               ? stripeSession.payment_intent
               : stripeSession.payment_intent?.id ?? null,
+          ...shippingUpdate,
         },
       });
+      // Paid path may already have run via webhook — still refresh shipping/totals.
+      if (Object.keys(shippingUpdate).length > 0) {
+        await prisma.order.updateMany({
+          where: { id: orderId },
+          data: shippingUpdate,
+        });
+      }
     }
   } catch (err) {
     console.error("[orders/by-session] stripe retrieve failed", err);
@@ -48,7 +58,21 @@ export async function GET(request: NextRequest) {
   const order = await prisma.order.findUnique({
     where: { stripeSessionId: sessionId },
     include: {
-      items: true,
+      items: {
+        include: {
+          listing: {
+            select: {
+              vendorProfile: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  publicSlug: true,
+                },
+              },
+            },
+          },
+        },
+      },
       booking: {
         select: {
           id: true,
@@ -68,6 +92,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
+  if (order.status === "paid") {
+    const { notifyAdminsOfShippableOrder } = await import("@/lib/shippingFulfillment");
+    await notifyAdminsOfShippableOrder(order.id);
+  }
+
   let eventJoin = null;
   if (order.status === "paid") {
     try {
@@ -77,6 +106,10 @@ export async function GET(request: NextRequest) {
       console.warn("[orders/by-session] event ticket fulfill:", err);
     }
   }
+
+  const vendorFromItem = order.items
+    .map((item) => item.listing?.vendorProfile)
+    .find((vendor) => vendor != null);
 
   return NextResponse.json({
     id: order.id,
@@ -96,6 +129,13 @@ export async function GET(request: NextRequest) {
     trackingNumber: order.trackingNumber,
     shippedAt: order.shippedAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
+    vendor: vendorFromItem
+      ? {
+          id: vendorFromItem.id,
+          displayName: vendorFromItem.displayName,
+          publicSlug: vendorFromItem.publicSlug,
+        }
+      : null,
     items: order.items.map((i) => ({
       id: i.id,
       productId: i.productId,

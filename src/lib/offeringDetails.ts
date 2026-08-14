@@ -20,6 +20,8 @@ import {
 
 export type ProductDetailsInput = {
   requiresShipping?: boolean;
+  /** Override vendor default shipping; null clears override */
+  shippingFlatCents?: number | null;
   sku?: string | null;
   /** Remaining units; null = unlimited / not tracked */
   inventoryQuantity?: number | null;
@@ -163,6 +165,9 @@ export function parseOfferingDetailsFromBody(
         ...(product.requiresShipping !== undefined
           ? { requiresShipping: Boolean(product.requiresShipping) }
           : {}),
+        ...(product.shippingFlatCents !== undefined || "shippingFlatCents" in product
+          ? { shippingFlatCents: parseOptionalInt(product.shippingFlatCents) ?? null }
+          : {}),
         sku: parseOptionalString(product.sku),
         ...(product.inventoryQuantity !== undefined || "inventoryQuantity" in product
           ? { inventoryQuantity: parseOptionalInt(product.inventoryQuantity) ?? null }
@@ -272,6 +277,7 @@ export function serializeOfferingDetails(
     listingType: string;
     productDetails: {
       requiresShipping: boolean;
+      shippingFlatCents: number | null;
       sku: string | null;
       inventoryQuantity: number | null;
     } | null;
@@ -306,6 +312,7 @@ export function serializeOfferingDetails(
     product: offering.productDetails
       ? {
           requiresShipping: offering.productDetails.requiresShipping,
+          shippingFlatCents: offering.productDetails.shippingFlatCents,
           sku: offering.productDetails.sku,
           inventoryQuantity: offering.productDetails.inventoryQuantity,
         }
@@ -401,6 +408,7 @@ async function createDetailForType(
         data: {
           offeringId,
           requiresShipping: details?.product?.requiresShipping ?? true,
+          shippingFlatCents: details?.product?.shippingFlatCents ?? null,
           sku: details?.product?.sku ?? null,
           inventoryQuantity: details?.product?.inventoryQuantity ?? null,
         },
@@ -465,12 +473,16 @@ export async function upsertOfferingDetails(
         create: {
           offeringId,
           requiresShipping: details.product.requiresShipping ?? true,
+          shippingFlatCents: details.product.shippingFlatCents ?? null,
           sku: details.product.sku ?? null,
           inventoryQuantity: details.product.inventoryQuantity ?? null,
         },
         update: {
           ...(details.product.requiresShipping !== undefined
             ? { requiresShipping: details.product.requiresShipping }
+            : {}),
+          ...(details.product.shippingFlatCents !== undefined
+            ? { shippingFlatCents: details.product.shippingFlatCents }
             : {}),
           ...(details.product.sku !== undefined ? { sku: details.product.sku } : {}),
           ...(details.product.inventoryQuantity !== undefined

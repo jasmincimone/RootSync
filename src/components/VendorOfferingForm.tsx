@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { VendorListingImageField } from "@/components/VendorListingImageField";
 import { VendorResourceFileField } from "@/components/VendorResourceFileField";
@@ -134,6 +134,7 @@ export function VendorOfferingForm({
   const [listingType, setListingType] = useState(resolvedDefaultType);
   const [vendorNotes, setVendorNotes] = useState(initial?.vendorNotes ?? "");
   const [status, setStatus] = useState(initial?.status ?? OFFERING_STATUS.DRAFT);
+  const statusSelectRef = useRef<HTMLSelectElement>(null);
   const [scheduledPublishAt, setScheduledPublishAt] = useState(
     toDatetimeLocalValue(initial?.scheduledPublishAt),
   );
@@ -150,6 +151,11 @@ export function VendorOfferingForm({
 
   const [requiresShipping, setRequiresShipping] = useState(
     initial?.details.product?.requiresShipping ?? true,
+  );
+  const [shippingDollars, setShippingDollars] = useState(
+    initial?.details.product?.shippingFlatCents != null
+      ? (initial.details.product.shippingFlatCents / 100).toFixed(2)
+      : "",
   );
   const [sku, setSku] = useState(initial?.details.product?.sku ?? "");
   const [inventoryQuantity, setInventoryQuantity] = useState(
@@ -231,9 +237,15 @@ export function VendorOfferingForm({
 
   function buildDetailsPayload() {
     if (listingType === LISTING_TYPE.PRODUCT) {
+      const shippingTrim = shippingDollars.trim();
+      let shippingFlatCents: number | null = null;
+      if (shippingTrim !== "") {
+        shippingFlatCents = Math.round(Number.parseFloat(shippingTrim) * 100);
+      }
       return {
         product: {
           requiresShipping,
+          shippingFlatCents,
           sku: sku.trim() || null,
           inventoryQuantity: inventoryQuantity.trim()
             ? Number.parseInt(inventoryQuantity, 10)
@@ -283,8 +295,17 @@ export function VendorOfferingForm({
     };
   }
 
-  async function submit(e: React.FormEvent) {
+  function resolveStatusForSave(): string {
+    const fromDom = statusSelectRef.current?.value;
+    return typeof fromDom === "string" && fromDom.length > 0 ? fromDom : status;
+  }
+
+  function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
+  }
+
+  async function submit() {
+    const statusForSave = resolveStatusForSave();
     setError(null);
     setSuccess(null);
 
@@ -344,15 +365,22 @@ export function VendorOfferingForm({
         return;
       }
     }
+    if (listingType === LISTING_TYPE.PRODUCT && shippingDollars.trim()) {
+      const dollars = Number.parseFloat(shippingDollars.trim());
+      if (!Number.isFinite(dollars) || dollars < 0 || dollars > 10_000) {
+        setError("Listing shipping must be between $0 and $10,000, or blank to use your vendor default.");
+        return;
+      }
+    }
 
-    if (status === OFFERING_STATUS.SCHEDULED && !scheduledPublishAt.trim()) {
+    if (statusForSave === OFFERING_STATUS.SCHEDULED && !scheduledPublishAt.trim()) {
       setError("Scheduled offerings need a publish date and time.");
       return;
     }
 
     if (
       listingType === LISTING_TYPE.RESOURCE &&
-      (status === OFFERING_STATUS.ACTIVE || status === OFFERING_STATUS.SCHEDULED) &&
+      (statusForSave === OFFERING_STATUS.ACTIVE || statusForSave === OFFERING_STATUS.SCHEDULED) &&
       !resourceFileUrl.trim()
     ) {
       setError("Upload the Resource file before publishing.");
@@ -361,7 +389,7 @@ export function VendorOfferingForm({
 
     if (
       listingType === LISTING_TYPE.EVENT &&
-      (status === OFFERING_STATUS.ACTIVE || status === OFFERING_STATUS.SCHEDULED) &&
+      (statusForSave === OFFERING_STATUS.ACTIVE || statusForSave === OFFERING_STATUS.SCHEDULED) &&
       cents <= 0
     ) {
       setError(
@@ -420,7 +448,7 @@ export function VendorOfferingForm({
         productUrl: productUrl.trim() || null,
         listingType,
         vendorNotes: vendorNotes.trim() || null,
-        status,
+        status: statusForSave,
         scheduledPublishAt: fromDatetimeLocalValue(scheduledPublishAt),
         publicSlug,
         details: buildDetailsPayload(),
@@ -450,6 +478,7 @@ export function VendorOfferingForm({
       const url =
         mode === "create" ? "/api/vendor/listings" : `/api/vendor/listings/${listingId}`;
       const method = mode === "create" ? "POST" : "PATCH";
+
 
       const res = await fetch(url, {
         method,
@@ -549,7 +578,7 @@ export function VendorOfferingForm({
         </ol>
       </div>
 
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={handleFormSubmit} className="space-y-4">
         <FormFeedback success={success} error={error} />
 
         {currentStepKey === "basics" ? (
@@ -674,6 +703,25 @@ export function VendorOfferingForm({
               />
               Requires shipping
             </label>
+            {requiresShipping ? (
+              <div>
+                <label className="block text-sm font-medium text-fix-text">
+                  Shipping for this listing (USD, optional)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={shippingDollars}
+                  onChange={(e) => setShippingDollars(e.target.value)}
+                  placeholder="e.g. 25.00 — blank uses vendor default"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-fix-text-muted">
+                  Override your profile flat rate for heavy items (e.g. RootRise). Leave blank to use
+                  the vendor default from Profile.
+                </p>
+              </div>
+            ) : null}
             <div>
               <label className="block text-sm font-medium text-fix-text">SKU (optional)</label>
               <input value={sku} onChange={(e) => setSku(e.target.value)} className={inputClass} />
@@ -1060,8 +1108,18 @@ export function VendorOfferingForm({
         <div>
           <label className="block text-sm font-medium text-fix-text">Offering status</label>
           <select
+            ref={statusSelectRef}
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            disabled={saving || deleting || !!success}
+            onChange={(e) => {
+              const next = e.target.value;
+              setStatus(next);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+              }
+            }}
             className={inputClass}
           >
             <option value={OFFERING_STATUS.DRAFT}>Draft — planning, not public</option>
@@ -1114,10 +1172,11 @@ export function VendorOfferingForm({
             </Button>
           ) : (
             <Button
-              type="submit"
+              type="button"
               disabled={saving || deleting || !!success}
               variant="cta"
               size="sm"
+              onClick={() => void submit()}
             >
               {saving ? "Saving…" : mode === "create" ? "Create offering" : "Save changes"}
             </Button>

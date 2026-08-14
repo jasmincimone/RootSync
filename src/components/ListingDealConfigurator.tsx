@@ -136,36 +136,40 @@ export function ListingDealConfigurator({
                     {optionGroups.map((group) => {
                       const selectedValueId =
                         row?.choices.find((c) => c.groupId === group.id)?.valueId ?? "";
+                      const selectedValue = group.values.find((v) => v.id === selectedValueId);
+                      const selectId = `opt-${group.id}-u${unitIndex}`;
                       return (
                         <div key={group.id}>
-                          <p className="text-sm font-medium text-fix-heading">{group.name}</p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {group.values.map((value) => {
-                              const active = selectedValueId === value.id;
-                              return (
-                                <button
-                                  key={value.id}
-                                  type="button"
-                                  onClick={() => setChoice(unitIndex, group.id, value.id)}
-                                  className={cn(
-                                    "rounded-lg border px-3 py-2 text-left text-sm transition-colors",
-                                    active
-                                      ? "border-amber/50 bg-amber/10 font-medium text-fix-heading ring-1 ring-amber/30"
-                                      : "border-fix-border/20 bg-fix-bg-muted/40 text-fix-text hover:bg-fix-bg-muted",
-                                  )}
-                                >
-                                  {value.imageUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={value.imageUrl}
-                                      alt=""
-                                      className="mb-1 h-10 w-10 rounded object-cover"
-                                    />
-                                  ) : null}
+                          <label
+                            htmlFor={selectId}
+                            className="block text-sm font-medium text-fix-heading"
+                          >
+                            {group.name}
+                          </label>
+                          <div className="mt-2 flex items-center gap-2">
+                            {selectedValue?.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={selectedValue.imageUrl}
+                                alt=""
+                                className="h-11 w-11 shrink-0 rounded-lg object-cover"
+                              />
+                            ) : null}
+                            <select
+                              id={selectId}
+                              value={selectedValueId}
+                              onChange={(e) => setChoice(unitIndex, group.id, e.target.value)}
+                              className="min-h-11 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2.5 text-base text-fix-text"
+                            >
+                              {selectedValueId ? null : (
+                                <option value="">Select {group.name}</option>
+                              )}
+                              {group.values.map((value) => (
+                                <option key={value.id} value={value.id}>
                                   {value.label}
-                                </button>
-                              );
-                            })}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                       );

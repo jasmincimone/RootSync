@@ -211,6 +211,7 @@ export async function POST(request: NextRequest) {
     typeof status === "string" ? status : OFFERING_STATUS.DRAFT,
   );
 
+
   let scheduledAt: Date | null = null;
   if (scheduledPublishAt) {
     if (typeof scheduledPublishAt !== "string") {
