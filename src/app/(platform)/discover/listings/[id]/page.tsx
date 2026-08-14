@@ -153,6 +153,7 @@ function PurchasePanel({
   vendorPublicSlug = null,
   stripeCheckoutReady,
   paymentLinkUrl,
+  externalCheckoutOnly = false,
   inventoryQuantity,
   requiresShipping = false,
   offersLocalPickup = true,
@@ -201,6 +202,7 @@ function PurchasePanel({
   vendorPublicSlug?: string | null;
   stripeCheckoutReady: boolean;
   paymentLinkUrl: string | null;
+  externalCheckoutOnly?: boolean;
   inventoryQuantity: number | null;
   requiresShipping?: boolean;
   offersLocalPickup?: boolean;
@@ -273,6 +275,7 @@ function PurchasePanel({
             paymentLinkUrl={paymentLinkUrl}
             productUrl={offering.productUrl}
             stripeCheckoutReady={stripeCheckoutReady}
+            externalCheckoutOnly={externalCheckoutOnly}
             inventoryQuantity={inventoryQuantity}
             requiresShipping={requiresShipping}
             offersLocalPickup={offersLocalPickup}
@@ -349,13 +352,15 @@ export default async function DiscoverListingPage({
     stripeConnectAccountId: v.user.stripeConnectAccountId,
   });
 
+
   const detailProps = {
     listingType: listing.listingType,
     product: offering.productDetails,
     service: offering.serviceDetails,
     resource: offering.resourceDetails,
     event: offering.eventDetails,
-    rootSyncCheckoutReady: checkoutOptions.stripeCheckoutReady,
+    rootSyncCheckoutReady:
+      checkoutOptions.stripeCheckoutReady && !checkoutOptions.externalCheckoutOnly,
   };
 
   const vendorPath = discoverVendorPath(v);
@@ -473,6 +478,7 @@ export default async function DiscoverListingPage({
                 vendorPublicSlug={v.publicSlug}
                 stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}
                 paymentLinkUrl={checkoutOptions.paymentLinkUrl}
+                externalCheckoutOnly={checkoutOptions.externalCheckoutOnly}
                 inventoryQuantity={offering.productDetails?.inventoryQuantity ?? null}
                 requiresShipping={Boolean(offering.productDetails?.requiresShipping)}
                 offersLocalPickup={v.offersLocalPickup}
@@ -544,6 +550,7 @@ export default async function DiscoverListingPage({
                 vendorPublicSlug={v.publicSlug}
                 stripeCheckoutReady={checkoutOptions.stripeCheckoutReady}
                 paymentLinkUrl={checkoutOptions.paymentLinkUrl}
+                externalCheckoutOnly={checkoutOptions.externalCheckoutOnly}
                 inventoryQuantity={offering.productDetails?.inventoryQuantity ?? null}
                 requiresShipping={Boolean(offering.productDetails?.requiresShipping)}
                 offersLocalPickup={v.offersLocalPickup}

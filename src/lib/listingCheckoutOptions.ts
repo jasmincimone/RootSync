@@ -4,6 +4,12 @@ export type ListingCheckoutOptions = {
   stripeCheckoutReady: boolean;
   /** Offering payment URL, or vendor default payment link when listing has none. */
   paymentLinkUrl: string | null;
+  /**
+   * A pay link set on the listing itself is an explicit choice to sell off-platform,
+   * so RootSync checkout (Buy now, cart, shipping) is withheld for that listing.
+   * A vendor-wide default link does not trigger this.
+   */
+  externalCheckoutOnly: boolean;
 };
 
 export function resolveListingPaymentLinkUrl(args: {
@@ -43,5 +49,6 @@ export async function resolveListingCheckoutOptions(args: {
       offeringPaymentUrl: args.offeringPaymentUrl,
       vendorPaymentLinkUrl: args.vendorPaymentLinkUrl,
     }),
+    externalCheckoutOnly: Boolean(args.offeringPaymentUrl?.trim()),
   };
 }

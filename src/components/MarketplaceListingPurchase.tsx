@@ -39,6 +39,8 @@ type Props = {
   paymentLinkUrl?: string | null;
   productUrl?: string | null;
   stripeCheckoutReady?: boolean;
+  /** Listing sells through its own external pay link, so RootSync checkout is withheld. */
+  externalCheckoutOnly?: boolean;
   /** Product-level remaining stock; null/undefined = unlimited */
   inventoryQuantity?: number | null;
   requiresShipping?: boolean;
@@ -66,6 +68,7 @@ export function MarketplaceListingPurchase({
   paymentLinkUrl,
   productUrl,
   stripeCheckoutReady = false,
+  externalCheckoutOnly = false,
   inventoryQuantity = null,
   requiresShipping = false,
   offersLocalPickup = true,
@@ -109,7 +112,7 @@ export function MarketplaceListingPurchase({
   );
 
   const hasPaymentLink = !!paymentLinkUrl?.trim();
-  const hasStripeCheckout = stripeCheckoutReady;
+  const hasStripeCheckout = stripeCheckoutReady && !externalCheckoutOnly;
   const variantBlocked = needsVariant && !selectedVariantId;
   const optionsIncomplete =
     optionGroups.length > 0 &&
