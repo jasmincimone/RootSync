@@ -152,6 +152,9 @@ export function VendorOfferingForm({
   const [requiresShipping, setRequiresShipping] = useState(
     initial?.details.product?.requiresShipping ?? true,
   );
+  const [offersLocalPickup, setOffersLocalPickup] = useState(
+    initial?.details.product?.offersLocalPickup ?? false,
+  );
   const [shippingDollars, setShippingDollars] = useState(
     initial?.details.product?.shippingFlatCents != null
       ? (initial.details.product.shippingFlatCents / 100).toFixed(2)
@@ -178,6 +181,9 @@ export function VendorOfferingForm({
   );
   const [defaultTimeZone, setDefaultTimeZone] = useState(
     initial?.details.service?.defaultTimeZone ?? "America/New_York",
+  );
+  const [requiresAccountToBook, setRequiresAccountToBook] = useState(
+    initial?.details.service?.requiresAccountToBook ?? false,
   );
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRuleInput[]>(
     initial?.booking?.availabilityRules?.length
@@ -246,6 +252,7 @@ export function VendorOfferingForm({
         product: {
           requiresShipping,
           shippingFlatCents,
+          offersLocalPickup: requiresShipping && offersLocalPickup,
           sku: sku.trim() || null,
           inventoryQuantity: inventoryQuantity.trim()
             ? Number.parseInt(inventoryQuantity, 10)
@@ -263,6 +270,7 @@ export function VendorOfferingForm({
           bookingUrl: bookingUrl.trim() || null,
           fulfillmentMethod,
           defaultTimeZone,
+          requiresAccountToBook,
         },
       };
     }
@@ -594,10 +602,29 @@ export function VendorOfferingForm({
             className={inputClass}
           >
             <option value={LISTING_TYPE.PRODUCT}>Product — physical goods</option>
-            <option value={LISTING_TYPE.SERVICE}>Service — appointments, installs, maintenance</option>
+            <option value={LISTING_TYPE.SERVICE}>
+              Service — customers pick a time on your calendar
+            </option>
             <option value={LISTING_TYPE.RESOURCE}>Resource — ebooks, plans, templates</option>
-            <option value={LISTING_TYPE.EVENT}>Event — markets, classes, workshops</option>
+            <option value={LISTING_TYPE.EVENT}>Event — you host at a set date and time</option>
           </select>
+          {listingType === LISTING_TYPE.EVENT || listingType === LISTING_TYPE.SERVICE ? (
+            <div className="mt-2 rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 p-4 text-xs text-fix-text-muted">
+              <p className="font-medium text-fix-heading">
+                Hosting a class, or being booked for one?
+              </p>
+              <p className="mt-1">
+                Pick <span className="font-medium text-fix-heading">Event</span> when you set the
+                date and people buy tickets — a Plant &amp; Sip you are throwing on the 14th.
+              </p>
+              <p className="mt-1">
+                Pick <span className="font-medium text-fix-heading">Service</span> when someone
+                books <em>you</em> from your open hours — a Plant &amp; Sip you run on request, at a
+                time they choose. You set availability and RootSync handles the calendar invite and
+                Meet link.
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <div>
@@ -699,11 +726,16 @@ export function VendorOfferingForm({
               <input
                 type="checkbox"
                 checked={requiresShipping}
-                onChange={(e) => setRequiresShipping(e.target.checked)}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setRequiresShipping(next);
+                  if (!next) setOffersLocalPickup(false);
+                }}
               />
               Requires shipping
             </label>
             {requiresShipping ? (
+              <>
               <div>
                 <label className="block text-sm font-medium text-fix-text">
                   Shipping for this listing (USD, optional)
@@ -721,6 +753,22 @@ export function VendorOfferingForm({
                   the vendor default from Profile.
                 </p>
               </div>
+              <label className="flex items-start gap-2 text-sm text-fix-text">
+                <input
+                  type="checkbox"
+                  checked={offersLocalPickup}
+                  onChange={(e) => setOffersLocalPickup(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Also offer in-person / local pickup
+                  <span className="mt-0.5 block text-xs text-fix-text-muted">
+                    Buyers can pick this up at your profile pickup location. Leave unchecked for
+                    shipping only.
+                  </span>
+                </span>
+              </label>
+              </>
             ) : null}
             <div>
               <label className="block text-sm font-medium text-fix-text">SKU (optional)</label>
@@ -752,6 +800,12 @@ export function VendorOfferingForm({
         {currentStepKey === "details" && listingType === LISTING_TYPE.SERVICE ? (
           <FormSection title="Service details" description="Duration, fulfillment, and RootSync booking">
           <fieldset className="space-y-3">
+            <p className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 p-4 text-xs text-fix-text-muted">
+              Customers pick a time from the availability you set below — consultations, installs,
+              and classes you run on request. If you are hosting on a date you choose and selling
+              tickets, go back to Basics and pick{" "}
+              <span className="font-medium text-fix-heading">Event</span> instead.
+            </p>
             <div>
               <label className="block text-sm font-medium text-fix-text">Service type</label>
               <select
@@ -823,6 +877,25 @@ export function VendorOfferingForm({
               </p>
             </div>
 
+            <div className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 p-4">
+              <label className="flex items-start gap-2 text-sm text-fix-text">
+                <input
+                  type="checkbox"
+                  checked={requiresAccountToBook}
+                  onChange={(e) => setRequiresAccountToBook(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-medium text-fix-heading">Require a RootSync account to book</span>
+                  <span className="mt-1 block text-xs text-fix-text-muted">
+                    By default anyone can book with just an email, which converts better for
+                    first-time neighbors. Turn this on when you want every booking tied to a
+                    RootSync member.
+                  </span>
+                </span>
+              </label>
+            </div>
+
             <div className="border-t border-fix-border/15 pt-4">
               <ServiceBookingConfigFields
                 timeZone={defaultTimeZone}
@@ -885,6 +958,11 @@ export function VendorOfferingForm({
             description="When it happens, how people attend, and capacity"
           >
           <fieldset className="space-y-3">
+            <p className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 p-4 text-xs text-fix-text-muted">
+              You are setting the date and time, and customers buy tickets for it. If instead you
+              want customers to book you from your open hours, go back to Basics and choose{" "}
+              <span className="font-medium text-fix-heading">Service</span>.
+            </p>
             <div>
               <label className="block text-sm font-medium text-fix-text">Attendance</label>
               <select
@@ -1070,10 +1148,9 @@ export function VendorOfferingForm({
             className={inputClass}
           />
           <p className="mt-1 text-xs text-fix-text-muted">
-            Prefer RootSync Checkout when Payment Hub / Connect is ready — that keeps the platform
-            fee. External pay links still work if you already sell elsewhere; those sales are
-            off-platform and do not include the RootSync fee. Optional per-listing override of your
-            default Payments link.
+            Use this when you want payment handled on another website. A payment link set here sends
+            shoppers there instead of RootSync checkout for this listing. Leave it blank to keep the
+            RootSync cart, booking, shipping, and order experience.
           </p>
         </div>
 

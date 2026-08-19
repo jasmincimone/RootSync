@@ -2,6 +2,7 @@ import { BookOpen, Calendar, MapPin, Package, Sparkles, Users } from "lucide-rea
 
 import { Card } from "@/components/ui/Card";
 import { resourceSubtypeLabel } from "@/config/resourceSubtypes";
+import { formatFlatShippingLabel } from "@/lib/checkoutFulfillment";
 import { listingDisplayPrice, listingTypeLabel } from "@/lib/listingDisplay";
 import { LISTING_TYPE, EVENT_ATTENDANCE_MODE, type EventAttendanceMode, type FulfillmentMethod, type ServiceKind } from "@/lib/roles";
 
@@ -53,6 +54,7 @@ type ListingDetailPanelsProps = {
   product: {
     requiresShipping: boolean;
     shippingFlatCents?: number | null;
+    offersLocalPickup?: boolean;
     sku: string | null;
     inventoryQuantity: number | null;
   } | null;
@@ -76,6 +78,8 @@ type ListingDetailPanelsProps = {
     externalJoinUrl: string | null;
     meetUrl: string | null;
   } | null;
+  /** Resolved ship rate (listing override or vendor default) for display */
+  effectiveShippingFlatCents?: number | null;
   /** When false, do not promise RootSync post-purchase join emails. */
   rootSyncCheckoutReady?: boolean;
 };
@@ -84,25 +88,37 @@ export function ListingDetailHighlights({
   listingType,
   priceCents,
   variantCount,
+  product,
+  effectiveShippingFlatCents = null,
   resource,
 }: ListingDetailPanelsProps) {
   const typeLabel = listingTypeLabel(listingType);
   const subtypeLabel = resource ? resourceSubtypeLabel(resource.resourceSubtype) : null;
+  const showShippingCost =
+    listingType === LISTING_TYPE.PRODUCT && product?.requiresShipping;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-fix-surface px-3 py-1 text-xs font-semibold uppercase tracking-wide text-fix-heading ring-1 ring-fix-border/20">
-        <Sparkles className="h-3.5 w-3.5 text-fix-link" aria-hidden />
-        {typeLabel}
-      </span>
-      {subtypeLabel ? (
-        <span className="rounded-full bg-fix-bg-muted px-3 py-1 text-xs font-medium text-fix-heading">
-          {subtypeLabel}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-fix-surface px-3 py-1 text-xs font-semibold uppercase tracking-wide text-fix-heading ring-1 ring-fix-border/20">
+          <Sparkles className="h-3.5 w-3.5 text-fix-link" aria-hidden />
+          {typeLabel}
         </span>
+        {subtypeLabel ? (
+          <span className="rounded-full bg-fix-bg-muted px-3 py-1 text-xs font-medium text-fix-heading">
+            {subtypeLabel}
+          </span>
+        ) : null}
+        <span className="ml-auto text-lg font-semibold text-fix-heading sm:text-xl">
+          {listingDisplayPrice(priceCents, variantCount)}
+        </span>
+      </div>
+      {showShippingCost ? (
+        <p className="text-sm text-fix-text-muted">
+          {formatFlatShippingLabel(effectiveShippingFlatCents)}
+          {product?.offersLocalPickup ? " · Local pickup free" : null}
+        </p>
       ) : null}
-      <span className="ml-auto text-lg font-semibold text-fix-heading sm:text-xl">
-        {listingDisplayPrice(priceCents, variantCount)}
-      </span>
     </div>
   );
 }
@@ -113,6 +129,7 @@ export function ListingTypeDetailCard({
   service,
   resource,
   event,
+  effectiveShippingFlatCents = null,
   rootSyncCheckoutReady = true,
 }: Omit<ListingDetailPanelsProps, "priceCents" | "variantCount">) {
   if (listingType === LISTING_TYPE.RESOURCE && resource) {
@@ -243,7 +260,13 @@ export function ListingTypeDetailCard({
         <dl className="px-5 py-1">
           <DetailRow
             label="Shipping"
-            value={product.requiresShipping ? "Ships or local pickup" : "No shipping required"}
+            value={
+              !product.requiresShipping
+                ? "No shipping required"
+                : product.offersLocalPickup
+                  ? `${formatFlatShippingLabel(effectiveShippingFlatCents)} · Local pickup free`
+                  : formatFlatShippingLabel(effectiveShippingFlatCents)
+            }
           />
           {product.sku?.trim() ? <DetailRow label="SKU" value={product.sku.trim()} /> : null}
           {product.inventoryQuantity != null ? (

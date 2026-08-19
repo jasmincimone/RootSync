@@ -29,10 +29,12 @@ export type RefundBookingPaymentResult =
 export async function refundBookingPayment(
   input: RefundBookingPaymentInput,
 ): Promise<RefundBookingPaymentResult> {
-  if (input.bookingStatus !== BOOKING_STATUS.CONFIRMED) {
-    return { refunded: false, skipped: true, reason: "not_paid" };
+  if (input.bookingStatus === BOOKING_STATUS.CANCELLED) {
+    return { refunded: false, skipped: true, reason: "already_cancelled" };
   }
 
+  // The order, not the booking status, decides whether money actually moved: a booking
+  // that lost a slot race is still PENDING_PAYMENT but has a paid order to refund.
   const order = input.order;
   if (!order || order.status !== "paid") {
     return { refunded: false, skipped: true, reason: "order_not_paid" };

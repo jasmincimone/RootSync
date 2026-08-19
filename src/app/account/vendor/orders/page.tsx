@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { Package } from "lucide-react";
+import { Mail, Package } from "lucide-react";
 
 import { AccountSubpageBody } from "@/components/account/AccountSubpageBody";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -37,15 +37,23 @@ export default async function VendorOrdersPage() {
       listing: { vendorProfileId },
     },
     include: {
-      order: true,
-      listing: true,
+      order: {
+        select: {
+          id: true,
+          email: true,
+          shippingName: true,
+          status: true,
+          createdAt: true,
+        },
+      },
+      listing: { select: { title: true } },
     },
     orderBy: { order: { createdAt: "desc" } },
     take: 100,
   });
 
   return (
-    <AccountSubpageBody description="Line items from Discover checkout that reference your listings.">
+    <AccountSubpageBody description="Discover checkout orders for your listings, including buyer emails for follow-up.">
       {items.length === 0 ? (
         <EmptyState
           icon={Package}
@@ -55,31 +63,49 @@ export default async function VendorOrdersPage() {
         />
       ) : (
         <ul className="space-y-3">
-          {items.map((line) => (
-            <li key={line.id}>
-              <Card className="p-4">
-                <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
-                  <div>
-                    <div className="font-medium text-fix-heading">
-                      {line.listing?.title ?? line.name}
+          {items.map((line) => {
+            const buyerEmail = line.order.email?.trim();
+            const buyerLabel = line.order.shippingName?.trim() || buyerEmail || "Buyer";
+            return (
+              <li key={line.id}>
+                <Card className="p-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="font-medium text-fix-heading">
+                        {line.listing?.title ?? line.name}
+                      </div>
+                      <div className="text-xs text-fix-text-muted">
+                        Order {line.order.id.slice(0, 8)}… • {line.order.status} •{" "}
+                        {line.order.createdAt.toISOString().slice(0, 10)}
+                      </div>
+                      {buyerEmail ? (
+                        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fix-text">
+                          <span className="font-medium text-fix-heading">{buyerLabel}</span>
+                          <a
+                            href={`mailto:${buyerEmail}`}
+                            className="inline-flex items-center gap-1 text-fix-link hover:text-fix-link-hover"
+                          >
+                            <Mail className="h-3.5 w-3.5" aria-hidden />
+                            {buyerEmail}
+                          </a>
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm text-fix-text-muted">No buyer email on file</p>
+                      )}
                     </div>
-                    <div className="text-xs text-fix-text-muted">
-                      Order {line.order.id.slice(0, 8)}… • {line.order.status} •{" "}
-                      {line.order.createdAt.toISOString().slice(0, 10)}
+                    <div className="text-sm font-semibold text-fix-heading sm:text-right">
+                      ×{line.quantity} • {formatPrice(line.priceCents * line.quantity)}
                     </div>
                   </div>
-                  <div className="text-sm font-semibold text-fix-heading">
-                    ×{line.quantity} • {formatPrice(line.priceCents * line.quantity)}
-                  </div>
-                </div>
-                {line.unitSelections ? (
-                  <p className="mt-2 text-xs text-fix-text-muted">
-                    {formatUnitSelectionsSummary(line.unitSelections as UnitSelectionSnapshot[])}
-                  </p>
-                ) : null}
-              </Card>
-            </li>
-          ))}
+                  {line.unitSelections ? (
+                    <p className="mt-2 text-xs text-fix-text-muted">
+                      {formatUnitSelectionsSummary(line.unitSelections as UnitSelectionSnapshot[])}
+                    </p>
+                  ) : null}
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
     </AccountSubpageBody>

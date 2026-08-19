@@ -22,6 +22,8 @@ export type ProductDetailsInput = {
   requiresShipping?: boolean;
   /** Override vendor default shipping; null clears override */
   shippingFlatCents?: number | null;
+  /** Listing opt-in for in-person / local pickup. Default is shipping only. */
+  offersLocalPickup?: boolean;
   sku?: string | null;
   /** Remaining units; null = unlimited / not tracked */
   inventoryQuantity?: number | null;
@@ -35,6 +37,7 @@ export type ServiceDetailsInput = {
   bookingUrl?: string | null;
   fulfillmentMethod?: FulfillmentMethod;
   defaultTimeZone?: string | null;
+  requiresAccountToBook?: boolean;
 };
 
 export type ResourceDetailsInput = {
@@ -168,6 +171,9 @@ export function parseOfferingDetailsFromBody(
         ...(product.shippingFlatCents !== undefined || "shippingFlatCents" in product
           ? { shippingFlatCents: parseOptionalInt(product.shippingFlatCents) ?? null }
           : {}),
+        ...(typeof product.offersLocalPickup === "boolean"
+          ? { offersLocalPickup: product.offersLocalPickup }
+          : {}),
         sku: parseOptionalString(product.sku),
         ...(product.inventoryQuantity !== undefined || "inventoryQuantity" in product
           ? { inventoryQuantity: parseOptionalInt(product.inventoryQuantity) ?? null }
@@ -205,6 +211,9 @@ export function parseOfferingDetailsFromBody(
         bookingUrl,
         ...(fulfillmentMethod ? { fulfillmentMethod } : {}),
         ...(defaultTimeZone !== undefined ? { defaultTimeZone } : {}),
+        ...(typeof service.requiresAccountToBook === "boolean"
+          ? { requiresAccountToBook: service.requiresAccountToBook }
+          : {}),
       },
     };
   }
@@ -278,6 +287,7 @@ export function serializeOfferingDetails(
     productDetails: {
       requiresShipping: boolean;
       shippingFlatCents: number | null;
+      offersLocalPickup: boolean;
       sku: string | null;
       inventoryQuantity: number | null;
     } | null;
@@ -289,6 +299,7 @@ export function serializeOfferingDetails(
       bookingUrl: string | null;
       fulfillmentMethod: string;
       defaultTimeZone: string;
+      requiresAccountToBook: boolean;
     } | null;
     resourceDetails: {
       resourceSubtype: string | null;
@@ -313,6 +324,7 @@ export function serializeOfferingDetails(
       ? {
           requiresShipping: offering.productDetails.requiresShipping,
           shippingFlatCents: offering.productDetails.shippingFlatCents,
+          offersLocalPickup: offering.productDetails.offersLocalPickup,
           sku: offering.productDetails.sku,
           inventoryQuantity: offering.productDetails.inventoryQuantity,
         }
@@ -326,6 +338,7 @@ export function serializeOfferingDetails(
           bookingUrl: offering.serviceDetails.bookingUrl,
           fulfillmentMethod: offering.serviceDetails.fulfillmentMethod as FulfillmentMethod,
           defaultTimeZone: offering.serviceDetails.defaultTimeZone,
+          requiresAccountToBook: offering.serviceDetails.requiresAccountToBook,
         }
       : null,
     resource: offering.resourceDetails
@@ -409,6 +422,7 @@ async function createDetailForType(
           offeringId,
           requiresShipping: details?.product?.requiresShipping ?? true,
           shippingFlatCents: details?.product?.shippingFlatCents ?? null,
+          offersLocalPickup: details?.product?.offersLocalPickup ?? false,
           sku: details?.product?.sku ?? null,
           inventoryQuantity: details?.product?.inventoryQuantity ?? null,
         },
@@ -425,6 +439,7 @@ async function createDetailForType(
           bookingUrl: details?.service?.bookingUrl ?? null,
           fulfillmentMethod: details?.service?.fulfillmentMethod ?? FULFILLMENT_METHOD.VIRTUAL,
           defaultTimeZone: details?.service?.defaultTimeZone ?? "America/New_York",
+          requiresAccountToBook: details?.service?.requiresAccountToBook ?? false,
         },
       });
       break;
@@ -474,6 +489,7 @@ export async function upsertOfferingDetails(
           offeringId,
           requiresShipping: details.product.requiresShipping ?? true,
           shippingFlatCents: details.product.shippingFlatCents ?? null,
+          offersLocalPickup: details.product.offersLocalPickup ?? false,
           sku: details.product.sku ?? null,
           inventoryQuantity: details.product.inventoryQuantity ?? null,
         },
@@ -483,6 +499,9 @@ export async function upsertOfferingDetails(
             : {}),
           ...(details.product.shippingFlatCents !== undefined
             ? { shippingFlatCents: details.product.shippingFlatCents }
+            : {}),
+          ...(details.product.offersLocalPickup !== undefined
+            ? { offersLocalPickup: details.product.offersLocalPickup }
             : {}),
           ...(details.product.sku !== undefined ? { sku: details.product.sku } : {}),
           ...(details.product.inventoryQuantity !== undefined
@@ -504,6 +523,7 @@ export async function upsertOfferingDetails(
           bookingUrl: details.service.bookingUrl ?? null,
           fulfillmentMethod: details.service.fulfillmentMethod ?? FULFILLMENT_METHOD.VIRTUAL,
           defaultTimeZone: details.service.defaultTimeZone ?? "America/New_York",
+          requiresAccountToBook: details.service.requiresAccountToBook ?? false,
         },
         update: {
           ...(details.service.serviceKind ? { serviceKind: details.service.serviceKind } : {}),
@@ -522,6 +542,9 @@ export async function upsertOfferingDetails(
             : {}),
           ...(details.service.defaultTimeZone !== undefined
             ? { defaultTimeZone: details.service.defaultTimeZone ?? "America/New_York" }
+            : {}),
+          ...(details.service.requiresAccountToBook !== undefined
+            ? { requiresAccountToBook: details.service.requiresAccountToBook }
             : {}),
         },
       });

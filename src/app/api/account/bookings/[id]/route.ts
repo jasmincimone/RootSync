@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   const { id: bookingId } = await context.params;
-  const owns = await memberOwnsBooking(bookingId, session.user.id);
+  const owns = await memberOwnsBooking(bookingId, session.user.id, session.user.email);
   if (!owns) {
     return NextResponse.json({ error: "Booking not found." }, { status: 404 });
   }

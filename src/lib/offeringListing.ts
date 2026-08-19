@@ -146,6 +146,7 @@ export type VendorOfferingRow = Offering & {
   productDetails: {
     requiresShipping: boolean;
     shippingFlatCents: number | null;
+    offersLocalPickup: boolean;
     sku: string | null;
     inventoryQuantity: number | null;
   } | null;
@@ -157,6 +158,7 @@ export type VendorOfferingRow = Offering & {
     bookingUrl: string | null;
     fulfillmentMethod: string;
     defaultTimeZone: string;
+    requiresAccountToBook: boolean;
   } | null;
   resourceDetails: { resourceSubtype: string | null; format: string | null; fileUrl: string | null } | null;
   eventDetails: {

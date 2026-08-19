@@ -22,7 +22,12 @@ import { platformApplicationFeeCents } from "@/lib/platformFee";
 import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 import type Stripe from "stripe";
 
-import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
+import {
+  listingOffersLocalPickup,
+  listingUsesShipping,
+  resolveShippingFulfillmentMode,
+  type CheckoutFulfillmentMode,
+} from "@/lib/checkoutFulfillment";
 
 export type MarketplaceListingCheckout = {
   id: string;
@@ -51,6 +56,7 @@ export type MarketplaceListingCheckout = {
       inventoryQuantity: number | null;
       requiresShipping: boolean;
       shippingFlatCents: number | null;
+      offersLocalPickup: boolean;
     } | null;
     variants: Array<{
       id: string;
@@ -120,6 +126,7 @@ export async function loadListingForCheckout(
               inventoryQuantity: true,
               requiresShipping: true,
               shippingFlatCents: true,
+              offersLocalPickup: true,
             },
           },
           variants: {
@@ -169,7 +176,10 @@ function listingImageUrl(imageUrl: string | null, baseUrl: string): string[] | u
 }
 
 function listingRequiresShipping(listing: MarketplaceListingCheckout): boolean {
-  return Boolean(listing.offering.productDetails?.requiresShipping);
+  return listingUsesShipping(
+    listing.listingType,
+    Boolean(listing.offering.productDetails?.requiresShipping),
+  );
 }
 
 /** Listing override when set; otherwise vendor profile flat rate (null → $0). */
@@ -200,7 +210,7 @@ export function stripeShippingSessionFields(args: {
 
   if (args.fulfillmentMode === "pickup") {
     if (!args.offersLocalPickup) {
-      throw new Error("This vendor does not offer pickup. Choose ship / deliver instead.");
+      throw new Error("This listing is shipping only. Choose ship / deliver instead.");
     }
     const loc = args.pickupLocation?.trim();
     const pickupName = loc
@@ -234,19 +244,11 @@ export function stripeShippingSessionFields(args: {
   };
 }
 
-function assertFulfillmentModeForShipping(
-  requiresShipping: boolean,
-  fulfillmentMode: CheckoutFulfillmentMode | null | undefined,
-  offersLocalPickup: boolean,
-): CheckoutFulfillmentMode | null {
-  if (!requiresShipping) return null;
-  if (fulfillmentMode !== "pickup" && fulfillmentMode !== "ship") {
-    throw new Error("Choose pickup / in person or ship / deliver before checkout.");
-  }
-  if (fulfillmentMode === "pickup" && !offersLocalPickup) {
-    throw new Error("This vendor does not offer pickup. Choose ship / deliver instead.");
-  }
-  return fulfillmentMode;
+function listingCheckoutOffersPickup(listing: MarketplaceListingCheckout): boolean {
+  return listingOffersLocalPickup({
+    listingOffersLocalPickup: Boolean(listing.offering.productDetails?.offersLocalPickup),
+    vendorOffersLocalPickup: listing.vendorProfile.offersLocalPickup,
+  });
 }
 
 export async function createMarketplaceListingCheckout(args: {
@@ -261,11 +263,12 @@ export async function createMarketplaceListingCheckout(args: {
 }): Promise<{ url: string; orderId: string }> {
   const { listing, quantity, email, userId, origin } = args;
   const needsShipping = listingRequiresShipping(listing);
-  const fulfillmentMode = assertFulfillmentModeForShipping(
-    needsShipping,
-    args.fulfillmentMode,
-    listing.vendorProfile.offersLocalPickup,
-  );
+  const offersPickup = listingCheckoutOffersPickup(listing);
+  const fulfillmentMode = resolveShippingFulfillmentMode({
+    requiresShipping: needsShipping,
+    offersLocalPickup: offersPickup,
+    fulfillmentMode: args.fulfillmentMode,
+  });
   const variant = await resolveOfferingVariant(listing.offeringId, args.variantId);
   const unitsIncluded = variant?.unitsIncluded ?? 1;
   const optionGroups = serializeOfferingOptionGroups(listing.offering.optionGroups ?? []);
@@ -402,7 +405,7 @@ export async function createMarketplaceListingCheckout(args: {
       ? stripeShippingSessionFields({
           requiresShipping: needsShipping,
           shippingFlatCents: resolveListingShippingFlatCents(listing),
-          offersLocalPickup: listing.vendorProfile.offersLocalPickup,
+          offersLocalPickup: offersPickup,
           pickupLocation: listing.vendorProfile.pickupLocation,
           fulfillmentMode,
         })
@@ -575,11 +578,16 @@ export async function createMarketplaceCartCheckout(args: {
   const vendorName = prepared[0]!.listing.vendorProfile.displayName;
   const vendor = prepared[0]!.listing.vendorProfile;
   const cartNeedsShipping = prepared.some((row) => listingRequiresShipping(row.listing));
-  const fulfillmentMode = assertFulfillmentModeForShipping(
-    cartNeedsShipping,
-    args.fulfillmentMode,
-    vendor.offersLocalPickup,
-  );
+  const offersPickup =
+    cartNeedsShipping &&
+    prepared
+      .filter((row) => listingRequiresShipping(row.listing))
+      .every((row) => listingCheckoutOffersPickup(row.listing));
+  const fulfillmentMode = resolveShippingFulfillmentMode({
+    requiresShipping: cartNeedsShipping,
+    offersLocalPickup: offersPickup,
+    fulfillmentMode: args.fulfillmentMode,
+  });
   // One package from one vendor: charge the highest listing shipping rate in the cart.
   const cartShippingFlatCents = prepared
     .filter((row) => listingRequiresShipping(row.listing))
@@ -626,7 +634,7 @@ export async function createMarketplaceCartCheckout(args: {
       ? stripeShippingSessionFields({
           requiresShipping: cartNeedsShipping,
           shippingFlatCents: cartShippingFlatCents,
-          offersLocalPickup: vendor.offersLocalPickup,
+          offersLocalPickup: offersPickup,
           pickupLocation: vendor.pickupLocation,
           fulfillmentMode,
         })

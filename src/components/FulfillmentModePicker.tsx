@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 
 import { cn } from "@/lib/cn";
+import { formatFlatShippingLabel } from "@/lib/checkoutFulfillment";
 import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 
 type Props = {
@@ -13,11 +14,6 @@ type Props = {
   shippingFlatCents?: number | null;
   className?: string;
 };
-
-function formatFlatShipping(cents: number | null | undefined): string {
-  if (cents == null || cents <= 0) return "Free shipping";
-  return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)} shipping`;
-}
 
 /**
  * Explicit pickup (market / in-person) vs ship-to-home choice before Stripe Checkout.
@@ -73,7 +69,7 @@ export function FulfillmentModePicker({
         >
           <span className="block text-sm font-semibold text-fix-heading">Ship / deliver</span>
           <span className="mt-0.5 block text-xs text-fix-text-muted">
-            Home or a friend · {formatFlatShipping(shippingFlatCents)}
+            Home or a friend · {formatFlatShippingLabel(shippingFlatCents)}
           </span>
         </button>
       </div>

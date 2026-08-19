@@ -190,7 +190,7 @@ model VendorProfile {
   paymentLinkUrl  String?
   /// Flat standard shipping for products that require shipping (null = $0)
   shippingFlatCents Int?
-  /// When true, Stripe Checkout offers a $0 Local pickup option alongside standard shipping
+  /// Master switch. Listings still opt in via ProductDetails.offersLocalPickup (default off).
   offersLocalPickup Boolean @default(true)
   /// WGS84 — set in vendor profile for map pin (optional)
   latitude        Float?
@@ -352,6 +352,8 @@ model ProductDetails {
   requiresShipping   Boolean @default(true)
   /// Optional override for this product; null = use VendorProfile.shippingFlatCents
   shippingFlatCents  Int?
+  /// When true, checkout offers $0 local pickup alongside shipping. Default is shipping only.
+  offersLocalPickup  Boolean @default(false)
   sku                String?
   /// Remaining sellable units. Null = unlimited (not tracked). Managed in RootSync, not Stripe.
   inventoryQuantity  Int?
@@ -369,6 +371,8 @@ model ServiceDetails {
   /// VIRTUAL | IN_PERSON | HYBRID — see FULFILLMENT_METHOD
   fulfillmentMethod   String  @default("VIRTUAL")
   defaultTimeZone     String  @default("America/New_York")
+  /// When true, only signed-in members may book; guests are sent to sign in first.
+  requiresAccountToBook Boolean @default(false)
 }
 
 model ResourceDetails {
@@ -575,8 +579,9 @@ model Booking {
   variant           OfferingVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   vendorProfileId   String
   vendorProfile     VendorProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Restrict)
-  memberUserId      String
-  member            User      @relation("BookingMember", fields: [memberUserId], references: [id], onDelete: Restrict)
+  /// Null for guest bookings; the booking is then identified by memberEmail alone.
+  memberUserId      String?
+  member            User?     @relation("BookingMember", fields: [memberUserId], references: [id], onDelete: Restrict)
   memberEmail       String
   memberName        String?
   vendorEmail       String
@@ -608,6 +613,7 @@ model Booking {
   @@index([listingId])
   @@index([offeringId])
   @@index([memberUserId])
+  @@index([memberEmail])
   @@index([vendorProfileId])
   @@index([scheduledStartAt])
   @@index([status])

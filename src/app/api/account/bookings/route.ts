@@ -12,8 +12,12 @@ export async function GET() {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
 
+  // Match on email too, so bookings made as a guest show up once that person
+  // creates an account — the same way guest orders are claimed.
   const bookings = await prisma.booking.findMany({
-    where: { memberUserId: gate.userId },
+    where: {
+      OR: [{ memberUserId: gate.userId }, { memberEmail: gate.email }],
+    },
     orderBy: { scheduledStartAt: "desc" },
     include: {
       listing: { select: { id: true, title: true, imageUrl: true } },

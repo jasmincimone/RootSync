@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { BOOKING_FREE_CANCELLATION_HOURS } from "@/lib/bookingPolicy";
 import { cn } from "@/lib/cn";
 import { formatPrice } from "@/lib/format";
 import { BOOKING_STATUS } from "@/lib/roles";
@@ -13,6 +14,10 @@ type Props = {
   counterpartyLabel: string;
   bookingStatus: string;
   priceCents?: number;
+  /** False once inside the free-cancellation window; vendors always refund. */
+  refundEligible?: boolean;
+  /** Extra fields sent with the cancel request, e.g. a guest's signed token. */
+  extraBody?: Record<string, unknown>;
   onCancelled: (result?: { refunded?: boolean; refundAmountCents?: number }) => void;
 };
 
@@ -22,6 +27,8 @@ export function CancelBookingButton({
   counterpartyLabel,
   bookingStatus,
   priceCents,
+  refundEligible = true,
+  extraBody,
   onCancelled,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -39,6 +46,7 @@ export function CancelBookingButton({
         body: JSON.stringify({
           action: "cancel",
           ...(reason.trim() ? { reason: reason.trim() } : {}),
+          ...extraBody,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -78,11 +86,21 @@ export function CancelBookingButton({
             <strong className="text-fix-heading">{serviceTitle}</strong> with {counterpartyLabel} will
             be cancelled, the time slot freed, and both parties notified.
             {bookingStatus === BOOKING_STATUS.CONFIRMED && priceCents != null && priceCents > 0 ? (
-              <>
-                {" "}
-                A full refund of <strong className="text-fix-heading">{formatPrice(priceCents)}</strong>{" "}
-                will be issued to the original payment method.
-              </>
+              refundEligible ? (
+                <>
+                  {" "}
+                  A full refund of{" "}
+                  <strong className="text-fix-heading">{formatPrice(priceCents)}</strong> will be
+                  issued to the original payment method.
+                </>
+              ) : (
+                <>
+                  {" "}
+                  This is inside the {BOOKING_FREE_CANCELLATION_HOURS}-hour window, so it is
+                  non-refundable. Message {counterpartyLabel} first if you need the payment back —
+                  a cancellation from their side refunds you in full.
+                </>
+              )
             ) : null}
           </p>
           <label className="mt-3 block text-sm font-medium text-fix-heading">

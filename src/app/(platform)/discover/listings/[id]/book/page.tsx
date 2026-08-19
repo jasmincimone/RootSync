@@ -29,13 +29,15 @@ export default async function BookServicePage({
     permanentRedirect(discoverBookPath(listing, variantParam ?? null));
   }
 
+  const service = listing.offering.serviceDetails!;
   const session = await getServerSession(authOptions);
   const bookPath = discoverBookPath(listing, variantParam ?? null);
-  if (!session?.user) {
+
+  // Guests can book unless the vendor asked for accounts on this listing.
+  if (!session?.user && service.requiresAccountToBook) {
     redirect(`/login?callbackUrl=${encodeURIComponent(bookPath)}`);
   }
 
-  const service = listing.offering.serviceDetails!;
   const durationMinutes = getServiceDurationMinutes(listing, listing.selectedVariantId);
   const priceCents = resolveBookingPriceCents(listing);
   const variant = listing.selectedVariantId
@@ -79,6 +81,8 @@ export default async function BookServicePage({
               durationMinutes={durationMinutes}
               terms={service.terms}
               intakeQuestions={listing.offering.intakeQuestions}
+              bookPath={bookPath}
+              allowGuestBooking={!service.requiresAccountToBook}
             />
           </div>
         </Container>

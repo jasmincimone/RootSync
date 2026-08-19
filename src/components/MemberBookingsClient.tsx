@@ -12,6 +12,7 @@ import { BookingStatusBadge } from "@/components/ui/StatusBadge";
 import { CardListSkeleton } from "@/components/ui/LoadingSkeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { selfCancellationRefundable } from "@/lib/bookingPolicy";
 import { formatPrice } from "@/lib/format";
 import type { BookingStatus } from "@/lib/roles";
 import { BOOKING_STATUS } from "@/lib/roles";
@@ -136,6 +137,9 @@ export function MemberBookingsClient() {
               counterpartyLabel={b.vendor.displayName}
               bookingStatus={b.status}
               priceCents={b.priceCents}
+              refundEligible={selfCancellationRefundable({
+                scheduledStartAt: new Date(b.scheduledStartAt),
+              })}
               onCancelled={() =>
                 setBookings((prev) =>
                   prev.map((row) =>

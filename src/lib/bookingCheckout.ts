@@ -20,7 +20,8 @@ export type IntakeAnswerInput = {
 
 export type CreateServiceBookingInput = {
   listing: BookableServiceListing;
-  memberUserId: string;
+  /** Null for guest bookings — the booking is then identified by memberEmail. */
+  memberUserId: string | null;
   memberEmail: string;
   memberName: string | null;
   scheduledStartAt: string;
@@ -48,10 +49,12 @@ export async function createServiceBookingCheckout(
     throw new Error("Invalid appointment time.");
   }
 
+  // Only paid bookings claim a slot, so two people may check out for the same time.
+  // Whoever pays first keeps it; confirmPaidServiceBooking refunds the loser.
   const booked = await prisma.booking.findMany({
     where: {
       listingId: listing.id,
-      status: { in: [BOOKING_STATUS.PENDING_PAYMENT, BOOKING_STATUS.CONFIRMED] },
+      status: BOOKING_STATUS.CONFIRMED,
       scheduledStartAt: { lt: slot.endAt },
       scheduledEndAt: { gt: slot.startAt },
     },
@@ -108,7 +111,7 @@ export async function createServiceBookingCheckout(
 
     const order = await tx.order.create({
       data: {
-        userId: memberUserId,
+        userId: memberUserId ?? null,
         email: memberEmail,
         status: "pending",
         subtotalCents: priceCents,

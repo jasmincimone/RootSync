@@ -19,6 +19,7 @@ import { MarketplaceListingPurchase } from "@/components/MarketplaceListingPurch
 import { ListingImage } from "@/components/ListingImage";
 import { VerifiedVendorBadge } from "@/components/VerifiedVendorBadge";
 import { discoverListingPath, discoverVendorListingsPath, discoverVendorPath } from "@/config/discoverPaths";
+import { listingOffersLocalPickup, listingUsesShipping, resolveEffectiveShippingFlatCents } from "@/lib/checkoutFulfillment";
 import { authOptions } from "@/lib/authOptions";
 import { resolveDiscoverBackLink } from "@/lib/discoverReturn";
 import { isFavorited } from "@/lib/favorites";
@@ -26,7 +27,12 @@ import { findListingByPublicRef } from "@/lib/listingPublicResolve";
 import { isListingCuidRef } from "@/lib/listingPublicSlug";
 import { resolveListingCheckoutOptions } from "@/lib/listingCheckoutOptions";
 import { loadVendorPulseSummary } from "@/lib/pulse/vendorReviews";
-import { FAVORITE_TARGET_TYPE, LISTING_VISIBILITY, OFFERING_STATUS, VENDOR_STATUS } from "@/lib/roles";
+import {
+  FAVORITE_TARGET_TYPE,
+  LISTING_VISIBILITY,
+  OFFERING_STATUS,
+  VENDOR_STATUS,
+} from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +40,7 @@ const offeringDetailSelect = {
   status: true,
   paymentUrl: true,
   productUrl: true,
-  productDetails: { select: { requiresShipping: true, shippingFlatCents: true, sku: true, inventoryQuantity: true } },
+  productDetails: { select: { requiresShipping: true, shippingFlatCents: true, offersLocalPickup: true, sku: true, inventoryQuantity: true } },
   serviceDetails: {
     select: {
       serviceKind: true,
@@ -156,7 +162,7 @@ function PurchasePanel({
   externalCheckoutOnly = false,
   inventoryQuantity,
   requiresShipping = false,
-  offersLocalPickup = true,
+  offersLocalPickup = false,
   pickupLocation = null,
   shippingFlatCents = null,
   detailProps,
@@ -352,6 +358,10 @@ export default async function DiscoverListingPage({
     stripeConnectAccountId: v.user.stripeConnectAccountId,
   });
 
+  const effectiveShippingFlatCents = resolveEffectiveShippingFlatCents({
+    listingShippingFlatCents: offering.productDetails?.shippingFlatCents,
+    vendorShippingFlatCents: v.shippingFlatCents,
+  });
 
   const detailProps = {
     listingType: listing.listingType,
@@ -359,6 +369,7 @@ export default async function DiscoverListingPage({
     service: offering.serviceDetails,
     resource: offering.resourceDetails,
     event: offering.eventDetails,
+    effectiveShippingFlatCents,
     rootSyncCheckoutReady:
       checkoutOptions.stripeCheckoutReady && !checkoutOptions.externalCheckoutOnly,
   };
@@ -480,12 +491,18 @@ export default async function DiscoverListingPage({
                 paymentLinkUrl={checkoutOptions.paymentLinkUrl}
                 externalCheckoutOnly={checkoutOptions.externalCheckoutOnly}
                 inventoryQuantity={offering.productDetails?.inventoryQuantity ?? null}
-                requiresShipping={Boolean(offering.productDetails?.requiresShipping)}
-                offersLocalPickup={v.offersLocalPickup}
-                pickupLocation={v.pickupLocation}
-                shippingFlatCents={
-                  offering.productDetails?.shippingFlatCents ?? v.shippingFlatCents
+                requiresShipping={
+                  listingUsesShipping(
+                    listing.listingType,
+                    Boolean(offering.productDetails?.requiresShipping),
+                  )
                 }
+                offersLocalPickup={listingOffersLocalPickup({
+                  listingOffersLocalPickup: Boolean(offering.productDetails?.offersLocalPickup),
+                  vendorOffersLocalPickup: v.offersLocalPickup,
+                })}
+                pickupLocation={v.pickupLocation}
+                shippingFlatCents={effectiveShippingFlatCents}
                 detailProps={detailProps}
                 returnTo={listingBackTo}
                 profileName={v.displayName}
@@ -552,12 +569,18 @@ export default async function DiscoverListingPage({
                 paymentLinkUrl={checkoutOptions.paymentLinkUrl}
                 externalCheckoutOnly={checkoutOptions.externalCheckoutOnly}
                 inventoryQuantity={offering.productDetails?.inventoryQuantity ?? null}
-                requiresShipping={Boolean(offering.productDetails?.requiresShipping)}
-                offersLocalPickup={v.offersLocalPickup}
-                pickupLocation={v.pickupLocation}
-                shippingFlatCents={
-                  offering.productDetails?.shippingFlatCents ?? v.shippingFlatCents
+                requiresShipping={
+                  listingUsesShipping(
+                    listing.listingType,
+                    Boolean(offering.productDetails?.requiresShipping),
+                  )
                 }
+                offersLocalPickup={listingOffersLocalPickup({
+                  listingOffersLocalPickup: Boolean(offering.productDetails?.offersLocalPickup),
+                  vendorOffersLocalPickup: v.offersLocalPickup,
+                })}
+                pickupLocation={v.pickupLocation}
+                shippingFlatCents={effectiveShippingFlatCents}
                 detailProps={detailProps}
                 className="overflow-hidden border-fix-border/15 p-0 shadow-soft"
                 returnTo={listingBackTo}

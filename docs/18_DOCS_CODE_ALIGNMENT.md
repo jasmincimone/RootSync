@@ -107,10 +107,10 @@ Use it when:
 
 | Doc concept | Code artifact | Status | Notes |
 |-------------|---------------|--------|-------|
-| Checkout | `marketplaceCheckout.ts`, `/api/marketplace/listings/[id]/checkout`, cart checkout | **Aligned** (MVP) | Destination charge; flat Standard shipping + Local pickup when `ProductDetails.requiresShipping` |
+| Checkout | `marketplaceCheckout.ts`, `/api/marketplace/listings/[id]/checkout`, cart checkout | **Aligned** (MVP) | Destination charge; Standard shipping by default; Local pickup only when `ProductDetails.offersLocalPickup` |
 | Checkout (legacy) | Cart + `/api/checkout-session`, `ShopCatalogListing` | **Legacy** | Platform shop catalog path |
 | Stripe Connect | `User.stripeConnectAccountId`, Payment Hub + Connect APIs | **Aligned** (MVP) | Vendor Payment Hub owns onboarding |
-| Shipping (MVP) | `VendorProfile.shippingFlatCents` + optional `ProductDetails.shippingFlatCents` override; Order shipping columns | **Aligned** (MVP) | Cart uses max listing rate for one package; fee on product subtotal only; admin queue + email at `/account/admin/shipping` |
+| Shipping (MVP) | `VendorProfile.shippingFlatCents` + optional `ProductDetails.shippingFlatCents` override; `ProductDetails.offersLocalPickup` listing opt-in; Order shipping columns | **Aligned** (MVP) | Cart uses max listing rate for one package; fee on product subtotal only; pickup only if every physical line opted in; admin queue + email at `/account/admin/shipping` |
 | Booking | `Booking`, `ServiceAvailabilityRule`, `BookingIntakeAnswer` | **Aligned** | Cancel + full refund; calendar + Meet |
 | Order | `Order`, `OrderItem` | **Aligned** | Supports marketplace + service bookings; `refunded` status |
 
@@ -183,7 +183,7 @@ Per [17_GLOSSARY.md](./17_GLOSSARY.md) deprecated terms:
 | Feature | PRD | Code | Status |
 |---------|-----|------|--------|
 | Directory Listings | [PRD-Directory-Listings.md](./PRDs/PRD-Directory-Listings.md) | Browse, map, favorites, assisted claim | **Aligned** (MVP) |
-| Marketing Funnel | [PRD-Marketing-Funnel.md](./PRDs/PRD-Marketing-Funnel.md) | GrowSpace CRM, Funnels, Campaigns | **Partial** (Phase 1) |
+| Marketing Funnel | [PRD-Marketing-Funnel.md](./PRDs/PRD-Marketing-Funnel.md) | GrowSpace CRM, Funnels, public `/{vendor}/funnels/{slug}` | **Partial** |
 | Consultations | [PRD-Consultation-Booking.md](./PRDs/PRD-Consultation-Booking.md) | Service booking engine | **Aligned** (as Service subtype) |
 
 ### Phase 3 (roadmap)
@@ -201,6 +201,8 @@ Reviews, Analytics, Referrals, Native Apps — **Deferred**. Events and Resource
 | Listings | Browse all listing types | `/discover`, `/discover/listings/[id|slug]` | **Aligned** (MVP) — optional custom URL |
 | Directory Listings | Map + search + assisted claim | `/discover/directory/[id]` | **Aligned** (MVP) |
 | Storefront | Vendor-managed public page | `/discover/vendors/[id]`; share URL `/{publicSlug}` when claimed | **Aligned** |
+| Funnel landing | Vendor marketing page | `/{vendorSlug}/funnels/{funnelSlug}` | **Aligned** (MVP) — URL picker like listings |
+| Campaign landing | Vendor campaign page | `/{vendorSlug}/campaigns/{campaignSlug}` reserved | **Partial** — route reserved, campaigns not designed |
 | Resources | Discover filter + paid/free order access | `/discover?type=RESOURCE`, claim-free + `/api/download` | **Aligned** (MVP) |
 | Booking | Service scheduling | `/discover/listings/[id]/book` | **Aligned** (MVP) |
 | Connect onboarding | Vendor payouts | `/account/vendor/payments` | **Aligned** (MVP) |

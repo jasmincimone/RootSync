@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { discoverBookPath } from "@/config/discoverPaths";
 import { sendBookingConfirmationEmail, sendBookingCancellationEmail } from "@/lib/email";
 import { refundBookingPayment } from "@/lib/bookingRefund";
+import { selfCancellationRefundable } from "@/lib/bookingPolicy";
+import { guestBookingManageUrl } from "@/lib/guestBookingLink";
 import { hookOrderVerified } from "@/lib/pulse/hooks";
 import { BOOKING_STATUS, FULFILLMENT_METHOD } from "@/lib/roles";
-import { getConnectStripeClient } from "@/lib/stripeConnectDemo";
+import { appBaseUrl, getConnectStripeClient } from "@/lib/stripeConnectDemo";
 import { CALENDAR_PROVIDER } from "@/services/calendar/calendar.constants";
 import { getCalendarService } from "@/services/calendar/calendar.service";
 
@@ -32,6 +35,22 @@ export async function confirmPaidServiceBooking(bookingId: string): Promise<void
 
   if (booking.status === BOOKING_STATUS.CANCELLED) {
     console.warn("[booking] confirm skipped — booking cancelled:", bookingId);
+    return;
+  }
+
+  const slotTaken = await prisma.booking.findFirst({
+    where: {
+      id: { not: booking.id },
+      listingId: booking.listingId,
+      status: BOOKING_STATUS.CONFIRMED,
+      scheduledStartAt: { lt: booking.scheduledEndAt },
+      scheduledEndAt: { gt: booking.scheduledStartAt },
+    },
+    select: { id: true },
+  });
+
+  if (slotTaken) {
+    await releaseBookingToSlotWinner(bookingId);
     return;
   }
 
@@ -98,10 +117,96 @@ export async function confirmPaidServiceBooking(bookingId: string): Promise<void
     meetLink,
     calendarHtmlLink,
     bookingId: booking.id,
+    manageBookingUrl: booking.memberUserId
+      ? undefined
+      : guestBookingManageUrl(booking.id, booking.memberEmail),
   });
 
   if (!emailResult.ok) {
     console.warn("[booking] confirmation email failed:", bookingId, emailResult.error);
+  }
+}
+
+/**
+ * Two buyers paid for the same slot. The first to confirm keeps it; this refunds the
+ * runner-up, cancels their booking, and points them back at the calendar.
+ */
+async function releaseBookingToSlotWinner(bookingId: string): Promise<void> {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: {
+      listing: { select: { title: true, publicSlug: true, id: true } },
+      vendorProfile: { select: { displayName: true } },
+      order: {
+        select: {
+          id: true,
+          status: true,
+          totalCents: true,
+          stripePaymentIntent: true,
+          stripeSessionId: true,
+          stripeRefundId: true,
+        },
+      },
+    },
+  });
+  if (!booking) return;
+
+  const refundResult = await refundBookingPayment({
+    bookingId: booking.id,
+    bookingStatus: booking.status,
+    priceCents: booking.priceCents,
+    stripeSessionId: booking.stripeSessionId,
+    order: booking.order,
+  });
+
+  if (!refundResult.refunded && !refundResult.skipped) {
+    // Leave the booking pending so the vendor can sort it out rather than silently
+    // cancelling someone who paid and was never refunded.
+    console.error(
+      "[booking] slot lost but refund failed — needs manual review:",
+      bookingId,
+      refundResult.error,
+    );
+    return;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: BOOKING_STATUS.CANCELLED,
+        cancelledAt: new Date(),
+        cancellationReason: "That time was booked by someone who paid first.",
+      },
+    });
+    if (booking.order && booking.order.status !== "refunded") {
+      await tx.order.update({
+        where: { id: booking.order.id },
+        data: { status: "cancelled" },
+      });
+    }
+  });
+
+  const emailResult = await sendBookingCancellationEmail({
+    memberEmail: booking.memberEmail,
+    vendorEmail: booking.vendorEmail,
+    serviceTitle: booking.listing.title,
+    vendorName: booking.vendorProfile.displayName,
+    memberName: booking.memberName,
+    scheduledStartAt: booking.scheduledStartAt,
+    scheduledEndAt: booking.scheduledEndAt,
+    timeZone: booking.timeZone,
+    cancelledBy: "slot_taken",
+    bookingId: booking.id,
+    refundAmountCents: refundResult.refunded ? refundResult.amountCents : undefined,
+    rebookUrl: `${appBaseUrl()}${discoverBookPath(
+      { id: booking.listing.id, publicSlug: booking.listing.publicSlug },
+      booking.variantId,
+    )}`,
+  });
+
+  if (!emailResult.ok) {
+    console.warn("[booking] slot-taken email failed:", bookingId, emailResult.error);
   }
 }
 
@@ -155,7 +260,12 @@ export async function cancelServiceBooking(
   let refundAmountCents: number | undefined;
   let wasRefunded = false;
 
-  if (booking.status === BOOKING_STATUS.CONFIRMED) {
+  // Vendors always refund the customer; self-serve cancellations must beat the cutoff.
+  const refundOwed =
+    args.cancelledBy === "vendor" ||
+    selfCancellationRefundable({ scheduledStartAt: booking.scheduledStartAt });
+
+  if (booking.status === BOOKING_STATUS.CONFIRMED && refundOwed) {
     const refundResult = await refundBookingPayment({
       bookingId: booking.id,
       bookingStatus: booking.status,

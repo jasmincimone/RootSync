@@ -17,8 +17,13 @@ import {
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/Button";
 import { discoverBookPath, discoverVendorListingsPath } from "@/config/discoverPaths";
+import { BOOKING_CANCELLATION_POLICY_SHORT } from "@/lib/bookingPolicy";
 import { addLineToCart } from "@/lib/cart";
-import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
+import {
+  listingUsesShipping,
+  resolveServiceCheckoutMode,
+  type CheckoutFulfillmentMode,
+} from "@/lib/checkoutFulfillment";
 import { cn } from "@/lib/cn";
 import { formatPrice } from "@/lib/format";
 import type { SerializedOfferingOptionGroup } from "@/lib/offeringOptions";
@@ -71,7 +76,7 @@ export function MarketplaceListingPurchase({
   externalCheckoutOnly = false,
   inventoryQuantity = null,
   requiresShipping = false,
-  offersLocalPickup = true,
+  offersLocalPickup = false,
   pickupLocation = null,
   shippingFlatCents = null,
   compact = false,
@@ -113,6 +118,14 @@ export function MarketplaceListingPurchase({
 
   const hasPaymentLink = !!paymentLinkUrl?.trim();
   const hasStripeCheckout = stripeCheckoutReady && !externalCheckoutOnly;
+  const isPhysicalProduct = listingUsesShipping(listingType, requiresShipping);
+  const serviceCheckoutMode = isService
+    ? resolveServiceCheckoutMode({
+        externalCheckoutOnly,
+        hasPaymentLink,
+        hasStripeCheckout,
+      })
+    : "unavailable";
   const variantBlocked = needsVariant && !selectedVariantId;
   const optionsIncomplete =
     optionGroups.length > 0 &&
@@ -139,11 +152,6 @@ export function MarketplaceListingPurchase({
     !soldOut &&
     !isFreeResource &&
     !freeEventUnsupported;
-  const externalFulfillmentNote =
-    isEvent || isResource
-      ? " The Vendor handles access and fulfillment for external purchases."
-      : "";
-
   function changeQuantity(next: number) {
     if (!Number.isFinite(next)) return;
     setQuantity(Math.max(1, Math.min(maxQuantity, Math.floor(next))));
@@ -197,7 +205,7 @@ export function MarketplaceListingPurchase({
       unitPriceCents: effectivePriceCents,
       detailLabel: buildDetailLabel() || formatPrice(effectivePriceCents),
       quantity,
-      requiresShipping,
+      requiresShipping: isPhysicalProduct,
       offersLocalPickup,
       shippingFlatCents,
       pickupLocation,
@@ -240,7 +248,7 @@ export function MarketplaceListingPurchase({
     }
 
     const buyLabel = isEvent ? "Get tickets" : "Buy now";
-    const linkLabel = isEvent ? "Ticket link" : "Pay Link";
+    const linkLabel = isEvent ? "Vendor ticket link" : "Vendor checkout";
     const buyNowProps = {
       listingId,
       variantId: selectedVariantId,
@@ -250,8 +258,8 @@ export function MarketplaceListingPurchase({
       disabled: checkoutBlocked,
       label: buyLabel,
       quantity,
-      fulfillmentMode,
-      requiresFulfillmentChoice: requiresShipping && hasStripeCheckout,
+      fulfillmentMode: isPhysicalProduct && !offersLocalPickup ? "ship" : fulfillmentMode,
+      requiresFulfillmentChoice: isPhysicalProduct && hasStripeCheckout && offersLocalPickup,
     };
     const addToCartButton = canAddToCart ? (
       <Button
@@ -266,7 +274,7 @@ export function MarketplaceListingPurchase({
       </Button>
     ) : null;
     const fulfillmentPicker =
-      requiresShipping && hasStripeCheckout ? (
+      isPhysicalProduct && hasStripeCheckout && offersLocalPickup ? (
         <FulfillmentModePicker
           className="w-full"
           value={fulfillmentMode}
@@ -295,9 +303,8 @@ export function MarketplaceListingPurchase({
             {linkLabel}
           </a>
           <p className="w-full text-xs text-fix-text-muted">
-            {linkLabel} opens the vendor&apos;s external checkout (off-platform — no RootSync
-            platform fee). Prefer in-app checkout when available.
-            {externalFulfillmentNote}
+            {linkLabel} opens the vendor&apos;s checkout in a new tab. You can also check out
+            directly through RootSync above.
           </p>
         </>
       );
@@ -324,8 +331,9 @@ export function MarketplaceListingPurchase({
             {buyLabel}
           </BuyNowLink>
           <p className="w-full text-xs text-fix-text-muted">
-            External checkout — off-platform payment (no RootSync platform fee).
-            {externalFulfillmentNote}
+            {isEvent || isResource
+              ? "Payment continues on the vendor’s website in a new tab. The vendor will provide access after purchase."
+              : "Checkout continues on the vendor’s website in a new tab. The vendor manages payment and fulfillment."}
           </p>
         </>
       );
@@ -411,7 +419,20 @@ export function MarketplaceListingPurchase({
 
       <div className={compact ? "flex flex-col gap-2" : "flex flex-wrap items-center gap-2"}>
         {isService ? (
-          hasStripeCheckout || hasPaymentLink ? (
+          serviceCheckoutMode === "external_pay_link" ? (
+            <>
+              <BuyNowLink
+                href={paymentLinkUrl!}
+                size={compact ? "sm" : "md"}
+                className={compact ? "w-full" : undefined}
+              >
+                Book now
+              </BuyNowLink>
+              <p className="w-full text-xs text-fix-text-muted">
+                Booking and payment continue on the vendor&apos;s website in a new tab.
+              </p>
+            </>
+          ) : serviceCheckoutMode === "rootsync_booking" ? (
             <ButtonLink
               href={bookHref}
               variant="cta"
@@ -460,9 +481,9 @@ export function MarketplaceListingPurchase({
             Product page
           </a>
         ) : null}
-        {isService && !checkoutUnavailable ? (
+        {isService && !externalCheckoutOnly && !checkoutUnavailable ? (
           <p className="w-full text-xs text-fix-text-muted">
-            Sign in to complete booking. Choose a deal above, then continue to payment.
+            Choose a deal above, then pick a time. {BOOKING_CANCELLATION_POLICY_SHORT}
           </p>
         ) : isFreeResource && variants.length > 0 ? (
           <p className="w-full text-xs text-fix-text-muted">

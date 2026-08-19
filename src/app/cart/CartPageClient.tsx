@@ -54,6 +54,7 @@ export function CartPageClient() {
   const needsEmail = status !== "loading" && !sessionEmail;
   const subtotal = cartSubtotalCents(cart);
   const needsFulfillmentChoice = cart.lines.some((line) => line.requiresShipping);
+  const buyerMustChooseFulfillment = needsFulfillmentChoice && cart.offersLocalPickup;
   const keepShoppingHref = cart.vendorProfileId
     ? discoverVendorListingsPath({
         id: cart.vendorProfileId,
@@ -62,7 +63,7 @@ export function CartPageClient() {
     : "/discover";
 
   async function checkout(checkoutEmail: string) {
-    if (needsFulfillmentChoice && !fulfillmentMode) {
+    if (buyerMustChooseFulfillment && !fulfillmentMode) {
       setError("Choose pickup / in person or ship / deliver before checkout.");
       return;
     }
@@ -74,7 +75,11 @@ export function CartPageClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: checkoutEmail,
-          fulfillmentMode: needsFulfillmentChoice ? fulfillmentMode : undefined,
+          fulfillmentMode: needsFulfillmentChoice
+            ? buyerMustChooseFulfillment
+              ? fulfillmentMode
+              : "ship"
+            : undefined,
           items: cart.lines.map((line) => ({
             listingId: line.listingId,
             quantity: line.quantity,
@@ -98,7 +103,7 @@ export function CartPageClient() {
   }
 
   function handleCheckoutClick() {
-    if (needsFulfillmentChoice && !fulfillmentMode) {
+    if (buyerMustChooseFulfillment && !fulfillmentMode) {
       setError("Choose pickup / in person or ship / deliver before checkout.");
       return;
     }
@@ -212,7 +217,7 @@ export function CartPageClient() {
           <span className="font-semibold text-fix-heading">{formatPrice(subtotal)}</span>
         </div>
 
-        {needsFulfillmentChoice ? (
+        {buyerMustChooseFulfillment ? (
           <FulfillmentModePicker
             value={fulfillmentMode}
             onChange={(mode) => {

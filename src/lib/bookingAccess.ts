@@ -33,6 +33,56 @@ export async function requireBookingMemberSession() {
   };
 }
 
+export type BookingActor = {
+  userId: string | null;
+  email: string;
+  name: string | null;
+  isGuest: boolean;
+};
+
+export type GuestBookingInput = {
+  email?: unknown;
+  name?: unknown;
+};
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Resolves who is booking: the signed-in member when there is a session, otherwise a
+ * guest identified by email — the same way guest product orders work.
+ * Listings with requiresAccountToBook always demand a session.
+ */
+export async function resolveBookingActor(args: {
+  guest?: GuestBookingInput;
+  requiresAccount: boolean;
+}): Promise<BookingActor | { error: string; status: 401 | 403 | 400 }> {
+  const session = await getServerSession(authOptions);
+
+  if (session?.user?.id && session.user.email) {
+    if (!canBookServices(session.user.role)) {
+      return { error: "Your account cannot book services.", status: 403 };
+    }
+    return {
+      userId: session.user.id,
+      email: session.user.email.trim(),
+      name: session.user.name?.trim() || null,
+      isGuest: false,
+    };
+  }
+
+  if (args.requiresAccount) {
+    return { error: "This vendor requires an account to book.", status: 401 };
+  }
+
+  const email = typeof args.guest?.email === "string" ? args.guest.email.trim() : "";
+  if (!email || !EMAIL_PATTERN.test(email)) {
+    return { error: "Enter a valid email so we can send your confirmation.", status: 400 };
+  }
+  const name = typeof args.guest?.name === "string" ? args.guest.name.trim() : "";
+
+  return { userId: null, email, name: name || null, isGuest: true };
+}
+
 export type BookableServiceListing = {
   id: string;
   title: string;
@@ -60,6 +110,7 @@ export type BookableServiceListing = {
       fulfillmentMethod: string;
       defaultTimeZone: string;
       terms: string | null;
+      requiresAccountToBook: boolean;
     } | null;
     availabilityRules: Array<{
       dayOfWeek: number;
@@ -128,6 +179,7 @@ export async function loadBookableServiceListing(
               fulfillmentMethod: true,
               defaultTimeZone: true,
               terms: true,
+              requiresAccountToBook: true,
             },
           },
           availabilityRules: {
@@ -197,9 +249,17 @@ export function bookingStatusLabel(status: BookingStatus | string): string {
   }
 }
 
-export async function memberOwnsBooking(bookingId: string, userId: string): Promise<boolean> {
+export async function memberOwnsBooking(
+  bookingId: string,
+  userId: string,
+  email?: string | null,
+): Promise<boolean> {
   const booking = await prisma.booking.findFirst({
-    where: { id: bookingId, memberUserId: userId },
+    where: {
+      id: bookingId,
+      // Email match covers guest bookings claimed by signing up with the same address.
+      OR: [{ memberUserId: userId }, ...(email ? [{ memberEmail: email }] : [])],
+    },
     select: { id: true },
   });
   return !!booking;

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { BookingCalendarPicker } from "@/components/BookingCalendarPicker";
+import { BOOKING_CANCELLATION_POLICY_LONG } from "@/lib/bookingPolicy";
 import { formatPrice } from "@/lib/format";
 
 type IntakeQuestion = {
@@ -28,6 +29,8 @@ type Props = {
   durationMinutes: number;
   terms: string | null;
   intakeQuestions: IntakeQuestion[];
+  bookPath?: string;
+  allowGuestBooking?: boolean;
 };
 
 export function ServiceBookingWizard({
@@ -38,6 +41,8 @@ export function ServiceBookingWizard({
   durationMinutes,
   terms,
   intakeQuestions,
+  bookPath,
+  allowGuestBooking = true,
 }: Props) {
   const { data: session, status } = useSession();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
@@ -48,6 +53,14 @@ export function ServiceBookingWizard({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bookingAsGuest, setBookingAsGuest] = useState(false);
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestName, setGuestName] = useState("");
+
+  const signedIn = Boolean(session?.user);
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(
+    bookPath ?? `/discover/listings/${listingId}/book`,
+  )}`;
 
   const loadSlots = useCallback(async () => {
     setLoadingSlots(true);
@@ -77,6 +90,10 @@ export function ServiceBookingWizard({
       setError("Choose a time slot.");
       return;
     }
+    if (!signedIn && !guestEmail.trim()) {
+      setError("Enter the email where we should send your confirmation.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -93,6 +110,9 @@ export function ServiceBookingWizard({
           intakeNotes,
           intakeAnswers,
           ...(variantId ? { variantId } : {}),
+          ...(signedIn
+            ? {}
+            : { guestEmail: guestEmail.trim(), guestName: guestName.trim() }),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -113,19 +133,36 @@ export function ServiceBookingWizard({
     return <p className="text-sm text-fix-text-muted">Loading…</p>;
   }
 
-  if (!session?.user) {
+  if (!signedIn && (!allowGuestBooking || !bookingAsGuest)) {
     return (
       <div className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/50 p-6">
         <p className="text-sm text-fix-heading">Sign in to book this service.</p>
         <p className="mt-2 text-sm text-fix-text-muted">
-          Members and vendors can book services on RootSync.
+          {allowGuestBooking
+            ? "Signing in keeps your appointments, Meet links, and receipts in one place."
+            : "This vendor asks members to sign in before booking."}
         </p>
         <Link
-          href={`/login?callbackUrl=${encodeURIComponent(`/discover/listings/${listingId}/book`)}`}
+          href={loginHref}
           className="mt-4 inline-flex text-sm font-medium text-fix-link hover:text-fix-link-hover"
         >
           Sign in to continue →
         </Link>
+
+        {allowGuestBooking ? (
+          <div className="mt-5 border-t border-fix-border/15 pt-5">
+            <p className="text-sm text-fix-text-muted">In a hurry? No account needed.</p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              className="mt-3"
+              onClick={() => setBookingAsGuest(true)}
+            >
+              Book now as a guest
+            </Button>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -148,8 +185,63 @@ export function ServiceBookingWizard({
         </div>
       </div>
 
+      {!signedIn ? (
+        <div>
+          <h2 className="text-lg font-semibold text-fix-heading">2. Your details</h2>
+          <p className="mt-1 text-sm text-fix-text-muted">
+            We send your confirmation, calendar invite, and Meet link here.
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="guest-booking-email"
+                className="block text-sm font-medium text-fix-heading"
+              >
+                Email <span className="text-bark">*</span>
+              </label>
+              <input
+                id="guest-booking-email"
+                type="email"
+                autoComplete="email"
+                required
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm text-fix-text"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="guest-booking-name"
+                className="block text-sm font-medium text-fix-heading"
+              >
+                Name
+              </label>
+              <input
+                id="guest-booking-name"
+                type="text"
+                autoComplete="name"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                placeholder="So your vendor knows who to expect"
+                className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm text-fix-text"
+              />
+            </div>
+          </div>
+          <p className="mt-3 text-sm text-fix-text-muted">
+            Booking as a guest.{" "}
+            <Link href={loginHref} className="text-fix-link hover:text-fix-link-hover">
+              Sign in instead
+            </Link>{" "}
+            to keep all your appointments in one place.
+          </p>
+        </div>
+      ) : null}
+
       <div>
-        <h2 className="text-lg font-semibold text-fix-heading">2. Intake</h2>
+        <h2 className="text-lg font-semibold text-fix-heading">
+          {signedIn ? "2" : "3"}. Intake
+        </h2>
         {terms ? (
           <p className="mt-2 whitespace-pre-wrap text-sm text-fix-text-muted">{terms}</p>
         ) : null}
@@ -187,15 +279,20 @@ export function ServiceBookingWizard({
 
       {error ? <p className="text-sm text-bark">{error}</p> : null}
 
-      <Button
-        type="button"
-        variant="cta"
-        size="lg"
-        disabled={submitting || !selectedStartAt || loadingSlots}
-        onClick={() => void handleSubmit()}
-      >
-        {submitting ? "Redirecting to payment…" : `Continue to payment · ${formatPrice(priceCents)}`}
-      </Button>
+      <div>
+        <Button
+          type="button"
+          variant="cta"
+          size="lg"
+          disabled={submitting || !selectedStartAt || loadingSlots}
+          onClick={() => void handleSubmit()}
+        >
+          {submitting
+            ? "Redirecting to payment…"
+            : `Continue to payment · ${formatPrice(priceCents)}`}
+        </Button>
+        <p className="mt-3 text-sm text-fix-text-muted">{BOOKING_CANCELLATION_POLICY_LONG}</p>
+      </div>
     </div>
   );
 }

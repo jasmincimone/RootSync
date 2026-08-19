@@ -1,5 +1,7 @@
 /** Client-side cart for same-vendor Discover checkout (localStorage). */
 
+import { listingUsesShipping } from "@/lib/checkoutFulfillment";
+
 export const CART_STORAGE_KEY = "rootsync.cart.v1";
 export const CART_CHANGED_EVENT = "rootsync:cart-changed";
 
@@ -32,6 +34,8 @@ export type CartLine = {
   detailLabel: string;
   /** Physical product that needs pickup vs ship choice */
   requiresShipping: boolean;
+  /** Listing opted into in-person / local pickup */
+  offersLocalPickup: boolean;
   /** Effective ship rate for this line (listing override or vendor default) */
   shippingFlatCents: number | null;
 };
@@ -52,7 +56,7 @@ export function emptyCart(): CartState {
     vendorProfileId: null,
     vendorDisplayName: null,
     vendorPublicSlug: null,
-    offersLocalPickup: true,
+    offersLocalPickup: false,
     shippingFlatCents: null,
     pickupLocation: null,
     lines: [],
@@ -66,6 +70,12 @@ function cartShippingFromLines(lines: CartLine[]): number | null {
     .map((line) => Math.max(0, line.shippingFlatCents ?? 0));
   if (rates.length === 0) return null;
   return Math.max(...rates);
+}
+
+/** Pickup only if every physical line opted in on its listing. */
+function cartOffersPickupFromLines(lines: CartLine[]): boolean {
+  const physical = lines.filter((line) => line.requiresShipping);
+  return physical.length > 0 && physical.every((line) => line.offersLocalPickup);
 }
 
 export function cartLineCount(cart: CartState): number {
@@ -110,9 +120,11 @@ export function readCart(): CartState {
         vendorPublicSlug:
           typeof line.vendorPublicSlug === "string" ? line.vendorPublicSlug : null,
         requiresShipping:
-          typeof line.requiresShipping === "boolean"
-            ? line.requiresShipping
-            : line.listingType === "PRODUCT",
+          listingUsesShipping(
+            line.listingType,
+            typeof line.requiresShipping === "boolean" ? line.requiresShipping : true,
+          ),
+        offersLocalPickup: line.offersLocalPickup === true,
         shippingFlatCents:
           typeof line.shippingFlatCents === "number" ? line.shippingFlatCents : null,
       }));
@@ -121,7 +133,7 @@ export function readCart(): CartState {
       vendorDisplayName: parsed.vendorDisplayName ?? null,
       vendorPublicSlug:
         typeof parsed.vendorPublicSlug === "string" ? parsed.vendorPublicSlug : null,
-      offersLocalPickup: parsed.offersLocalPickup !== false,
+      offersLocalPickup: cartOffersPickupFromLines(lines),
       shippingFlatCents:
         cartShippingFromLines(lines) ??
         (typeof parsed.shippingFlatCents === "number" ? parsed.shippingFlatCents : null),
@@ -184,7 +196,7 @@ export function addLineToCart(
 
   const existing = cart.lines.find((line) => line.key === key);
   const {
-    offersLocalPickup = true,
+    offersLocalPickup = false,
     pickupLocation = null,
     quantity: _ignoredQty,
     ...lineFields
@@ -200,6 +212,7 @@ export function addLineToCart(
         ...cart.lines,
         {
           ...lineFields,
+          offersLocalPickup,
           key,
           quantity,
         },
@@ -209,7 +222,7 @@ export function addLineToCart(
     vendorProfileId: input.vendorProfileId,
     vendorDisplayName: input.vendorDisplayName,
     vendorPublicSlug: input.vendorPublicSlug,
-    offersLocalPickup,
+    offersLocalPickup: cartOffersPickupFromLines(lines),
     shippingFlatCents: cartShippingFromLines(lines),
     pickupLocation,
     lines,
@@ -230,7 +243,12 @@ export function updateCartLineQuantity(key: string, quantity: number): CartState
   const next: CartState =
     lines.length === 0
       ? emptyCart()
-      : { ...cart, lines, shippingFlatCents: cartShippingFromLines(lines) };
+      : {
+          ...cart,
+          lines,
+          shippingFlatCents: cartShippingFromLines(lines),
+          offersLocalPickup: cartOffersPickupFromLines(lines),
+        };
   writeCart(next);
   return next;
 }
@@ -241,7 +259,12 @@ export function removeCartLine(key: string): CartState {
   const next =
     lines.length === 0
       ? emptyCart()
-      : { ...cart, lines, shippingFlatCents: cartShippingFromLines(lines) };
+      : {
+          ...cart,
+          lines,
+          shippingFlatCents: cartShippingFromLines(lines),
+          offersLocalPickup: cartOffersPickupFromLines(lines),
+        };
   writeCart(next);
   return next;
 }

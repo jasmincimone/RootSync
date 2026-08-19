@@ -131,6 +131,12 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
 
   await decrementInventoryForPaidOrder(fields.orderId);
   await hookOrderVerified(fields.orderId);
+  try {
+    const { syncGrowthContactsFromPaidOrder } = await import("@/lib/growth/orderContacts");
+    await syncGrowthContactsFromPaidOrder(fields.orderId);
+  } catch (e) {
+    console.warn("[growth] syncGrowthContactsFromPaidOrder:", e);
+  }
   const { notifyAdminsOfShippableOrder } = await import("@/lib/shippingFulfillment");
   await notifyAdminsOfShippableOrder(fields.orderId);
 
@@ -158,6 +164,12 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
 
   await decrementInventoryForPaidOrder(orderId);
   await hookOrderVerified(orderId);
+  try {
+    const { syncGrowthContactsFromPaidOrder } = await import("@/lib/growth/orderContacts");
+    await syncGrowthContactsFromPaidOrder(orderId);
+  } catch (e) {
+    console.warn("[growth] syncGrowthContactsFromPaidOrder:", e);
+  }
 }
 
 async function handleSubscriptionAndBillingEvent(event: Stripe.Event) {

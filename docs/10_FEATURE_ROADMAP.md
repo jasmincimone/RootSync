@@ -48,6 +48,12 @@ Polish what exists. Examples (not a backlog to invent features):
 
 ## Later (parked)
 
+- **Bookable Events** — an Event today is always vendor-scheduled (you set the date, customers
+  buy tickets). The other direction, where a customer books *you* for that same offering from
+  your open hours, is currently only possible by listing it as a Service. Intended fix is a
+  scheduling mode on `EventDetails` (`HOSTED` vs `BOOKABLE`) that reuses the existing service
+  booking stack rather than a parallel flow — see ADR-005 / ADR-009. Interim: vendor form copy
+  steers "I host it" to Event and "book me for it" to Service.
 - Follow vendors/members
 - Full GrowSpace (landing pages, QR, newsletter, AI marketing, etc.)
 - Native apps

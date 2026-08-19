@@ -37,7 +37,7 @@ Core public + signed-in commerce/auth items are checked. Unchecked boxes below a
 - [x] Listing Buy now creates Checkout with destination charge — **confirmed (Test Consultation)**
 - [x] Stripe Dashboard: connected account + ~10% application fee — **confirmed** ($0.09 fee on $0.96; Stripe card fee ~$0.33 is separate)
 - [x] Vendor without Connect + without payment link: Buy now unavailable (honest message)
-- [ ] Product with `requiresShipping`: Checkout shows Standard shipping (vendor flat rate) + Local pickup when enabled; order stores `shippingCents` + address after pay
+- [ ] Product with `requiresShipping`: Checkout ships by default (vendor flat rate); Local pickup appears only when the listing opts in (`ProductDetails.offersLocalPickup`); order stores `shippingCents` + address after pay
 - [ ] Terminal install page (`/account/vendor/pos/install`) explains App Store “Unavailable” + Counter POS / TestFlight paths
 - [ ] Payment link-only listing still works via Pay Link / Buy now link — optional
 

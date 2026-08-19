@@ -445,9 +445,11 @@ export function VendorStripeConnectSetup({
       <Card className="p-5">
         <h3 className="text-sm font-semibold text-fix-heading">Payment link</h3>
         <p className="mt-2 text-sm text-fix-text-muted">
-          Add a Stripe Payment Link, PayPal checkout, or any external payment URL you already use. External links stay available for community vendors — those sales are off-platform (no RootSync fee). Prefer Connect Checkout when ready so the platform fee applies. When set, listing
-          Buy now opens this link unless you also use Stripe Connect (then members see both options).
-          You can still override per listing when editing an offering.
+          Add a Stripe Payment Link, PayPal checkout, or another checkout URL you already use.
+          RootSync checkout keeps the cart, bookings, shipping, and order history together, while
+          an external link gives you flexibility when payment needs to happen elsewhere. This is
+          your default link; you can choose an external-only checkout for a specific listing when
+          editing that offering.
         </p>
         <div className="mt-4 grid gap-3 sm:max-w-xl">
           <input

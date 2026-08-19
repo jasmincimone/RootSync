@@ -134,14 +134,19 @@ export async function hookBookingCompleted(bookingId: string): Promise<void> {
     });
     if (!booking) return;
 
+    const memberUserId = booking.memberUserId;
+
     await Promise.all([
-      recordPulseEventOnce({
-        userId: booking.memberUserId,
-        eventType: PULSE_EVENT_TYPES.BOOKING_COMPLETED,
-        relatedEntityType: "booking",
-        relatedEntityId: bookingId,
-        metadata: { role: "member" },
-      }),
+      // Guest bookings have no account to credit; the vendor still earns theirs.
+      memberUserId
+        ? recordPulseEventOnce({
+            userId: memberUserId,
+            eventType: PULSE_EVENT_TYPES.BOOKING_COMPLETED,
+            relatedEntityType: "booking",
+            relatedEntityId: bookingId,
+            metadata: { role: "member" },
+          })
+        : Promise.resolve(),
       recordPulseEventOnce({
         userId: booking.vendorProfile.userId,
         eventType: PULSE_EVENT_TYPES.BOOKING_COMPLETED,

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { loadBookableServiceListing, requireBookingMemberSession } from "@/lib/bookingAccess";
+import { loadBookableServiceListing, resolveBookingActor } from "@/lib/bookingAccess";
 import { createServiceBookingCheckout, type IntakeAnswerInput } from "@/lib/bookingCheckout";
+import { rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,11 +29,6 @@ function parseIntakeAnswers(body: Record<string, unknown>): IntakeAnswerInput[] 
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const gate = await requireBookingMemberSession();
-    if ("error" in gate) {
-      return NextResponse.json({ error: gate.error }, { status: gate.status });
-    }
-
     const { id: listingId } = await context.params;
     const body = await request.json().catch(() => ({}));
     const variantId =
@@ -41,6 +37,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!listing) {
       return NextResponse.json({ error: "Service listing not found or not bookable." }, { status: 404 });
     }
+
+    const actor = await resolveBookingActor({
+      guest: { email: body.guestEmail, name: body.guestName },
+      requiresAccount: Boolean(listing.offering.serviceDetails?.requiresAccountToBook),
+    });
+    if ("error" in actor) {
+      return NextResponse.json({ error: actor.error }, { status: actor.status });
+    }
+
+    // Guests are only identified by an email they typed, so bound how fast one
+    // visitor can spin up checkouts against a vendor's calendar.
+    const limited = rateLimitResponse(request, "checkout", {
+      userId: actor.userId,
+      scope: "service-booking",
+      message: "Too many booking attempts. Try again in a few minutes.",
+    });
+    if (limited) return limited;
 
     const scheduledStartAt =
       typeof body.scheduledStartAt === "string" ? body.scheduledStartAt.trim() : "";
@@ -66,9 +79,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const result = await createServiceBookingCheckout({
       listing,
-      memberUserId: gate.userId,
-      memberEmail: gate.email,
-      memberName: gate.name,
+      memberUserId: actor.userId,
+      memberEmail: actor.email,
+      memberName: actor.name,
       scheduledStartAt,
       intakeNotes,
       intakeAnswers,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { loadBookableServiceListing, requireBookingMemberSession } from "@/lib/bookingAccess";
+import { loadBookableServiceListing } from "@/lib/bookingAccess";
 import { getServiceDurationMinutes, generateAvailableSlots } from "@/lib/bookingSlots";
 import { prisma } from "@/lib/prisma";
 import { BOOKING_STATUS } from "@/lib/roles";
@@ -26,10 +26,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const to = new Date();
     to.setUTCDate(to.getUTCDate() + safeDays);
 
+    // Only paid bookings hold a slot. Unpaid checkouts stay open to everyone, so an
+    // abandoned Stripe session never strands a vendor's time.
     const booked = await prisma.booking.findMany({
       where: {
         listingId,
-        status: { in: [BOOKING_STATUS.PENDING_PAYMENT, BOOKING_STATUS.CONFIRMED] },
+        status: BOOKING_STATUS.CONFIRMED,
         scheduledStartAt: { lt: to },
         scheduledEndAt: { gt: from },
       },

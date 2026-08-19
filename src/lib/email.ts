@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 
+import { BOOKING_CANCELLATION_POLICY_LONG } from "@/lib/bookingPolicy";
 import { formatPrice } from "@/lib/format";
 
 function appOrigin(): string {
@@ -100,6 +101,8 @@ export type BookingConfirmationEmailInput = {
   meetLink: string | null;
   calendarHtmlLink: string | null;
   bookingId: string;
+  /** Where this buyer manages the booking — account page for members, signed link for guests. */
+  manageBookingUrl?: string;
 };
 
 export async function sendBookingConfirmationEmail(
@@ -112,7 +115,7 @@ export async function sendBookingConfirmationEmail(
     input.scheduledEndAt,
     input.timeZone,
   );
-  const bookingsUrl = `${appOrigin()}/account/bookings`;
+  const bookingsUrl = input.manageBookingUrl ?? `${appOrigin()}/account/bookings`;
 
   const meetBlock = input.meetLink
     ? `<p><strong>Google Meet:</strong> <a href="${input.meetLink}">${input.meetLink}</a></p>`
@@ -128,7 +131,8 @@ export async function sendBookingConfirmationEmail(
     ${meetBlock}
     ${calendarBlock}
     <p>We also sent a Google Calendar invitation to your email when a video session is included.</p>
-    <p><a href="${bookingsUrl}">View your bookings</a></p>
+    <p>${BOOKING_CANCELLATION_POLICY_LONG}</p>
+    <p><a href="${bookingsUrl}">Manage this booking</a></p>
   `;
 
   const vendorHtml = `
@@ -189,10 +193,12 @@ export type BookingCancellationEmailInput = {
   scheduledStartAt: Date;
   scheduledEndAt: Date;
   timeZone: string;
-  cancelledBy: "member" | "vendor";
+  cancelledBy: "member" | "vendor" | "slot_taken";
   reason?: string;
   bookingId: string;
   refundAmountCents?: number;
+  /** Where to send the buyer to try again after losing a slot race. */
+  rebookUrl?: string;
 };
 
 export async function sendBookingCancellationEmail(
@@ -205,7 +211,13 @@ export async function sendBookingCancellationEmail(
     input.scheduledEndAt,
     input.timeZone,
   );
-  const cancelledByLabel = input.cancelledBy === "member" ? "the member" : "the vendor";
+  const slotTaken = input.cancelledBy === "slot_taken";
+  const cancelledByLabel =
+    input.cancelledBy === "member"
+      ? "the member"
+      : slotTaken
+        ? "RootSync"
+        : "the vendor";
   const reasonLine = input.reason?.trim()
     ? `<p><strong>Reason:</strong> ${input.reason.trim()}</p>`
     : "";
@@ -219,16 +231,37 @@ export async function sendBookingCancellationEmail(
       ? `<p>A full refund of <strong>${formatPrice(input.refundAmountCents)}</strong> has been issued to your original payment method. It may take 5–10 business days to appear.</p>`
       : "";
 
-  const memberHtml = `
+  const rebookLine =
+    slotTaken && input.rebookUrl
+      ? `<p><a href="${input.rebookUrl}">Pick another time</a></p>`
+      : `<p><a href="${appOrigin()}/account/bookings">View your bookings</a></p>`;
+
+  const memberHtml = slotTaken
+    ? `
+    <p>Hi${input.memberName ? ` ${input.memberName}` : ""},</p>
+    <p>Someone else completed payment for that ${input.serviceTitle} slot moments before you did, so we could not hold it for you.</p>
+    <p><strong>Was scheduled for:</strong> ${when}</p>
+    ${memberRefundLine}
+    <p>Sorry for the near miss — ${input.vendorName} has other times open.</p>
+    ${rebookLine}
+  `
+    : `
     <p>Hi${input.memberName ? ` ${input.memberName}` : ""},</p>
     <p>Your booking for <strong>${input.serviceTitle}</strong> with <strong>${input.vendorName}</strong> was cancelled by ${cancelledByLabel}.</p>
     <p><strong>Was scheduled for:</strong> ${when}</p>
     ${reasonLine}
     ${memberRefundLine}
-    <p><a href="${appOrigin()}/account/bookings">View your bookings</a></p>
+    ${rebookLine}
   `;
 
-  const vendorHtml = `
+  const vendorHtml = slotTaken
+    ? `
+    <p>Two people paid for the same <strong>${input.serviceTitle}</strong> slot. The first payment kept the appointment; the second (${input.memberName || input.memberEmail}) was refunded automatically.</p>
+    <p><strong>Slot:</strong> ${when}</p>
+    <p>No action needed — your calendar still has the one confirmed booking.</p>
+    <p><a href="${appOrigin()}/account/vendor/bookings">View incoming appointments</a></p>
+  `
+    : `
     <p>The booking for <strong>${input.serviceTitle}</strong> with <strong>${input.memberName || input.memberEmail}</strong> was cancelled by ${cancelledByLabel}.</p>
     <p><strong>Was scheduled for:</strong> ${when}</p>
     ${reasonLine}
@@ -250,7 +283,9 @@ export async function sendBookingCancellationEmail(
   }
 
   const resend = new Resend(key);
-  const subject = `Booking cancelled: ${input.serviceTitle}`;
+  const subject = slotTaken
+    ? `That time was just taken: ${input.serviceTitle}`
+    : `Booking cancelled: ${input.serviceTitle}`;
 
   const [memberResult, vendorResult] = await Promise.all([
     resend.emails.send({
@@ -262,7 +297,9 @@ export async function sendBookingCancellationEmail(
     resend.emails.send({
       from,
       to: [input.vendorEmail],
-      subject: `Cancelled: ${input.serviceTitle}`,
+      subject: slotTaken
+        ? `Double payment refunded: ${input.serviceTitle}`
+        : `Cancelled: ${input.serviceTitle}`,
       html: vendorHtml,
     }),
   ]);

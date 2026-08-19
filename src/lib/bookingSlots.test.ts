@@ -33,6 +33,7 @@ function mockListing(overrides?: {
         fulfillmentMethod: "VIRTUAL",
         defaultTimeZone: "America/New_York",
         terms: null,
+        requiresAccountToBook: false,
       },
       availabilityRules: [
         { dayOfWeek: 1, startMinutes: 9 * 60, endMinutes: 17 * 60, timeZone: "America/New_York" },

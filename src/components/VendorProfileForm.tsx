@@ -212,17 +212,17 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
           className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-fix-text"
         />
         <p className="mt-1 text-xs text-fix-text-muted">
-          Shown on your vendor page and used as the Local pickup label at checkout when enabled.
+          Shown on your vendor page and used as the Local pickup label at checkout when a listing
+          offers in-person pickup.
         </p>
       </div>
       <div className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 p-4 space-y-4">
         <div>
           <div className="text-sm font-medium text-fix-heading">Product shipping</div>
           <p className="mt-1 text-xs text-fix-text-muted">
-            Buyers choose <strong className="font-medium text-fix-heading">Pickup / in person</strong> or{" "}
-            <strong className="font-medium text-fix-heading">Ship / deliver</strong> before checkout.
-            This is your default ship rate — leave blank for $0. Heavy listings can override it under
-            Product details.
+            Buyers of physical products check out with shipping by default. Pickup only appears when
+            a listing opts in under Product details. This is your default ship rate — leave blank
+            for $0. Heavy listings can override it there too.
           </p>
         </div>
         <div>
@@ -247,8 +247,8 @@ export function VendorProfileForm({ initial }: { initial: Profile }) {
             className="mt-0.5"
           />
           <span>
-            Offer <strong className="font-medium text-fix-heading">Local pickup</strong> ($0) at
-            checkout
+            Allow listings to offer <strong className="font-medium text-fix-heading">Local pickup</strong>{" "}
+            ($0). Each product still has to opt in.
           </span>
         </label>
       </div>
