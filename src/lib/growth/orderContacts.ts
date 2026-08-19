@@ -335,7 +335,6 @@ export async function backfillGrowthContactsFromVendorOrders(
     });
   }
 
-  const funnel = await findDiscoverCheckoutFunnel(vendorProfileId);
   const existingContacts = await prisma.growthContact.findMany({
     where: {
       vendorProfileId,
@@ -371,7 +370,7 @@ export async function backfillGrowthContactsFromVendorOrders(
           name: buyer.name,
           rootSyncUserId: buyer.rootSyncUserId,
           purchaseLines: buyer.purchaseLines,
-          funnelId,
+          funnelId: options?.funnelId ?? null,
           recordEvent: false,
           skipVendorEmailCheck: true,
           existingContact: existingByEmail.get(buyer.email) ?? null,
@@ -388,6 +387,7 @@ export async function backfillGrowthContactsFromVendorOrders(
     ordersProcessed: orderIds.size,
     contactsCreated,
     contactsUpdated,
+    contactsAssignedToFunnel: 0,
   };
 }
 
