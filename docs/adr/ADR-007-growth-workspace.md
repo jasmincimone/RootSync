@@ -101,7 +101,7 @@ Optional `bookingId` FK links pipeline to a real booking when scheduled.
 
 ### 6. Landing pages vs ShopPage
 
-`ShopPage` is admin-editable platform shop content. Vendor marketing landings use `GrowthLandingPage` with funnel/campaign FKs, conversion tracking, and public slug under a future `/g/[slug]` or `/v/[shopSlug]/p/[slug]` route.
+`ShopPage` is admin-editable platform shop content. Vendor marketing landings use `GrowthLandingPage` with funnel/campaign FKs, conversion tracking, and a public slug picker. Live funnel pages are `rootsync.io/{vendorPublicSlug}/funnels/{funnelSlug}`. Campaign pages will use `rootsync.io/{vendorPublicSlug}/campaigns/{campaignSlug}` (route reserved; not designed yet).
 
 ### 7. AI Marketing
 

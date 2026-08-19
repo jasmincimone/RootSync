@@ -87,9 +87,11 @@ export function PulsePostMediaGallery({ media, className }: Props) {
 export function PulsePostMediaPreviewRow({
   item,
   onRemove,
+  extra,
 }: {
   item: PulsePostMediaItem;
   onRemove: () => void;
+  extra?: React.ReactNode;
 }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-fix-border/15 bg-fix-bg-muted/50 p-2">
@@ -111,13 +113,16 @@ export function PulsePostMediaPreviewRow({
         </p>
         <p className="truncate capitalize">{item.type}</p>
       </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-bark hover:bg-fix-surface"
-      >
-        Remove
-      </button>
+      <div className="flex shrink-0 items-center gap-1">
+        {extra}
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded-lg px-2 py-1 text-xs font-medium text-bark hover:bg-fix-surface"
+        >
+          Remove
+        </button>
+      </div>
     </div>
   );
 }

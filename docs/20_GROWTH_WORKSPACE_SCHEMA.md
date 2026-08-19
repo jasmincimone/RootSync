@@ -180,7 +180,7 @@ This document defines proposed PostgreSQL tables for the RootSync Growth Workspa
 | `id` | cuid PK | |
 | `vendorProfileId` | FK, nullable | |
 | `funnelId` | FK?, nullable | |
-| `slug` | String | Unique per vendor |
+| `slug` | String | Unique per vendor; public path `/{vendorPublicSlug}/funnels/{slug}` |
 | `title` | String | |
 | `headline` | String? | |
 | `contentJson` | Json? | Blocks/sections (ShopPage pattern) |

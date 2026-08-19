@@ -17,7 +17,10 @@ function isAllowedMediaUrl(url: string): boolean {
   return false;
 }
 
-export function sanitizePulsePostMediaInput(raw: unknown): PulsePostMediaItem[] {
+export function sanitizePulsePostMediaInput(
+  raw: unknown,
+  max = MAX_PULSE_POST_MEDIA,
+): PulsePostMediaItem[] {
   if (!Array.isArray(raw)) return [];
   const out: PulsePostMediaItem[] = [];
   for (const item of raw) {
@@ -31,7 +34,7 @@ export function sanitizePulsePostMediaInput(raw: unknown): PulsePostMediaItem[] 
       ...(item.fileName?.trim() ? { fileName: item.fileName.trim() } : {}),
       ...(item.label?.trim() ? { label: item.label.trim() } : {}),
     });
-    if (out.length >= MAX_PULSE_POST_MEDIA) break;
+    if (out.length >= max) break;
   }
   return out;
 }

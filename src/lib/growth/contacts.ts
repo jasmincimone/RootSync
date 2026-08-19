@@ -9,6 +9,15 @@ export function isGrowthContactStatus(value: string): value is GrowthContactStat
   return Object.values(GROWTH_CONTACT_STATUS).includes(value as GrowthContactStatus);
 }
 
+export async function countGrowthContacts(
+  vendorProfileId: string | null,
+  isPlatformScope: boolean,
+) {
+  return prisma.growthContact.count({
+    where: growthVendorWhere(vendorProfileId, isPlatformScope),
+  });
+}
+
 export async function listGrowthContacts(
   vendorProfileId: string | null,
   isPlatformScope: boolean,
@@ -44,6 +53,9 @@ export async function createGrowthContact(args: {
       leadSource: args.leadSource?.trim() || null,
       funnelId: args.funnelId || null,
       lastActivityAt: new Date(),
+    },
+    include: {
+      funnel: { select: { id: true, name: true } },
     },
   });
 }
@@ -103,6 +115,9 @@ export async function updateGrowthContact(
         : {}),
       ...(data.funnelId !== undefined ? { funnelId: data.funnelId || null } : {}),
       lastActivityAt: new Date(),
+    },
+    include: {
+      funnel: { select: { id: true, name: true } },
     },
   });
 }

@@ -76,6 +76,25 @@ export const GROWTH_FUNNEL_STEP_TYPE = {
   REFERRAL: "REFERRAL",
 } as const;
 
+export const GROWTH_FUNNEL_STEP_TYPE_LABELS: Record<
+  (typeof GROWTH_FUNNEL_STEP_TYPE)[keyof typeof GROWTH_FUNNEL_STEP_TYPE],
+  string
+> = {
+  LANDING_PAGE: "Landing page",
+  LEAD_MAGNET: "Lead magnet",
+  EMAIL_SEQUENCE: "Nurture emails",
+  NEWSLETTER: "Newsletter",
+  CTA: "Call to action",
+  CONSULTATION: "Consultation",
+  MARKETPLACE: "Marketplace",
+  REFERRAL: "Referral",
+};
+
+/** When set on an active funnel, Discover checkout buyers are added as CRM contacts. */
+export const GROWTH_FUNNEL_ENTRY_SOURCE = {
+  DISCOVER_CHECKOUT: "discover_checkout",
+} as const;
+
 export const GROWTH_QR_CAMPAIGN_TYPE = {
   INVESTFEST: "INVESTFEST",
   FARMERS_MARKET: "FARMERS_MARKET",

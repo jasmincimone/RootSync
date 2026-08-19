@@ -15,6 +15,11 @@ type Props = {
   items: PulsePostMediaItem[];
   onChange: (items: PulsePostMediaItem[]) => void;
   disabled?: boolean;
+  heading?: string;
+  description?: string;
+  maxItems?: number;
+  itemCount?: number;
+  hideItems?: boolean;
 };
 
 type ErrorPayload = {
@@ -28,62 +33,86 @@ const UPLOAD_ENDPOINT = "/api/community/posts/upload";
 const ACCEPT =
   "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.pdf,.zip,.epub,.docx,.xlsx,.pptx,.txt,.csv,.mp4,.webm,.mov";
 
-export function PulsePostMediaEditor({ items, onChange, disabled = false }: Props) {
+export function PulsePostMediaEditor({
+  items,
+  onChange,
+  disabled = false,
+  heading = "Photos, videos, or files",
+  description,
+  maxItems = MAX_PULSE_POST_MEDIA,
+  itemCount,
+  hideItems = false,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
-  const atLimit = items.length >= MAX_PULSE_POST_MEDIA;
+  const used = itemCount ?? items.length;
+  const atLimit = used >= maxItems;
 
-  async function uploadFile(file: File) {
-    if (atLimit) {
-      setUploadError(`You can attach up to ${MAX_PULSE_POST_MEDIA} items per Pulse.`);
-      return;
+  async function uploadFile(file: File): Promise<PulsePostMediaItem | null> {
+    const fd = new FormData();
+    fd.set("file", file);
+    const res = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: fd });
+    const rawBody = await res.text();
+    let parsed: ErrorPayload & {
+      url?: string;
+      type?: "image" | "video" | "file";
+      fileName?: string;
+    } = {};
+    if (rawBody) {
+      try {
+        parsed = JSON.parse(rawBody) as typeof parsed;
+      } catch {
+        parsed = {};
+      }
     }
+    if (!res.ok) {
+      const parts = [parsed.error, parsed.hint, parsed.code ? `(code: ${parsed.code})` : ""]
+        .filter(Boolean)
+        .join(" ");
+      setUploadError(parts || `Upload failed (HTTP ${res.status})`);
+      return null;
+    }
+    if (!parsed.url || !parsed.type) {
+      setUploadError("Upload succeeded but the server response was invalid.");
+      return null;
+    }
+    return newPulsePostMediaItem({
+      type: parsed.type,
+      url: parsed.url,
+      fileName: parsed.fileName ?? file.name,
+      label: file.name,
+    });
+  }
+
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = [...(e.target.files ?? [])];
+    e.target.value = "";
+    if (files.length === 0) return;
 
     setUploadError(null);
     setUploadSuccess(null);
     setUploading(true);
+    let next = items;
+    let added = 0;
     try {
-      const fd = new FormData();
-      fd.set("file", file);
-      const res = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: fd });
-      const rawBody = await res.text();
-      let parsed: ErrorPayload & {
-        url?: string;
-        type?: "image" | "video" | "file";
-        fileName?: string;
-      } = {};
-      if (rawBody) {
-        try {
-          parsed = JSON.parse(rawBody) as typeof parsed;
-        } catch {
-          parsed = {};
+      for (const file of files) {
+        if (used - items.length + next.length >= maxItems) {
+          setUploadError(`You can attach up to ${maxItems} items.`);
+          break;
         }
+        const created = await uploadFile(file);
+        if (!created) break;
+        next = [...next, created];
+        added += 1;
+        onChange(next);
       }
-      if (!res.ok) {
-        const parts = [parsed.error, parsed.hint, parsed.code ? `(code: ${parsed.code})` : ""]
-          .filter(Boolean)
-          .join(" ");
-        setUploadError(parts || `Upload failed (HTTP ${res.status})`);
-        return;
+      if (added > 0) {
+        setUploadSuccess(added === 1 ? "Attachment added." : `${added} attachments added.`);
+        window.setTimeout(() => setUploadSuccess(null), 4000);
       }
-      if (!parsed.url || !parsed.type) {
-        setUploadError("Upload succeeded but the server response was invalid.");
-        return;
-      }
-      onChange([
-        ...items,
-        newPulsePostMediaItem({
-          type: parsed.type,
-          url: parsed.url,
-          fileName: parsed.fileName ?? file.name,
-          label: file.name,
-        }),
-      ]);
-      setUploadSuccess("Attachment added.");
-      window.setTimeout(() => setUploadSuccess(null), 4000);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -91,19 +120,13 @@ export function PulsePostMediaEditor({ items, onChange, disabled = false }: Prop
     }
   }
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (file) void uploadFile(file);
-  }
-
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-xs font-medium text-fix-heading">Photos, videos, or files</p>
+        <p className="text-xs font-medium text-fix-heading">{heading}</p>
         <p className="mt-1 text-xs text-fix-text-muted">
-          Images up to 5 MB, videos up to 50 MB, documents up to 10 MB. Up to {MAX_PULSE_POST_MEDIA}{" "}
-          attachments per Pulse.
+          {description ??
+            `Images up to 5 MB, videos up to 50 MB, documents up to 10 MB. Up to ${MAX_PULSE_POST_MEDIA} attachments per Pulse.`}
         </p>
       </div>
 
@@ -114,6 +137,7 @@ export function PulsePostMediaEditor({ items, onChange, disabled = false }: Prop
           ref={inputRef}
           type="file"
           accept={ACCEPT}
+          multiple
           className="sr-only"
           disabled={disabled || uploading || atLimit}
           onChange={onFileChange}
@@ -133,7 +157,7 @@ export function PulsePostMediaEditor({ items, onChange, disabled = false }: Prop
         </button>
       </div>
 
-      {items.length > 0 ? (
+      {hideItems || items.length === 0 ? null : (
         <ul className="space-y-2">
           {items.map((item) => (
             <li key={item.id}>
@@ -144,7 +168,7 @@ export function PulsePostMediaEditor({ items, onChange, disabled = false }: Prop
             </li>
           ))}
         </ul>
-      ) : null}
+      )}
     </div>
   );
 }

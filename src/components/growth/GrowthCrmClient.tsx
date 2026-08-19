@@ -35,10 +35,53 @@ export function GrowthCrmClient({ initialContacts }: { initialContacts: GrowthCr
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState("NEW_LEAD");
   const [error, setError] = useState<string | null>(null);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   return (
     <div className="space-y-6">
+      <Card className="space-y-3 p-4 sm:p-5">
+        <div>
+          <h2 className="text-sm font-semibold text-fix-heading">Import checkout buyers</h2>
+          <p className="mt-1 text-sm text-fix-text-muted">
+            Pull emails from paid Discover orders into CRM. Then open Funnels and use{" "}
+            <strong className="font-medium text-fix-heading">Assign contacts</strong> or{" "}
+            <strong className="font-medium text-fix-heading">Add all CRM contacts</strong> so
+            they appear on that funnel.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={pending}
+          onClick={() => {
+            setError(null);
+            setSyncMessage(null);
+            startTransition(async () => {
+              const res = await fetch("/api/growth/contacts/sync-orders", { method: "POST" });
+              const data = (await res.json().catch(() => ({}))) as {
+                error?: string;
+                message?: string;
+              };
+              if (!res.ok) {
+                setError(data.error ?? `Import failed (${res.status}). Try again in a moment.`);
+                return;
+              }
+              router.refresh();
+              setSyncMessage(
+                typeof data.message === "string"
+                  ? data.message
+                  : "Paid checkout buyers imported into CRM.",
+              );
+            });
+          }}
+        >
+          {pending ? "Importing…" : "Import paid orders"}
+        </Button>
+        {syncMessage ? <p className="text-sm text-forest">{syncMessage}</p> : null}
+      </Card>
+
       <Card className="space-y-3 p-4 sm:p-5">
         <h2 className="text-sm font-semibold text-fix-heading">Add contact</h2>
         <div className="grid gap-3 sm:grid-cols-2">

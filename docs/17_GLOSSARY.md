@@ -125,6 +125,8 @@ Every Listing belongs to exactly one Vendor.
 
 Vendors can set an optional **Listing URL** (`publicSlug`) so the public path is `/discover/listings/your-name` instead of a system id.
 
+Vendors can set a **Funnel URL** so the public path is `/{profile-url}/funnels/funnel-name` (same picker pattern as listings). Campaigns will use `/{profile-url}/campaigns/campaign-name` when that module ships.
+
 ---
 
 ## Product
