@@ -38,7 +38,10 @@ type Props = {
 export function MarketplaceMap({ pins, compact, buildDetailHref }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const buildDetailHrefRef = useRef(buildDetailHref);
-  buildDetailHrefRef.current = buildDetailHref;
+
+  useEffect(() => {
+    buildDetailHrefRef.current = buildDetailHref;
+  }, [buildDetailHref]);
 
   const heightClass = compact ? "h-[280px] max-h-[40vh]" : "h-[420px] max-h-[55vh]";
 

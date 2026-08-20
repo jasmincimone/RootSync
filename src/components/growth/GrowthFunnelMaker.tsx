@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -189,9 +190,9 @@ export function GrowthFunnelMaker({
             {!vendorPublicSlug ? (
               <p className="mt-2 text-xs text-fix-text-muted">
                 Claim a Profile URL in{" "}
-                <a href="/account/vendor/profile" className="text-fix-link underline">
+                <Link href="/account/vendor/profile" className="text-fix-link underline">
                   Vendor profile
-                </a>{" "}
+                </Link>{" "}
                 so this link can go live.
               </p>
             ) : publicSlug.trim() ? (

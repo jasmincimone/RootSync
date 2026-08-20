@@ -53,11 +53,12 @@ export function PulseToastProvider({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const seenIdsRef = useRef<Set<string>>(new Set());
-  const lastCheckRef = useRef<number>(Date.now() - 5_000);
+  const lastCheckRef = useRef<number>(0);
   const pollingRef = useRef(false);
 
   useEffect(() => {
     seenIdsRef.current = loadSeenIds();
+    lastCheckRef.current = Date.now() - 5_000;
   }, []);
 
   const enqueue = useCallback((payload: PulseEarnedPayload) => {

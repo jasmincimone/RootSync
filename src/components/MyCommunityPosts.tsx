@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -152,9 +153,9 @@ export function MyCommunityPosts({ posts: initialPosts }: Props) {
       <Card className="p-6">
         <p className="text-sm text-fix-text-muted">
           You haven&apos;t posted on Pulse yet.{" "}
-          <a href="/pulse" className="font-medium text-fix-link hover:text-fix-link-hover">
+          <Link href="/pulse" className="font-medium text-fix-link hover:text-fix-link-hover">
             Start a Pulse
-          </a>
+          </Link>
         </p>
       </Card>
     );

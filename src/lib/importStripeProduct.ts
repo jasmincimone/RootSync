@@ -72,7 +72,7 @@ export async function upsertOfferingFromStripeProduct(args: {
       ? product.metadata.rootsync_offering_id.trim()
       : "";
 
-  let existing = await prisma.offering.findFirst({
+  const existing = await prisma.offering.findFirst({
     where: {
       OR: [
         { stripeProductId: product.id },
@@ -82,7 +82,9 @@ export async function upsertOfferingFromStripeProduct(args: {
     include: { listing: { select: { id: true } } },
   });
 
-  let { priceCents, stripePriceId } = resolvePriceCents(product);
+  const resolvedPrice = resolvePriceCents(product);
+  let priceCents = resolvedPrice.priceCents;
+  const stripePriceId = resolvedPrice.stripePriceId;
 
   // If default_price is only an id string, fetch amount from the connected account.
   if (priceCents <= 0 && stripePriceId) {

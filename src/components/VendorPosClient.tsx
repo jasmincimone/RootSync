@@ -278,9 +278,9 @@ export function VendorPosClient() {
         <p className="text-xs text-fix-text-muted">
           Order: <span className="font-mono">{lastOrderId}</span>
           {" · "}
-          <a href="/account/vendor/orders" className="text-fix-link hover:underline">
+          <Link href="/account/vendor/orders" className="text-fix-link hover:underline">
             Orders received
-          </a>
+          </Link>
         </p>
       ) : null}
       {checkoutUrl && !busy ? (

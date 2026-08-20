@@ -1,7 +1,7 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -39,7 +39,6 @@ type Props = {
 export function ServiceBookingWizard({
   listingId,
   variantId = null,
-  title,
   priceCents,
   durationMinutes,
   terms,

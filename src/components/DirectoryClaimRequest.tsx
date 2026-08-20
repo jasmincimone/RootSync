@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { DIRECTORY_CLAIM_STATUS } from "@/lib/roles";
@@ -124,9 +125,9 @@ export function DirectoryClaimRequest({
       </p>
       <p className="mt-2 text-xs text-fix-text-muted">
         Not a Vendor yet?{" "}
-        <a href="/account/vendor/apply" className="font-medium text-fix-link hover:text-fix-link-hover">
+        <Link href="/account/vendor/apply" className="font-medium text-fix-link hover:text-fix-link-hover">
           Apply here
-        </a>
+        </Link>
         .
       </p>
       {error ? <p className="mt-2 text-xs text-red-700">{error}</p> : null}
