@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { CampaignVisitBeacon } from "@/components/growth/CampaignVisitBeacon";
 import { FunnelPagePreview } from "@/components/growth/FunnelPagePreview";
 import { PageBody } from "@/components/ui/PageBody";
 import { getPublishedFunnelByPublicPath } from "@/lib/growth/funnels";
 import { parseFunnelPageContent } from "@/lib/growth/funnelPage";
 import { vendorFunnelPublicPath } from "@/lib/growth/publicPath";
+import { isCampaignTrackingToken } from "@/lib/growth/campaignTracking";
 import {
   isReservedVendorPublicSlug,
   isVendorCuidRef,
@@ -14,6 +16,7 @@ import {
 
 type PageProps = {
   params: Promise<{ vendorSlug: string; funnelSlug: string }>;
+  searchParams: Promise<{ rs_c?: string }>;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -26,8 +29,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function PublicVendorFunnelPage({ params }: PageProps) {
+export default async function PublicVendorFunnelPage({ params, searchParams }: PageProps) {
   const { vendorSlug: rawVendor, funnelSlug: rawFunnel } = await params;
+  const { rs_c: campaignToken } = await searchParams;
   const vendorSlug = rawVendor?.trim() ?? "";
   const funnelSlug = rawFunnel?.trim() ?? "";
   if (!vendorSlug || isVendorCuidRef(vendorSlug) || isReservedVendorPublicSlug(vendorSlug)) {
@@ -46,6 +50,9 @@ export default async function PublicVendorFunnelPage({ params }: PageProps) {
 
   return (
     <PageBody wide description={`From ${published.vendor.displayName}`}>
+      {isCampaignTrackingToken(campaignToken) ? (
+        <CampaignVisitBeacon token={campaignToken} funnelId={published.landing.funnel?.id} />
+      ) : null}
       <FunnelPagePreview page={page} ctaLabel={published.landing.funnel?.ctaLabel} />
       <p className="mt-4 text-center text-xs text-fix-text-muted">
         {vendorFunnelPublicPath(published.vendor.publicSlug!, funnelSlug)}

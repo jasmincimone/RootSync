@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { loadBookableServiceListing, resolveBookingActor } from "@/lib/bookingAccess";
 import { createServiceBookingCheckout, type IntakeAnswerInput } from "@/lib/bookingCheckout";
+import { campaignTokenFromRequest } from "@/lib/growth/campaignAttribution";
 import { rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       intakeNotes,
       intakeAnswers,
       origin: request.nextUrl.origin,
+      campaignToken: campaignTokenFromRequest(request),
     });
 
     return NextResponse.json(result);

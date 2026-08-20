@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { BookingCalendarPicker } from "@/components/BookingCalendarPicker";
+import { CheckoutAuthGate } from "@/components/CheckoutAuthGate";
 import { BOOKING_CANCELLATION_POLICY_LONG } from "@/lib/bookingPolicy";
 import { formatPrice } from "@/lib/format";
 
@@ -135,35 +136,17 @@ export function ServiceBookingWizard({
 
   if (!signedIn && (!allowGuestBooking || !bookingAsGuest)) {
     return (
-      <div className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/50 p-6">
-        <p className="text-sm text-fix-heading">Sign in to book this service.</p>
-        <p className="mt-2 text-sm text-fix-text-muted">
-          {allowGuestBooking
-            ? "Signing in keeps your appointments, Meet links, and receipts in one place."
-            : "This vendor asks members to sign in before booking."}
-        </p>
-        <Link
-          href={loginHref}
-          className="mt-4 inline-flex text-sm font-medium text-fix-link hover:text-fix-link-hover"
-        >
-          Sign in to continue →
-        </Link>
-
-        {allowGuestBooking ? (
-          <div className="mt-5 border-t border-fix-border/15 pt-5">
-            <p className="text-sm text-fix-text-muted">In a hurry? No account needed.</p>
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              className="mt-3"
-              onClick={() => setBookingAsGuest(true)}
-            >
-              Book now as a guest
-            </Button>
-          </div>
-        ) : null}
-      </div>
+      <CheckoutAuthGate
+        callbackUrl={bookPath ?? `/discover/listings/${listingId}/book`}
+        allowGuest={allowGuestBooking}
+        guestLabel="Book as guest"
+        onGuestContinue={() => setBookingAsGuest(true)}
+        description={
+          allowGuestBooking
+            ? "Keep appointments, Meet links, and receipts in one place with a free account."
+            : "This vendor requires an account before booking."
+        }
+      />
     );
   }
 

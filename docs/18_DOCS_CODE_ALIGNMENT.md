@@ -68,7 +68,7 @@ Use it when:
 | Favorites | Save Listing, Vendor, or Directory Listing | `Favorite`, `/account/saved`, Discover section + detail controls | **Aligned** |
 | Follow | Receive Member/Vendor updates | Not implemented | **Deferred** |
 | Pulse reviews | Legitimate post-interaction trust signal | Order/booking eligibility + Vendor Pulse review UI | **Partial** |
-| GrowSpace | Vendor growth workspace | Overview + CRM + Funnels + Campaigns live; later modules hidden | **Partial** (Phase 1) |
+| GrowSpace | Vendor growth workspace | Overview + CRM + Funnels + Campaign builder live; later modules hidden | **Partial** (Phase 1) |
 | Legacy platform shops | Vendor profile IS the shop | Redirects live; `ShopPage` + admin shops + `/products/` remain | **Legacy** |
 | Governance | RFC → PRD → ADR → Changelog | PRDs and ADR-001–008 exist; changelog discipline remains partial | **Partial** |
 
@@ -202,7 +202,7 @@ Reviews, Analytics, Referrals, Native Apps — **Deferred**. Events and Resource
 | Directory Listings | Map + search + assisted claim | `/discover/directory/[id]` | **Aligned** (MVP) |
 | Storefront | Vendor-managed public page | `/discover/vendors/[id]`; share URL `/{publicSlug}` when claimed | **Aligned** |
 | Funnel landing | Vendor marketing page | `/{vendorSlug}/funnels/{funnelSlug}` | **Aligned** (MVP) — URL picker like listings |
-| Campaign landing | Vendor campaign page | `/{vendorSlug}/campaigns/{campaignSlug}` reserved | **Partial** — route reserved, campaigns not designed |
+| Campaign landing | Vendor campaign page | `/{vendorSlug}/campaigns/{campaignSlug}` reserved | **Partial** — email campaigns live in GrowSpace; public campaign pages still reserved |
 | Resources | Discover filter + paid/free order access | `/discover?type=RESOURCE`, claim-free + `/api/download` | **Aligned** (MVP) |
 | Booking | Service scheduling | `/discover/listings/[id]/book` | **Aligned** (MVP) |
 | Connect onboarding | Vendor payouts | `/account/vendor/payments` | **Aligned** (MVP) |

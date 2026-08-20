@@ -11,6 +11,7 @@ import {
 import { platformApplicationFeeCents } from "@/lib/platformFee";
 import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 import { BOOKING_STATUS } from "@/lib/roles";
+import { campaignCheckoutMetadata } from "@/lib/growth/campaignAttribution";
 
 export type IntakeAnswerInput = {
   questionId?: string;
@@ -28,6 +29,7 @@ export type CreateServiceBookingInput = {
   intakeNotes?: string | null;
   intakeAnswers?: IntakeAnswerInput[];
   origin: string;
+  campaignToken?: string | null;
 };
 
 function listingImageUrl(imageUrl: string | null, baseUrl: string): string[] | undefined {
@@ -185,6 +187,7 @@ export async function createServiceBookingCheckout(
       listingId: listing.id,
       vendorProfileId: listing.vendorProfileId,
       type: "service_booking",
+      ...(await campaignCheckoutMetadata(input.campaignToken)),
     },
     payment_intent_data: connectDestinationPaymentIntentData(
       priceCents,

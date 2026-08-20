@@ -63,6 +63,7 @@ This document defines proposed PostgreSQL tables for the RootSync Growth Workspa
 | `interestsJson` | Json? | Array of interest strings |
 | `funnelId` | FK → GrowthFunnel, nullable | Current funnel assignment |
 | `lastActivityAt` | DateTime? | Denormalized for sorting |
+| `unsubscribedAt` | DateTime? | Set when the contact unsubscribes from vendor marketing |
 | `communityActivitySummary` | String? | Short text snapshot |
 | `purchaseSummary` | String? | Denormalized; full history from Order |
 | `consultationSummary` | String? | Denormalized; pipeline from GrowthConsultationLead |
@@ -217,24 +218,42 @@ This document defines proposed PostgreSQL tables for the RootSync Growth Workspa
 
 ### `growth_email_campaigns` — `GrowthEmailCampaign`
 
-**Purpose:** Newsletter and one-off email campaigns.
+**Purpose:** GrowSpace email campaigns (objective → audience → destination → message → send). SMS is reserved on `channel` and is not sent in v1.
 
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | cuid PK | |
 | `vendorProfileId` | FK, nullable | |
 | `name` | String | |
+| `description` | String? | Internal notes |
+| `objective` | String? | BOOKINGS, SELL, EVENT, LEADS, WINBACK, ANNOUNCEMENT, CUSTOM |
+| `channel` | String | EMAIL (default). SMS reserved |
 | `subject` | String? | |
+| `previewText` | String? | |
+| `headline` | String? | |
 | `bodyHtml` | String? | |
-| `status` | String | DRAFT, SCHEDULED, SENDING, SENT, CANCELLED |
+| `ctaLabel` | String? | |
+| `ctaUrl` | String? | Defaults to resolved destination |
+| `senderName` | String? | |
+| `replyTo` | String? | |
+| `destinationType` | String? | FUNNEL, LISTING, BOOKING, EVENT, EXTERNAL |
+| `destinationId` | String? | Funnel or listing id |
+| `destinationUrl` | String? | Resolved or external URL |
+| `audienceType` | String | ALL, STATUS, MANUAL |
+| `audienceJson` | Json? | `{ status }` or `{ contactIds }` |
+| `status` | String | DRAFT, SCHEDULED, SENDING, SENT, PAUSED, CANCELLED |
 | `scheduledAt` | DateTime? | |
+| `timezone` | String? | |
 | `sentAt` | DateTime? | |
-| `segmentId` | FK → GrowthSegment, nullable | |
+| `pausedAt` | DateTime? | |
+| `segmentId` | FK → GrowthSegment, nullable | Unused in v1 builder |
 | `openCount` | Int | default 0 |
 | `clickCount` | Int | default 0 |
 | `unsubscribeCount` | Int | default 0 |
 | `providerMessageId` | String? | Resend/external sync ID |
 | `createdAt`, `updatedAt` | DateTime | |
+
+Related: `growth_campaign_recipients` (per-contact send + attribution), `growth_campaign_steps` (stored follow-ups; not auto-sent in v1). Tracking uses opaque `trackingToken` via `/go/c/{token}`, open pixel `/api/growth/t/open/{token}`, and unsubscribe `/u/{token}`.
 
 ---
 

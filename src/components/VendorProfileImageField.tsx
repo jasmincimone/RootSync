@@ -8,6 +8,7 @@ import { ImagePlus, Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/Button";
 import { FormFeedback } from "@/components/ui/FormFeedback";
+import { ImageCropModal } from "@/components/ImageCropModal";
 
 type Props = {
   imageUrl: string;
@@ -28,18 +29,24 @@ export function VendorProfileImageField({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
-  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+  }
 
+  async function uploadCropped(blob: Blob) {
     setError(null);
     setSuccess(null);
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.set("file", file);
+      fd.set("file", blob, "avatar.jpg");
       const res = await fetch("/api/vendor/profile/avatar/upload", {
         method: "POST",
         body: fd,
@@ -87,8 +94,19 @@ export function VendorProfileImageField({
             accept="image/jpeg,image/png,image/webp,image/gif"
             className="sr-only"
             disabled={disabled || uploading}
-            onChange={onFileChange}
+            onChange={handleFileSelect}
           />
+          {cropSrc && (
+            <ImageCropModal
+              imageSrc={cropSrc}
+              initialAspect={1}
+              onCancel={() => setCropSrc(null)}
+              onCrop={(blob) => {
+                setCropSrc(null);
+                void uploadCropped(blob);
+              }}
+            />
+          )}
           <Button
             type="button"
             variant="secondary"

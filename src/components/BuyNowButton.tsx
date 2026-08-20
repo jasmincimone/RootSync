@@ -1,8 +1,10 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
+import { CheckoutAuthGate } from "@/components/CheckoutAuthGate";
 import { Button } from "@/components/ui/Button";
 import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 import { cn } from "@/lib/cn";
@@ -22,6 +24,8 @@ type Props = {
   quantity?: number;
   fulfillmentMode?: CheckoutFulfillmentMode | null;
   requiresFulfillmentChoice?: boolean;
+  /** Path to return after sign-in (defaults to current page). */
+  callbackUrl?: string;
 };
 
 export function BuyNowButton({
@@ -36,15 +40,22 @@ export function BuyNowButton({
   quantity = 1,
   fulfillmentMode = null,
   requiresFulfillmentChoice = false,
+  callbackUrl,
 }: Props) {
   const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEmail, setShowEmail] = useState(false);
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [guestCheckout, setGuestCheckout] = useState(false);
 
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const sessionEmail = session?.user?.email?.trim() ?? "";
   const needsEmail = status !== "loading" && !sessionEmail;
+  const query = searchParams.toString();
+  const returnPath = callbackUrl ?? (query ? `${pathname}?${query}` : pathname);
 
   async function startCheckout(checkoutEmail: string) {
     if (requiresFulfillmentChoice && !fulfillmentMode) {
@@ -84,6 +95,10 @@ export function BuyNowButton({
       setError("Choose pickup / in person or ship / deliver before checkout.");
       return;
     }
+    if (needsEmail && !guestCheckout && !showEmail) {
+      setShowAuthGate(true);
+      return;
+    }
     if (needsEmail && !showEmail) {
       setShowEmail(true);
       return;
@@ -98,6 +113,17 @@ export function BuyNowButton({
 
   return (
     <div className={cn(fullWidth && "w-full", className)}>
+      <CheckoutAuthGate
+        variant="modal"
+        open={showAuthGate}
+        onClose={() => setShowAuthGate(false)}
+        callbackUrl={returnPath}
+        guestLabel="Checkout as guest"
+        onGuestContinue={() => {
+          setGuestCheckout(true);
+          setShowEmail(true);
+        }}
+      />
       {showEmail && needsEmail ? (
         <div className="mb-2">
           <label htmlFor={`buy-email-${listingId}`} className="sr-only">

@@ -7,6 +7,7 @@ import { PageBody } from "@/components/ui/PageBody";
 import { authOptions } from "@/lib/authOptions";
 import { requireGrowthWorkspace } from "@/lib/growthAccess";
 import { getGrowthContactForWorkspace } from "@/lib/growth/contacts";
+import { listContactCampaignHistory } from "@/lib/growth/campaignAnalytics";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function GrowthContactDetailPage({
     ctx.isPlatformScope,
   );
   if (!contact) notFound();
+  const history = await listContactCampaignHistory(id);
 
   return (
     <PageBody
@@ -52,6 +54,21 @@ export default async function GrowthContactDetailPage({
             body: n.body,
             createdAt: n.createdAt.toISOString(),
             author: n.author,
+          })),
+          campaigns: history.recipients.map((row) => ({
+            id: row.campaign.id,
+            name: row.campaign.name,
+            sentAt: row.sentAt?.toISOString() ?? null,
+            openedAt: row.openedAt?.toISOString() ?? null,
+            clickedAt: row.clickedAt?.toISOString() ?? null,
+            convertedAt: row.convertedAt?.toISOString() ?? null,
+            revenueCents: row.attributedRevenueCents,
+          })),
+          campaignEvents: history.events.map((event) => ({
+            id: event.id,
+            eventType: event.eventType,
+            occurredAt: event.occurredAt.toISOString(),
+            campaignName: event.campaign?.name ?? "Campaign",
           })),
         }}
       />

@@ -5,7 +5,9 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { GROWTH_CONTACT_STATUS_LABELS } from "@/lib/growth/roles";
+import { GROWTH_CONTACT_STATUS_LABELS, GROWTH_MARKETING_EVENT_TYPE } from "@/lib/growth/roles";
+import { formatRevenue } from "@/lib/growth/campaignFormat";
+import Link from "next/link";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-fix-border/25 bg-fix-surface px-3 py-2 text-sm text-fix-heading";
@@ -25,6 +27,21 @@ type Contact = {
   status: string;
   leadSource: string | null;
   notes: Note[];
+  campaigns: Array<{
+    id: string;
+    name: string;
+    sentAt: string | null;
+    openedAt: string | null;
+    clickedAt: string | null;
+    convertedAt: string | null;
+    revenueCents: number;
+  }>;
+  campaignEvents: Array<{
+    id: string;
+    eventType: string;
+    occurredAt: string;
+    campaignName: string;
+  }>;
 };
 
 export function GrowthContactDetailClient({ contact }: { contact: Contact }) {
@@ -119,6 +136,67 @@ export function GrowthContactDetailClient({ contact }: { contact: Contact }) {
           )}
         </ul>
       </Card>
+
+      <Card className="space-y-3 p-4 sm:p-5">
+        <h3 className="text-sm font-semibold text-fix-heading">Campaigns</h3>
+        {contact.campaigns.length === 0 ? (
+          <p className="text-sm text-fix-text-muted">No campaigns sent to this contact yet.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {contact.campaigns.map((row) => (
+              <li key={row.id} className="rounded-lg bg-fix-bg-muted/50 p-3">
+                <Link href={`/account/growth/campaigns/${row.id}/results`} className="font-medium text-fix-heading">
+                  {row.name}
+                </Link>
+                <p className="mt-1 text-xs text-fix-text-muted">
+                  Sent {row.sentAt ? new Date(row.sentAt).toLocaleDateString() : "—"} · Opened{" "}
+                  {row.openedAt ? "Yes" : "No"} · Clicked {row.clickedAt ? "Yes" : "No"} · Converted{" "}
+                  {row.convertedAt ? "Yes" : "No"} · {formatRevenue(row.revenueCents)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card className="space-y-3 p-4 sm:p-5">
+        <h3 className="text-sm font-semibold text-fix-heading">Campaign activity</h3>
+        {contact.campaignEvents.length === 0 ? (
+          <p className="text-sm text-fix-text-muted">No campaign engagement yet.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {contact.campaignEvents.map((event) => (
+              <li key={event.id}>
+                <span className="text-fix-heading">{timelineLabel(event.eventType)}</span>
+                <span className="text-fix-text-muted"> · {event.campaignName}</span>
+                <span className="text-fix-text-muted">
+                  {" · "}
+                  {new Date(event.occurredAt).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
+}
+
+function timelineLabel(type: string) {
+  switch (type) {
+    case GROWTH_MARKETING_EVENT_TYPE.EMAIL_OPEN:
+      return "Opened campaign";
+    case GROWTH_MARKETING_EVENT_TYPE.EMAIL_CLICK:
+      return "Clicked campaign";
+    case GROWTH_MARKETING_EVENT_TYPE.DESTINATION_VISIT:
+      return "Visited funnel";
+    case GROWTH_MARKETING_EVENT_TYPE.CHECKOUT_STARTED:
+      return "Started checkout";
+    case GROWTH_MARKETING_EVENT_TYPE.CONVERSION:
+      return "Converted";
+    case GROWTH_MARKETING_EVENT_TYPE.EMAIL_SENT:
+      return "Received campaign";
+    default:
+      return type;
+  }
 }

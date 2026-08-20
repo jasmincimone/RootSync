@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, Loader2 } from "lucide-react";
 
 import { FormFeedback } from "@/components/ui/FormFeedback";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { ListingImage } from "@/components/ListingImage";
 
 type Props = {
@@ -75,22 +76,26 @@ export function VendorListingImageField({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadErrorExtra, setUploadErrorExtra] = useState<string | null>(null);
   const [lastFileInfo, setLastFileInfo] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
-  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+  }
 
+  async function uploadBlob(blob: Blob) {
     setUploadError(null);
     setUploadErrorExtra(null);
     setUploadSuccess(null);
-    setLastFileInfo(
-      `${file.name || "file"} · ${(file.size / 1024).toFixed(1)} KB · type: ${file.type || "unknown"}`
-    );
+    setLastFileInfo(`cropped · ${(blob.size / 1024).toFixed(1)} KB`);
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.set("file", file);
+      fd.set("file", blob, "listing.jpg");
       const res = await fetch("/api/vendor/listings/upload", {
         method: "POST",
         body: fd,
@@ -159,8 +164,19 @@ export function VendorListingImageField({
           accept="image/jpeg,image/png,image/webp,image/gif"
           className="sr-only"
           disabled={disabled || uploading}
-          onChange={(e) => void onFileChange(e)}
+          onChange={handleFileSelect}
         />
+        {cropSrc && (
+          <ImageCropModal
+            imageSrc={cropSrc}
+            initialAspect={4 / 3}
+            onCancel={() => setCropSrc(null)}
+            onCrop={(blob) => {
+              setCropSrc(null);
+              void uploadBlob(blob);
+            }}
+          />
+        )}
         <button
           type="button"
           disabled={disabled || uploading}

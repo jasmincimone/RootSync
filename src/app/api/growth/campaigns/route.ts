@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getGrowthApiContext } from "@/lib/growth/apiContext";
 import { createGrowthCampaign, listGrowthCampaigns } from "@/lib/growth/campaigns";
+import { isCampaignObjective } from "@/lib/growth/campaignTypes";
 
 export async function GET() {
   const auth = await getGrowthApiContext();
@@ -16,15 +17,15 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const name = typeof body?.name === "string" ? body.name.trim() : "";
-  if (!name) {
-    return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  const objective = isCampaignObjective(body?.objective) ? body.objective : null;
+  if (!name && !objective) {
+    return NextResponse.json({ error: "Choose an objective or enter a name." }, { status: 400 });
   }
 
   const campaign = await createGrowthCampaign({
     vendorProfileId: auth.ctx.vendorProfileId,
-    name,
-    subject: typeof body?.subject === "string" ? body.subject : null,
-    bodyHtml: typeof body?.bodyHtml === "string" ? body.bodyHtml : null,
+    name: name || undefined,
+    objective,
   });
 
   return NextResponse.json({ campaign }, { status: 201 });

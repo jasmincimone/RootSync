@@ -1,193 +1,285 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
 import { Mail } from "lucide-react";
 
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { formatPercent, formatRevenue } from "@/lib/growth/campaignFormat";
+import {
+  GROWTH_CAMPAIGN_OBJECTIVE_LABELS,
+  GROWTH_CAMPAIGN_STATUS,
+  GROWTH_CAMPAIGN_STATUS_LABELS,
+  type GrowthCampaignObjective,
+  type GrowthCampaignStatus,
+} from "@/lib/growth/roles";
 
-export type GrowthCampaignRow = {
+export type GrowthCampaignDashboardRow = {
   id: string;
   name: string;
-  subject: string | null;
-  bodyHtml: string | null;
+  objective: string | null;
   status: string;
+  channel: string;
+  destinationType: string | null;
+  destinationUrl: string | null;
+  scheduledAt: string | null;
   sentAt: string | null;
-  updatedAt: string;
+  recipientCount: number;
+  openCount: number;
+  clickCount: number;
+  destinationVisitCount: number;
+  conversionCount: number;
+  revenueCents: number;
 };
 
+function statusTone(status: string): "success" | "warning" | "neutral" | "danger" {
+  if (status === GROWTH_CAMPAIGN_STATUS.SENT) return "success";
+  if (status === GROWTH_CAMPAIGN_STATUS.SCHEDULED || status === GROWTH_CAMPAIGN_STATUS.SENDING) {
+    return "warning";
+  }
+  if (status === GROWTH_CAMPAIGN_STATUS.CANCELLED) return "danger";
+  return "neutral";
+}
+
+function statusLabel(status: string) {
+  return GROWTH_CAMPAIGN_STATUS_LABELS[status as GrowthCampaignStatus] ?? status;
+}
+
+function objectiveLabel(objective: string | null) {
+  if (!objective) return "Custom";
+  return GROWTH_CAMPAIGN_OBJECTIVE_LABELS[objective as GrowthCampaignObjective] ?? objective;
+}
+
+function destinationLabel(row: GrowthCampaignDashboardRow) {
+  if (row.destinationType === "FUNNEL") return "Funnel";
+  if (row.destinationType === "LISTING") return "Listing";
+  if (row.destinationType === "BOOKING") return "Booking";
+  if (row.destinationType === "EXTERNAL") return "External URL";
+  return "Not set";
+}
+
+function bucket(status: string): "draft" | "scheduled" | "sent" | "completed" | "paused" {
+  if (status === GROWTH_CAMPAIGN_STATUS.DRAFT) return "draft";
+  if (status === GROWTH_CAMPAIGN_STATUS.SCHEDULED) return "scheduled";
+  if (status === GROWTH_CAMPAIGN_STATUS.SENDING) return "sent";
+  if (status === GROWTH_CAMPAIGN_STATUS.SENT) return "completed";
+  if (status === GROWTH_CAMPAIGN_STATUS.PAUSED) return "paused";
+  return "draft";
+}
+
 const inputClass =
-  "mt-1 w-full rounded-lg border border-fix-border/25 bg-fix-surface px-3 py-2 text-sm text-fix-heading";
+  "rounded-lg border border-fix-border/25 bg-fix-surface px-3 py-2 text-sm text-fix-heading";
 
 export function GrowthCampaignsClient({
   initialCampaigns,
 }: {
-  initialCampaigns: GrowthCampaignRow[];
+  initialCampaigns: GrowthCampaignDashboardRow[];
 }) {
   const router = useRouter();
-  const [campaigns, setCampaigns] = useState(initialCampaigns);
-  const [name, setName] = useState("");
-  const [subject, setSubject] = useState("");
-  const [bodyHtml, setBodyHtml] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("ALL");
+  const [objective, setObjective] = useState("ALL");
+  const [channel, setChannel] = useState("ALL");
+  const [fromDate, setFromDate] = useState("");
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return initialCampaigns.filter((campaign) => {
+      if (needle && !campaign.name.toLowerCase().includes(needle)) return false;
+      if (status !== "ALL") {
+        if (status === "COMPLETED") {
+          if (campaign.status !== GROWTH_CAMPAIGN_STATUS.SENT) return false;
+        } else if (campaign.status !== status) {
+          return false;
+        }
+      }
+      if (objective !== "ALL" && campaign.objective !== objective) return false;
+      if (channel !== "ALL" && campaign.channel !== channel) return false;
+      if (fromDate) {
+        const stamp = campaign.sentAt || campaign.scheduledAt;
+        if (!stamp || stamp.slice(0, 10) < fromDate) return false;
+      }
+      return true;
+    });
+  }, [channel, fromDate, initialCampaigns, objective, query, status]);
+
+  const grouped = {
+    draft: filtered.filter((row) => bucket(row.status) === "draft"),
+    scheduled: filtered.filter((row) => bucket(row.status) === "scheduled"),
+    sent: filtered.filter((row) => bucket(row.status) === "sent"),
+    completed: filtered.filter((row) => bucket(row.status) === "completed"),
+  };
 
   return (
     <div className="space-y-6">
-      <Card className="space-y-3 p-4 sm:p-5">
-        <h2 className="text-sm font-semibold text-fix-heading">Draft campaign</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <label className="text-xs font-medium text-fix-text-muted">Internal name</label>
-          <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
+          <h1 className="text-lg font-semibold text-fix-heading">Campaigns</h1>
+          <p className="text-sm text-fix-text-muted">
+            Who you reach, what you send, where they go, and what converted.
+          </p>
         </div>
-        <div>
-          <label className="text-xs font-medium text-fix-text-muted">Subject</label>
-          <input
-            className={inputClass}
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-fix-text-muted">Body (HTML or plain text)</label>
-          <textarea
-            className={inputClass + " min-h-[120px] font-mono text-xs"}
-            value={bodyHtml}
-            onChange={(e) => setBodyHtml(e.target.value)}
-            placeholder="<p>Hello from our community…</p>"
-          />
-        </div>
-        {error ? <p className="text-sm text-red-700">{error}</p> : null}
-        {message ? <p className="text-sm text-fix-text">{message}</p> : null}
         <Button
           type="button"
           variant="cta"
           size="sm"
-          disabled={pending}
-          onClick={() => {
-            setError(null);
-            setMessage(null);
-            startTransition(async () => {
-              const res = await fetch("/api/growth/campaigns", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, subject, bodyHtml }),
-              });
-              const data = await res.json().catch(() => ({}));
-              if (!res.ok) {
-                setError(data.error ?? "Could not create campaign");
-                return;
-              }
-              const c = data.campaign;
-              setCampaigns((prev) => [
-                {
-                  id: c.id,
-                  name: c.name,
-                  subject: c.subject,
-                  bodyHtml: c.bodyHtml,
-                  status: c.status,
-                  sentAt: c.sentAt,
-                  updatedAt: c.updatedAt,
-                },
-                ...prev,
-              ]);
-              setName("");
-              setSubject("");
-              setBodyHtml("");
-              setMessage("Draft saved.");
-              router.refresh();
-            });
-          }}
+          onClick={() => router.push("/account/growth/campaigns/new")}
         >
-          Save draft
+          New campaign
         </Button>
-      </Card>
+      </div>
 
-      {campaigns.length === 0 ? (
+      {initialCampaigns.length === 0 ? (
         <EmptyState
           icon={Mail}
-          title="No campaigns yet"
-          description="Draft an email campaign and send it to your CRM contacts."
+          title="Turn contacts into customers."
+          description="Create targeted campaigns, send people directly into your RootSync funnels, and see what actually converts."
+          action={{ href: "/account/growth/campaigns/new", label: "Create Your First Campaign" }}
         />
       ) : (
-        <ul className="space-y-3">
-          {campaigns.map((campaign) => (
-            <li key={campaign.id}>
-              <Card className="space-y-2 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-semibold text-fix-heading">{campaign.name}</h3>
-                    <p className="text-sm text-fix-text-muted">
-                      {campaign.subject || "No subject"} · {campaign.status}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {campaign.status !== "SENT" ? (
-                      <Button
-                        type="button"
-                        variant="cta"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => {
-                          setError(null);
-                          setMessage(null);
-                          startTransition(async () => {
-                            const res = await fetch(`/api/growth/campaigns/${campaign.id}`, {
-                              method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ action: "send" }),
-                            });
-                            const data = await res.json().catch(() => ({}));
-                            if (!res.ok) {
-                              setError(data.error ?? "Send failed");
-                              return;
-                            }
-                            setMessage(`Sent to ${data.sentCount} contacts.`);
-                            setCampaigns((prev) =>
-                              prev.map((c) =>
-                                c.id === campaign.id
-                                  ? { ...c, status: "SENT", sentAt: new Date().toISOString() }
-                                  : c,
-                              ),
-                            );
-                            router.refresh();
-                          });
-                        }}
-                      >
-                        Send to CRM
-                      </Button>
-                    ) : null}
-                    {campaign.status !== "SENT" ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => {
-                          startTransition(async () => {
-                            const res = await fetch(`/api/growth/campaigns/${campaign.id}`, {
-                              method: "DELETE",
-                            });
-                            if (res.ok) {
-                              setCampaigns((prev) => prev.filter((c) => c.id !== campaign.id));
-                              router.refresh();
-                            }
-                          });
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <>
+          <Card className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <input
+              className={inputClass}
+              placeholder="Search by name"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="ALL">All statuses</option>
+              {Object.entries(GROWTH_CAMPAIGN_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+              <option value="COMPLETED">Completed</option>
+            </select>
+            <select
+              className={inputClass}
+              value={objective}
+              onChange={(e) => setObjective(e.target.value)}
+            >
+              <option value="ALL">All objectives</option>
+              {Object.entries(GROWTH_CAMPAIGN_OBJECTIVE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <select
+                className={inputClass + " flex-1"}
+                value={channel}
+                onChange={(e) => setChannel(e.target.value)}
+              >
+                <option value="ALL">All channels</option>
+                <option value="EMAIL">Email</option>
+              </select>
+              <input
+                type="date"
+                className={inputClass}
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                aria-label="From date"
+              />
+            </div>
+          </Card>
+
+          <Section title="Draft campaigns" rows={grouped.draft} />
+          <Section title="Scheduled campaigns" rows={grouped.scheduled} />
+          <Section title="Active / sending" rows={grouped.sent} />
+          <Section title="Completed campaigns" rows={grouped.completed} />
+        </>
       )}
+    </div>
+  );
+}
+
+function Section({ title, rows }: { title: string; rows: GrowthCampaignDashboardRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-fix-heading">{title}</h2>
+      <ul className="space-y-3">
+        {rows.map((campaign) => (
+          <li key={campaign.id}>
+            <Card className="space-y-3 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <Link
+                    href={
+                      campaign.status === GROWTH_CAMPAIGN_STATUS.SENT
+                        ? `/account/growth/campaigns/${campaign.id}/results`
+                        : `/account/growth/campaigns/${campaign.id}`
+                    }
+                    className="font-semibold text-fix-heading hover:text-fix-link"
+                  >
+                    {campaign.name}
+                  </Link>
+                  <p className="mt-1 text-sm text-fix-text-muted">
+                    {objectiveLabel(campaign.objective)} · {campaign.channel} ·{" "}
+                    {destinationLabel(campaign)}
+                  </p>
+                </div>
+                <StatusBadge label={statusLabel(campaign.status)} tone={statusTone(campaign.status)} />
+              </div>
+              <dl className="grid grid-cols-2 gap-2 text-xs text-fix-text-muted sm:grid-cols-4 lg:grid-cols-8">
+                <Metric label="Audience" value={String(campaign.recipientCount)} />
+                <Metric
+                  label="Send date"
+                  value={
+                    campaign.sentAt || campaign.scheduledAt
+                      ? new Date(campaign.sentAt || campaign.scheduledAt || "").toLocaleDateString()
+                      : "—"
+                  }
+                />
+                <Metric label="Opens" value={String(campaign.openCount)} />
+                <Metric label="Clicks" value={String(campaign.clickCount)} />
+                <Metric label="Funnel visits" value={String(campaign.destinationVisitCount)} />
+                <Metric label="Conversions" value={String(campaign.conversionCount)} />
+                <Metric
+                  label="Open rate"
+                  value={formatPercent(
+                    campaign.recipientCount ? campaign.openCount / campaign.recipientCount : 0,
+                  )}
+                />
+                <Metric label="Revenue" value={formatRevenue(campaign.revenueCents)} />
+              </dl>
+              <div className="flex flex-wrap gap-2">
+                <ButtonLink
+                  href={`/account/growth/campaigns/${campaign.id}`}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Open
+                </ButtonLink>
+                {campaign.status === GROWTH_CAMPAIGN_STATUS.SENT ? (
+                  <ButtonLink
+                    href={`/account/growth/campaigns/${campaign.id}/results`}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    Results
+                  </ButtonLink>
+                ) : null}
+              </div>
+            </Card>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd className="font-medium text-fix-heading">{value}</dd>
     </div>
   );
 }

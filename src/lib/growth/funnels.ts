@@ -167,7 +167,7 @@ export async function getPublishedFunnelByPublicPath(vendorSlug: string, funnelS
       title: true,
       headline: true,
       contentJson: true,
-      funnel: { select: { name: true, ctaLabel: true } },
+      funnel: { select: { id: true, name: true, ctaLabel: true } },
     },
   });
   if (!landing) return null;

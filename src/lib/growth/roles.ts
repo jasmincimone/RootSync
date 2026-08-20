@@ -59,11 +59,86 @@ export const GROWTH_CAMPAIGN_STATUS = {
   SCHEDULED: "SCHEDULED",
   SENDING: "SENDING",
   SENT: "SENT",
+  PAUSED: "PAUSED",
   CANCELLED: "CANCELLED",
 } as const;
 
 export type GrowthCampaignStatus =
   (typeof GROWTH_CAMPAIGN_STATUS)[keyof typeof GROWTH_CAMPAIGN_STATUS];
+
+export const GROWTH_CAMPAIGN_STATUS_LABELS: Record<GrowthCampaignStatus, string> = {
+  DRAFT: "Draft",
+  SCHEDULED: "Scheduled",
+  SENDING: "Sending",
+  SENT: "Sent",
+  PAUSED: "Paused",
+  CANCELLED: "Cancelled",
+};
+
+export const GROWTH_CAMPAIGN_OBJECTIVE = {
+  BOOKINGS: "BOOKINGS",
+  SELL: "SELL",
+  EVENT: "EVENT",
+  LEADS: "LEADS",
+  WINBACK: "WINBACK",
+  ANNOUNCEMENT: "ANNOUNCEMENT",
+  CUSTOM: "CUSTOM",
+} as const;
+
+export type GrowthCampaignObjective =
+  (typeof GROWTH_CAMPAIGN_OBJECTIVE)[keyof typeof GROWTH_CAMPAIGN_OBJECTIVE];
+
+export const GROWTH_CAMPAIGN_OBJECTIVE_LABELS: Record<GrowthCampaignObjective, string> = {
+  BOOKINGS: "Get more bookings",
+  SELL: "Sell something",
+  EVENT: "Promote an event",
+  LEADS: "Generate leads",
+  WINBACK: "Bring customers back",
+  ANNOUNCEMENT: "Make an announcement",
+  CUSTOM: "Start from scratch",
+};
+
+export const GROWTH_CAMPAIGN_CHANNEL = {
+  EMAIL: "EMAIL",
+  SMS: "SMS",
+} as const;
+
+export const GROWTH_CAMPAIGN_DESTINATION = {
+  FUNNEL: "FUNNEL",
+  LISTING: "LISTING",
+  BOOKING: "BOOKING",
+  EVENT: "EVENT",
+  EXTERNAL: "EXTERNAL",
+} as const;
+
+export type GrowthCampaignDestinationType =
+  (typeof GROWTH_CAMPAIGN_DESTINATION)[keyof typeof GROWTH_CAMPAIGN_DESTINATION];
+
+export const GROWTH_CAMPAIGN_DESTINATION_LABELS: Record<GrowthCampaignDestinationType, string> = {
+  FUNNEL: "Funnel",
+  LISTING: "Listing",
+  BOOKING: "Booking page",
+  EVENT: "Event",
+  EXTERNAL: "External URL",
+};
+
+export const GROWTH_CAMPAIGN_AUDIENCE = {
+  ALL: "ALL",
+  STATUS: "STATUS",
+  MANUAL: "MANUAL",
+} as const;
+
+export const GROWTH_CAMPAIGN_RECIPIENT_STATUS = {
+  QUEUED: "QUEUED",
+  SENT: "SENT",
+  FAILED: "FAILED",
+  SKIPPED: "SKIPPED",
+} as const;
+
+export const GROWTH_CAMPAIGN_STEP_TRIGGER = {
+  NO_CLICK: "NO_CLICK",
+  CLICKED_NO_CONVERT: "CLICKED_NO_CONVERT",
+} as const;
 
 export const GROWTH_FUNNEL_STEP_TYPE = {
   LANDING_PAGE: "LANDING_PAGE",
@@ -111,8 +186,12 @@ export const GROWTH_QR_CAMPAIGN_TYPE = {
 export const GROWTH_MARKETING_EVENT_TYPE = {
   PAGE_VIEW: "PAGE_VIEW",
   QR_SCAN: "QR_SCAN",
+  EMAIL_SENT: "EMAIL_SENT",
   EMAIL_OPEN: "EMAIL_OPEN",
   EMAIL_CLICK: "EMAIL_CLICK",
+  DESTINATION_VISIT: "DESTINATION_VISIT",
+  CHECKOUT_STARTED: "CHECKOUT_STARTED",
   CONVERSION: "CONVERSION",
   SIGNUP: "SIGNUP",
+  UNSUBSCRIBED: "UNSUBSCRIBED",
 } as const;

@@ -19,19 +19,24 @@ export default async function GrowthCampaignsPage() {
   const campaigns = await listGrowthCampaigns(ctx.vendorProfileId, ctx.isPlatformScope);
 
   return (
-    <PageBody
-      wide
-      description="Draft email campaigns and send them to your CRM contacts via Resend."
-    >
+    <PageBody wide description="Create targeted campaigns, send people into RootSync funnels, and see what converts.">
       <GrowthCampaignsClient
-        initialCampaigns={campaigns.map((c) => ({
-          id: c.id,
-          name: c.name,
-          subject: c.subject,
-          bodyHtml: c.bodyHtml,
-          status: c.status,
-          sentAt: c.sentAt?.toISOString() ?? null,
-          updatedAt: c.updatedAt.toISOString(),
+        initialCampaigns={campaigns.map((campaign) => ({
+          id: campaign.id,
+          name: campaign.name,
+          objective: campaign.objective,
+          status: campaign.status,
+          channel: campaign.channel,
+          destinationType: campaign.destinationType,
+          destinationUrl: campaign.destinationUrl,
+          scheduledAt: campaign.scheduledAt?.toISOString() ?? null,
+          sentAt: campaign.sentAt?.toISOString() ?? null,
+          recipientCount: campaign.recipientCount,
+          openCount: campaign.openCount,
+          clickCount: campaign.clickCount,
+          destinationVisitCount: campaign.destinationVisitCount,
+          conversionCount: campaign.conversionCount,
+          revenueCents: campaign.revenueCents,
         }))}
       />
     </PageBody>

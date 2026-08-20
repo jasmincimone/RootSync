@@ -28,6 +28,7 @@ import {
   resolveShippingFulfillmentMode,
   type CheckoutFulfillmentMode,
 } from "@/lib/checkoutFulfillment";
+import { campaignCheckoutMetadata } from "@/lib/growth/campaignAttribution";
 
 export type MarketplaceListingCheckout = {
   id: string;
@@ -260,6 +261,7 @@ export async function createMarketplaceListingCheckout(args: {
   variantId?: string | null;
   unitSelections?: unknown;
   fulfillmentMode?: CheckoutFulfillmentMode | null;
+  campaignToken?: string | null;
 }): Promise<{ url: string; orderId: string }> {
   const { listing, quantity, email, userId, origin } = args;
   const needsShipping = listingRequiresShipping(listing);
@@ -395,6 +397,7 @@ export async function createMarketplaceListingCheckout(args: {
         ? { unitSelections: selectionSummary.slice(0, 450) }
         : {}),
       ...(fulfillmentMode ? { fulfillmentMode } : {}),
+      ...(await campaignCheckoutMetadata(args.campaignToken)),
     },
     payment_intent_data: connectDestinationPaymentIntentData(
       subtotalCents,
@@ -505,6 +508,7 @@ export async function createMarketplaceCartCheckout(args: {
   userId?: string;
   origin: string;
   fulfillmentMode?: CheckoutFulfillmentMode | null;
+  campaignToken?: string | null;
 }): Promise<{ url: string; orderId: string }> {
   if (!Array.isArray(args.items) || args.items.length === 0) {
     throw new Error("Your cart is empty.");
@@ -624,6 +628,7 @@ export async function createMarketplaceCartCheckout(args: {
       itemCount: String(prepared.length),
       vendorName: vendorName.slice(0, 100),
       ...(fulfillmentMode ? { fulfillmentMode } : {}),
+      ...(await campaignCheckoutMetadata(args.campaignToken)),
     },
     payment_intent_data: connectDestinationPaymentIntentData(
       subtotalCents,

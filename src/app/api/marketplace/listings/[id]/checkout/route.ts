@@ -7,6 +7,7 @@ import {
   loadListingForCheckout,
 } from "@/lib/marketplaceCheckout";
 import { parseCheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
+import { campaignTokenFromRequest } from "@/lib/growth/campaignAttribution";
 import { rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       variantId: variantId || null,
       unitSelections,
       fulfillmentMode: parseCheckoutFulfillmentMode(body.fulfillmentMode),
+      campaignToken: campaignTokenFromRequest(request),
     });
 
     return NextResponse.json(result);

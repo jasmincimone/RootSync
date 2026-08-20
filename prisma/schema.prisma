@@ -708,6 +708,7 @@ model GrowthContact {
   funnelId                 String?
   funnel                   GrowthFunnel? @relation(fields: [funnelId], references: [id], onDelete: SetNull)
   lastActivityAt           DateTime?
+  unsubscribedAt           DateTime?
   communityActivitySummary String?
   purchaseSummary          String?
   consultationSummary      String?
@@ -718,6 +719,7 @@ model GrowthContact {
   tasks                    GrowthTask[]
   consultationLeads        GrowthConsultationLead[]
   marketingEvents          GrowthMarketingEvent[]
+  campaignRecipients       GrowthCampaignRecipient[]
 
   @@index([vendorProfileId, email])
   @@index([vendorProfileId, status])
@@ -879,12 +881,33 @@ model GrowthEmailCampaign {
   vendorProfileId   String?
   vendorProfile     VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
   name              String
+  description       String?
+  /// BOOKINGS | SELL | EVENT | LEADS | WINBACK | ANNOUNCEMENT | CUSTOM
+  objective         String?
+  /// EMAIL (SMS reserved, not sent in v1)
+  channel           String         @default("EMAIL")
   subject           String?
+  previewText       String?
+  headline          String?
   bodyHtml          String?
-  /// DRAFT | SCHEDULED | SENDING | SENT | CANCELLED
+  ctaLabel          String?
+  ctaUrl            String?
+  senderName        String?
+  replyTo           String?
+  /// FUNNEL | LISTING | BOOKING | EVENT | EXTERNAL
+  destinationType   String?
+  destinationId     String?
+  destinationUrl    String?
+  /// ALL | STATUS | MANUAL
+  audienceType      String         @default("ALL")
+  audienceJson      Json?
+  /// DRAFT | SCHEDULED | SENDING | SENT | PAUSED | CANCELLED
   status            String         @default("DRAFT")
   scheduledAt       DateTime?
+  timezone          String?
   sentAt            DateTime?
+  pausedAt          DateTime?
+  heroImageUrl      String?
   segmentId         String?
   segment           GrowthSegment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
   openCount         Int            @default(0)
@@ -894,9 +917,57 @@ model GrowthEmailCampaign {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   marketingEvents   GrowthMarketingEvent[]
+  recipients        GrowthCampaignRecipient[]
+  steps             GrowthCampaignStep[]
 
   @@index([vendorProfileId, status])
   @@map("growth_email_campaigns")
+}
+
+model GrowthCampaignRecipient {
+  id                     String              @id @default(cuid())
+  campaignId             String
+  campaign               GrowthEmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId              String?
+  contact                GrowthContact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  email                  String
+  name                   String
+  trackingToken          String              @unique
+  /// QUEUED | SENT | FAILED | SKIPPED
+  status                 String              @default("QUEUED")
+  sentAt                 DateTime?
+  openedAt               DateTime?
+  clickedAt              DateTime?
+  convertedAt            DateTime?
+  attributedRevenueCents Int                 @default(0)
+  failReason             String?
+  createdAt              DateTime            @default(now())
+  marketingEvents        GrowthMarketingEvent[]
+
+  @@index([campaignId, email])
+  @@index([contactId])
+  @@map("growth_campaign_recipients")
+}
+
+model GrowthCampaignStep {
+  id          String              @id @default(cuid())
+  campaignId  String
+  campaign    GrowthEmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sortOrder   Int
+  /// NO_CLICK | CLICKED_NO_CONVERT
+  triggerType String
+  delayHours  Int                 @default(48)
+  subject     String?
+  previewText String?
+  bodyHtml    String?
+  ctaLabel    String?
+  ctaUrl      String?
+  isEnabled   Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([campaignId, sortOrder])
+  @@map("growth_campaign_steps")
 }
 
 model GrowthEmailSequence {
@@ -961,7 +1032,7 @@ model GrowthMarketingEvent {
   id              String         @id @default(cuid())
   vendorProfileId String?
   vendorProfile   VendorProfile? @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
-  /// PAGE_VIEW | QR_SCAN | EMAIL_OPEN | EMAIL_CLICK | CONVERSION | SIGNUP
+  /// PAGE_VIEW | QR_SCAN | EMAIL_OPEN | EMAIL_CLICK | CONVERSION | SIGNUP | EMAIL_SENT | UNSUBSCRIBED | DESTINATION_VISIT | CHECKOUT_STARTED
   eventType       String
   contactId       String?
   contact         GrowthContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
@@ -975,12 +1046,16 @@ model GrowthMarketingEvent {
   qrCampaign      GrowthQrCampaign? @relation(fields: [qrCampaignId], references: [id], onDelete: SetNull)
   campaignId      String?
   campaign        GrowthEmailCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  recipientId     String?
+  recipient       GrowthCampaignRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
   metadataJson    Json?
   occurredAt      DateTime       @default(now())
 
   @@index([vendorProfileId, eventType, occurredAt])
   @@index([landingPageId])
   @@index([qrCampaignId])
+  @@index([campaignId])
+  @@index([recipientId])
   @@map("growth_marketing_events")
 }
 

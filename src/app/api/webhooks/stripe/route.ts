@@ -137,6 +137,22 @@ async function handleLegacyCheckoutCompleted(event: Stripe.Event) {
   } catch (e) {
     console.warn("[growth] syncGrowthContactsFromPaidOrder:", e);
   }
+  try {
+    const vendorProfileId = session.metadata?.vendorProfileId?.trim();
+    const revenueCents = typeof session.amount_total === "number" ? session.amount_total : 0;
+    if (vendorProfileId && revenueCents > 0) {
+      const { attributeCampaignConversion } = await import("@/lib/growth/campaignTracking");
+      await attributeCampaignConversion({
+        token: session.metadata?.campaignToken,
+        email: session.customer_email || session.customer_details?.email || null,
+        vendorProfileId,
+        revenueCents,
+        orderId: fields.orderId,
+      });
+    }
+  } catch (e) {
+    console.warn("[growth] attributeCampaignConversion:", e);
+  }
   const { notifyAdminsOfShippableOrder } = await import("@/lib/shippingFulfillment");
   await notifyAdminsOfShippableOrder(fields.orderId);
 

@@ -125,7 +125,7 @@ Every Listing belongs to exactly one Vendor.
 
 Vendors can set an optional **Listing URL** (`publicSlug`) so the public path is `/discover/listings/your-name` instead of a system id.
 
-Vendors can set a **Funnel URL** so the public path is `/{profile-url}/funnels/funnel-name` (same picker pattern as listings). Campaigns will use `/{profile-url}/campaigns/campaign-name` when that module ships.
+Vendors can set a **Funnel URL** so the public path is `/{profile-url}/funnels/funnel-name` (same picker pattern as listings). GrowSpace Campaigns send email to CRM contacts and can deep-link into that funnel (or a listing/booking) with click attribution. Public campaign pages remain reserved at `/{profile-url}/campaigns/campaign-name`.
 
 ---
 

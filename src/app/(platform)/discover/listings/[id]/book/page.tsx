@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { notFound, permanentRedirect, redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { Container } from "@/components/Container";
 import { ServiceBookingWizard } from "@/components/ServiceBookingWizard";
 import { discoverBookPath, discoverListingPath } from "@/config/discoverPaths";
-import { authOptions } from "@/lib/authOptions";
 import { loadBookableServiceListing } from "@/lib/bookingAccess";
 import { getServiceDurationMinutes, resolveBookingPriceCents } from "@/lib/bookingSlots";
 import { formatPrice } from "@/lib/format";
@@ -30,13 +28,7 @@ export default async function BookServicePage({
   }
 
   const service = listing.offering.serviceDetails!;
-  const session = await getServerSession(authOptions);
   const bookPath = discoverBookPath(listing, variantParam ?? null);
-
-  // Guests can book unless the vendor asked for accounts on this listing.
-  if (!session?.user && service.requiresAccountToBook) {
-    redirect(`/login?callbackUrl=${encodeURIComponent(bookPath)}`);
-  }
 
   const durationMinutes = getServiceDurationMinutes(listing, listing.selectedVariantId);
   const priceCents = resolveBookingPriceCents(listing);

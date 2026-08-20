@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 
 import { Container } from "@/components/Container";
+import { CheckoutAuthGate } from "@/components/CheckoutAuthGate";
 import { FulfillmentModePicker } from "@/components/FulfillmentModePicker";
 import { ListingImage } from "@/components/ListingImage";
 import { Button } from "@/components/ui/Button";
@@ -33,6 +34,8 @@ export function CartPageClient() {
   );
   const [email, setEmail] = useState("");
   const [showEmail, setShowEmail] = useState(false);
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [guestCheckout, setGuestCheckout] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fulfillmentMode, setFulfillmentMode] = useState<CheckoutFulfillmentMode | null>(null);
@@ -105,6 +108,10 @@ export function CartPageClient() {
   function handleCheckoutClick() {
     if (buyerMustChooseFulfillment && !fulfillmentMode) {
       setError("Choose pickup / in person or ship / deliver before checkout.");
+      return;
+    }
+    if (needsEmail && !guestCheckout && !showEmail) {
+      setShowAuthGate(true);
       return;
     }
     if (needsEmail && !showEmail) {
@@ -212,6 +219,17 @@ export function CartPageClient() {
       </ul>
 
       <Card className="mt-6 space-y-4 p-5">
+        <CheckoutAuthGate
+          variant="modal"
+          open={showAuthGate}
+          onClose={() => setShowAuthGate(false)}
+          callbackUrl="/cart"
+          guestLabel="Checkout as guest"
+          onGuestContinue={() => {
+            setGuestCheckout(true);
+            setShowEmail(true);
+          }}
+        />
         <div className="flex items-center justify-between text-base">
           <span className="font-medium text-fix-text-muted">Subtotal</span>
           <span className="font-semibold text-fix-heading">{formatPrice(subtotal)}</span>
