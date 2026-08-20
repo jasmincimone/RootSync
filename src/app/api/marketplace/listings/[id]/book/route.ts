@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { loadBookableServiceListing, resolveBookingActor } from "@/lib/bookingAccess";
 import { createServiceBookingCheckout, type IntakeAnswerInput } from "@/lib/bookingCheckout";
+import { parseMarketingOptIn, resolveCheckoutMarketingOptIn } from "@/lib/checkoutMarketingOptIn";
 import { campaignTokenFromRequest } from "@/lib/growth/campaignAttribution";
 import { rateLimitResponse } from "@/lib/rateLimit";
 
@@ -65,6 +66,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const intakeNotes = typeof body.intakeNotes === "string" ? body.intakeNotes : null;
     const intakeAnswers = parseIntakeAnswers(body);
 
+    const marketingOptIn = await resolveCheckoutMarketingOptIn({
+      userId: actor.userId,
+      explicitOptIn: parseMarketingOptIn(body.marketingOptIn),
+    });
+
     for (const q of listing.offering.intakeQuestions) {
       if (!q.required) continue;
       const answered = intakeAnswers.some(
@@ -88,6 +94,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       intakeAnswers,
       origin: request.nextUrl.origin,
       campaignToken: campaignTokenFromRequest(request),
+      marketingOptIn,
     });
 
     return NextResponse.json(result);

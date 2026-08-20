@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 
 import { Container } from "@/components/Container";
 import { CheckoutAuthGate } from "@/components/CheckoutAuthGate";
+import { CheckoutMarketingOptIn } from "@/components/CheckoutMarketingOptIn";
 import { FulfillmentModePicker } from "@/components/FulfillmentModePicker";
 import { ListingImage } from "@/components/ListingImage";
 import { Button } from "@/components/ui/Button";
@@ -33,6 +34,7 @@ export function CartPageClient() {
     typeof window === "undefined" ? emptyCart() : readCart(),
   );
   const [email, setEmail] = useState("");
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [guestCheckout, setGuestCheckout] = useState(false);
@@ -78,6 +80,7 @@ export function CartPageClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: checkoutEmail,
+          marketingOptIn,
           fulfillmentMode: needsFulfillmentChoice
             ? buyerMustChooseFulfillment
               ? fulfillmentMode
@@ -249,7 +252,7 @@ export function CartPageClient() {
         ) : null}
 
         {showEmail && needsEmail ? (
-          <div>
+          <div className="space-y-2">
             <label htmlFor="cart-email" className="block text-sm font-medium text-fix-text">
               Email for receipt
             </label>
@@ -260,6 +263,12 @@ export function CartPageClient() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm"
+            />
+            <CheckoutMarketingOptIn
+              id="cart-marketing-opt-in"
+              vendorName={cart.vendorDisplayName}
+              checked={marketingOptIn}
+              onChange={setMarketingOptIn}
             />
           </div>
         ) : null}

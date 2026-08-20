@@ -429,7 +429,7 @@ export function GrowthCampaignBuilder({
             </div>
           ) : null}
           <p className="text-xs text-fix-text-muted">
-            Unsubscribed contacts and missing emails are removed automatically.
+            Unsubscribed contacts, missing emails, and contacts without marketing opt-in are removed automatically.
           </p>
         </Card>
       ) : null}

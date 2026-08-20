@@ -262,6 +262,7 @@ export async function createMarketplaceListingCheckout(args: {
   unitSelections?: unknown;
   fulfillmentMode?: CheckoutFulfillmentMode | null;
   campaignToken?: string | null;
+  marketingOptIn?: boolean;
 }): Promise<{ url: string; orderId: string }> {
   const { listing, quantity, email, userId, origin } = args;
   const needsShipping = listingRequiresShipping(listing);
@@ -327,6 +328,7 @@ export async function createMarketplaceListingCheckout(args: {
       userId: userId ?? null,
       email,
       status: "pending",
+      marketingOptIn: args.marketingOptIn ?? false,
       subtotalCents,
       totalCents: subtotalCents,
       items: {
@@ -509,6 +511,7 @@ export async function createMarketplaceCartCheckout(args: {
   origin: string;
   fulfillmentMode?: CheckoutFulfillmentMode | null;
   campaignToken?: string | null;
+  marketingOptIn?: boolean;
 }): Promise<{ url: string; orderId: string }> {
   if (!Array.isArray(args.items) || args.items.length === 0) {
     throw new Error("Your cart is empty.");
@@ -560,6 +563,7 @@ export async function createMarketplaceCartCheckout(args: {
       userId: args.userId ?? null,
       email: args.email,
       status: "pending",
+      marketingOptIn: args.marketingOptIn ?? false,
       subtotalCents,
       totalCents: subtotalCents,
       items: {

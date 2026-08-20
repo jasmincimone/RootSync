@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { BookingCalendarPicker } from "@/components/BookingCalendarPicker";
 import { CheckoutAuthGate } from "@/components/CheckoutAuthGate";
+import { CheckoutMarketingOptIn } from "@/components/CheckoutMarketingOptIn";
 import { BOOKING_CANCELLATION_POLICY_LONG } from "@/lib/bookingPolicy";
 import { formatPrice } from "@/lib/format";
 
@@ -32,6 +33,7 @@ type Props = {
   intakeQuestions: IntakeQuestion[];
   bookPath?: string;
   allowGuestBooking?: boolean;
+  vendorDisplayName?: string | null;
 };
 
 export function ServiceBookingWizard({
@@ -44,6 +46,7 @@ export function ServiceBookingWizard({
   intakeQuestions,
   bookPath,
   allowGuestBooking = true,
+  vendorDisplayName,
 }: Props) {
   const { data: session, status } = useSession();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
@@ -57,6 +60,7 @@ export function ServiceBookingWizard({
   const [bookingAsGuest, setBookingAsGuest] = useState(false);
   const [guestEmail, setGuestEmail] = useState("");
   const [guestName, setGuestName] = useState("");
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   const signedIn = Boolean(session?.user);
   const loginHref = `/login?callbackUrl=${encodeURIComponent(
@@ -112,8 +116,8 @@ export function ServiceBookingWizard({
           intakeAnswers,
           ...(variantId ? { variantId } : {}),
           ...(signedIn
-            ? {}
-            : { guestEmail: guestEmail.trim(), guestName: guestName.trim() }),
+            ? { marketingOptIn }
+            : { guestEmail: guestEmail.trim(), guestName: guestName.trim(), marketingOptIn }),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -261,6 +265,13 @@ export function ServiceBookingWizard({
       </div>
 
       {error ? <p className="text-sm text-bark">{error}</p> : null}
+
+      <CheckoutMarketingOptIn
+        id={`booking-marketing-${listingId}`}
+        vendorName={vendorDisplayName}
+        checked={marketingOptIn}
+        onChange={setMarketingOptIn}
+      />
 
       <div>
         <Button

@@ -7,6 +7,7 @@ import {
   type MarketplaceCartCheckoutItem,
 } from "@/lib/marketplaceCheckout";
 import { parseCheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
+import { parseMarketingOptIn, resolveCheckoutMarketingOptIn } from "@/lib/checkoutMarketingOptIn";
 import { campaignTokenFromRequest } from "@/lib/growth/campaignAttribution";
 import { rateLimitResponse } from "@/lib/rateLimit";
 
@@ -49,6 +50,11 @@ export async function POST(request: NextRequest) {
       };
     });
 
+    const marketingOptIn = await resolveCheckoutMarketingOptIn({
+      userId: session?.user?.id,
+      explicitOptIn: parseMarketingOptIn(body.marketingOptIn),
+    });
+
     const result = await createMarketplaceCartCheckout({
       items,
       email,
@@ -56,6 +62,7 @@ export async function POST(request: NextRequest) {
       origin: request.nextUrl.origin,
       fulfillmentMode: parseCheckoutFulfillmentMode(body.fulfillmentMode),
       campaignToken: campaignTokenFromRequest(request),
+      marketingOptIn,
     });
 
     return NextResponse.json(result);

@@ -451,6 +451,8 @@ model Order {
   buyerConfirmationEmailedAt DateTime?
   /// Admin “needs shipment” alert emailed — idempotency for webhooks / by-session
   shippingAlertEmailedAt DateTime?
+  /// Buyer opted in to vendor marketing at checkout
+  marketingOptIn      Boolean   @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   user                User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -709,6 +711,8 @@ model GrowthContact {
   funnel                   GrowthFunnel? @relation(fields: [funnelId], references: [id], onDelete: SetNull)
   lastActivityAt           DateTime?
   unsubscribedAt           DateTime?
+  marketingOptIn           Boolean   @default(false)
+  marketingOptInAt         DateTime?
   communityActivitySummary String?
   purchaseSummary          String?
   consultationSummary      String?

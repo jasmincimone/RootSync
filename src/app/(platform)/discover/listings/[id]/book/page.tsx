@@ -75,6 +75,7 @@ export default async function BookServicePage({
               intakeQuestions={listing.offering.intakeQuestions}
               bookPath={bookPath}
               allowGuestBooking={!service.requiresAccountToBook}
+              vendorDisplayName={listing.vendorProfile.displayName}
             />
           </div>
         </Container>

@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { CheckoutAuthGate } from "@/components/CheckoutAuthGate";
+import { CheckoutMarketingOptIn } from "@/components/CheckoutMarketingOptIn";
 import { Button } from "@/components/ui/Button";
 import type { CheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
 import { cn } from "@/lib/cn";
@@ -26,6 +27,7 @@ type Props = {
   requiresFulfillmentChoice?: boolean;
   /** Path to return after sign-in (defaults to current page). */
   callbackUrl?: string;
+  vendorDisplayName?: string | null;
 };
 
 export function BuyNowButton({
@@ -41,9 +43,11 @@ export function BuyNowButton({
   fulfillmentMode = null,
   requiresFulfillmentChoice = false,
   callbackUrl,
+  vendorDisplayName,
 }: Props) {
   const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEmail, setShowEmail] = useState(false);
@@ -71,6 +75,7 @@ export function BuyNowButton({
         body: JSON.stringify({
           email: checkoutEmail,
           quantity,
+          marketingOptIn,
           ...(variantId ? { variantId } : {}),
           ...(unitSelections && unitSelections.length > 0 ? { unitSelections } : {}),
           ...(requiresFulfillmentChoice && fulfillmentMode ? { fulfillmentMode } : {}),
@@ -125,7 +130,7 @@ export function BuyNowButton({
         }}
       />
       {showEmail && needsEmail ? (
-        <div className="mb-2">
+        <div className="mb-2 space-y-2">
           <label htmlFor={`buy-email-${listingId}`} className="sr-only">
             Email for checkout
           </label>
@@ -137,6 +142,12 @@ export function BuyNowButton({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-lg border border-fix-border/20 bg-fix-surface px-3 py-2 text-sm text-fix-text"
+          />
+          <CheckoutMarketingOptIn
+            id={`buy-marketing-${listingId}`}
+            vendorName={vendorDisplayName}
+            checked={marketingOptIn}
+            onChange={setMarketingOptIn}
           />
         </div>
       ) : null}

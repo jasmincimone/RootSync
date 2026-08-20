@@ -30,6 +30,7 @@ export type CreateServiceBookingInput = {
   intakeAnswers?: IntakeAnswerInput[];
   origin: string;
   campaignToken?: string | null;
+  marketingOptIn?: boolean;
 };
 
 function listingImageUrl(imageUrl: string | null, baseUrl: string): string[] | undefined {
@@ -116,6 +117,7 @@ export async function createServiceBookingCheckout(
         userId: memberUserId ?? null,
         email: memberEmail,
         status: "pending",
+        marketingOptIn: input.marketingOptIn ?? false,
         subtotalCents: priceCents,
         totalCents: priceCents,
         items: {

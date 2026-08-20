@@ -258,6 +258,7 @@ export function MarketplaceListingPurchase({
       disabled: checkoutBlocked,
       label: buyLabel,
       quantity,
+      vendorDisplayName,
       fulfillmentMode: isPhysicalProduct && !offersLocalPickup ? "ship" : fulfillmentMode,
       requiresFulfillmentChoice: isPhysicalProduct && hasStripeCheckout && offersLocalPickup,
     };

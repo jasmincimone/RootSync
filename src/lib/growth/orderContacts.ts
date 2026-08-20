@@ -86,6 +86,7 @@ async function upsertVendorBuyerContact(args: {
   rootSyncUserId: string | null;
   purchaseLines: string[];
   funnelId: string | null;
+  marketingOptIn?: boolean;
   recordEvent?: boolean;
   skipVendorEmailCheck?: boolean;
   existingContact?: {
@@ -96,6 +97,7 @@ async function upsertVendorBuyerContact(args: {
     funnelId: string | null;
     leadSource: string | null;
     rootSyncUserId: string | null;
+    marketingOptIn: boolean;
   } | null;
 }): Promise<"created" | "updated" | "skipped"> {
   const email = args.email.trim().toLowerCase();
@@ -117,6 +119,7 @@ async function upsertVendorBuyerContact(args: {
             funnelId: true,
             leadSource: true,
             rootSyncUserId: true,
+            marketingOptIn: true,
           },
         });
 
@@ -132,6 +135,10 @@ async function upsertVendorBuyerContact(args: {
       ? existing.name.trim()
       : args.name.trim() || email.split("@")[0] || "Customer";
 
+  const optedIn = args.marketingOptIn === true || existing?.marketingOptIn === true;
+  const marketingOptInAt =
+    args.marketingOptIn === true && !existing?.marketingOptIn ? new Date() : undefined;
+
   const contact = existing
     ? await prisma.growthContact.update({
         where: { id: existing.id },
@@ -145,6 +152,9 @@ async function upsertVendorBuyerContact(args: {
             : {}),
           ...(funnelId && !existing.funnelId ? { funnelId } : {}),
           ...(!existing.leadSource ? { leadSource: LEAD_SOURCE } : {}),
+          ...(optedIn && !existing.marketingOptIn
+            ? { marketingOptIn: true, marketingOptInAt: marketingOptInAt ?? new Date() }
+            : {}),
         },
         select: { id: true },
       })
@@ -159,6 +169,8 @@ async function upsertVendorBuyerContact(args: {
           funnelId: args.funnelId,
           rootSyncUserId: args.rootSyncUserId,
           lastActivityAt: new Date(),
+          marketingOptIn: optedIn,
+          ...(optedIn ? { marketingOptInAt: marketingOptInAt ?? new Date() } : {}),
         },
         select: { id: true },
       });
@@ -191,9 +203,10 @@ export async function syncGrowthContactsFromPaidOrder(orderId: string): Promise<
       status: true,
       email: true,
       userId: true,
+      marketingOptIn: true,
       shippingName: true,
       createdAt: true,
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, marketingOptIn: true } },
       items: {
         where: { listingId: { not: null } },
         select: {
@@ -235,6 +248,8 @@ export async function syncGrowthContactsFromPaidOrder(orderId: string): Promise<
 
   for (const [vendorProfileId, purchaseLines] of byVendor) {
     const funnel = await findDiscoverCheckoutFunnel(vendorProfileId);
+    const marketingOptIn =
+      order.marketingOptIn || Boolean(order.user?.marketingOptIn);
     await upsertVendorBuyerContact({
       vendorProfileId,
       email: buyerEmail,
@@ -242,6 +257,7 @@ export async function syncGrowthContactsFromPaidOrder(orderId: string): Promise<
       rootSyncUserId: order.userId ?? order.user?.id ?? null,
       purchaseLines,
       funnelId: funnel?.id ?? null,
+      marketingOptIn,
       recordEvent: true,
     });
   }
@@ -349,6 +365,7 @@ export async function backfillGrowthContactsFromVendorOrders(
       funnelId: true,
       leadSource: true,
       rootSyncUserId: true,
+      marketingOptIn: true,
     },
   });
   const existingByEmail = new Map(

@@ -36,7 +36,12 @@ export async function listEligibleCampaignContacts(args: {
   const extra = audienceWhere(args.audienceType, parsed);
 
   const rows = await prisma.growthContact.findMany({
-    where: { ...where, ...extra },
+    where: {
+      ...where,
+      ...extra,
+      marketingOptIn: true,
+      unsubscribedAt: null,
+    },
     select: { id: true, name: true, email: true, status: true, unsubscribedAt: true },
     take: MAX_CAMPAIGN_RECIPIENTS * 2,
     orderBy: { lastActivityAt: "desc" },

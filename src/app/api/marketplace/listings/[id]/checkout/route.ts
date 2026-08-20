@@ -7,6 +7,7 @@ import {
   loadListingForCheckout,
 } from "@/lib/marketplaceCheckout";
 import { parseCheckoutFulfillmentMode } from "@/lib/checkoutFulfillment";
+import { parseMarketingOptIn, resolveCheckoutMarketingOptIn } from "@/lib/checkoutMarketingOptIn";
 import { campaignTokenFromRequest } from "@/lib/growth/campaignAttribution";
 import { rateLimitResponse } from "@/lib/rateLimit";
 
@@ -55,6 +56,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Listing not found or not available." }, { status: 404 });
     }
 
+    const marketingOptIn = await resolveCheckoutMarketingOptIn({
+      userId: session?.user?.id,
+      explicitOptIn: parseMarketingOptIn(body.marketingOptIn),
+    });
+
     const result = await createMarketplaceListingCheckout({
       listing,
       quantity,
@@ -65,6 +71,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       unitSelections,
       fulfillmentMode: parseCheckoutFulfillmentMode(body.fulfillmentMode),
       campaignToken: campaignTokenFromRequest(request),
+      marketingOptIn,
     });
 
     return NextResponse.json(result);
