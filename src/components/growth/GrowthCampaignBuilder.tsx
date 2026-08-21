@@ -76,7 +76,13 @@ type DestinationOption = {
   status?: string;
 };
 
-type ContactOption = { id: string; name: string; email: string; status: string };
+type ContactOption = {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  marketingOptIn: boolean;
+};
 
 const TONES = ["Friendly", "Professional", "Excited", "Educational", "Urgent", "Custom"];
 
@@ -106,6 +112,8 @@ export function GrowthCampaignBuilder({
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [estimated, setEstimated] = useState<number | null>(null);
+  const [skippedNoOptIn, setSkippedNoOptIn] = useState(0);
+  const [optedInOnlyManual, setOptedInOnlyManual] = useState(true);
   const [contactQuery, setContactQuery] = useState("");
   const [previewMobile, setPreviewMobile] = useState(false);
   const [emphasize, setEmphasize] = useState("");
@@ -200,6 +208,9 @@ export function GrowthCampaignBuilder({
         if (typeof data.estimatedRecipients === "number") {
           setEstimated(data.estimatedRecipients);
         }
+        if (typeof data.skippedNoMarketingOptIn === "number") {
+          setSkippedNoOptIn(data.skippedNoMarketingOptIn);
+        }
       })
       .catch(() => undefined);
   }, [draft.audienceJson, draft.audienceType]);
@@ -244,9 +255,11 @@ export function GrowthCampaignBuilder({
   ]);
 
   const filteredContacts = contacts.filter((contact) => {
+    if (optedInOnlyManual && !contact.marketingOptIn) return false;
     const hay = `${contact.name} ${contact.email}`.toLowerCase();
     return hay.includes(contactQuery.trim().toLowerCase());
   });
+  const optedInContacts = contacts.filter((c) => c.marketingOptIn);
 
   function runAction(body: Record<string, unknown>, onOk?: () => void) {
     setError(null);
@@ -280,11 +293,73 @@ export function GrowthCampaignBuilder({
             · {saving ? "Saving…" : "Saved"}
           </p>
         </div>
-        {locked ? (
-          <ButtonLink href={`/account/growth/campaigns/${draft.id}/results`} variant="cta" size="sm">
-            View results
-          </ButtonLink>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {draft.status === GROWTH_CAMPAIGN_STATUS.SCHEDULED ||
+          draft.status === GROWTH_CAMPAIGN_STATUS.SENDING ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              onClick={() =>
+                runAction({ action: "pause" }, () => {
+                  setDraft((prev) => ({ ...prev, status: GROWTH_CAMPAIGN_STATUS.PAUSED }));
+                  setMessage("Campaign paused.");
+                })
+              }
+            >
+              Pause
+            </Button>
+          ) : null}
+          {draft.status === GROWTH_CAMPAIGN_STATUS.PAUSED ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              onClick={() =>
+                runAction({ action: "resume" }, () => {
+                  setDraft((prev) => ({
+                    ...prev,
+                    status: prev.scheduledAt
+                      ? GROWTH_CAMPAIGN_STATUS.SCHEDULED
+                      : GROWTH_CAMPAIGN_STATUS.DRAFT,
+                  }));
+                  setMessage("Campaign resumed.");
+                })
+              }
+            >
+              Resume
+            </Button>
+          ) : null}
+          {!locked && draft.status !== GROWTH_CAMPAIGN_STATUS.CANCELLED ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={pending}
+              onClick={() => {
+                if (window.confirm("Cancel this campaign? It will not send.")) {
+                  runAction({ action: "cancel" }, () => {
+                    setDraft((prev) => ({
+                      ...prev,
+                      status: GROWTH_CAMPAIGN_STATUS.CANCELLED,
+                      scheduledAt: null,
+                    }));
+                    setMessage("Campaign cancelled.");
+                  });
+                }
+              }}
+            >
+              Cancel
+            </Button>
+          ) : null}
+          {locked ? (
+            <ButtonLink href={`/account/growth/campaigns/${draft.id}/results`} variant="cta" size="sm">
+              View results
+            </ButtonLink>
+          ) : null}
+        </div>
       </div>
 
       <nav className="flex gap-1 overflow-x-auto pb-1" aria-label="Campaign steps">
@@ -352,8 +427,14 @@ export function GrowthCampaignBuilder({
 
       {step === "audience" ? (
         <Card className="space-y-3 p-4 sm:p-5">
-          <p className="text-sm font-medium text-fix-heading">
+          <p className="text-sm font-medium text-rs-heading">
             Estimated recipients: {estimated ?? "…"}
+            {skippedNoOptIn > 0 ? (
+              <span className="font-normal text-rs-text-muted">
+                {" "}
+                · {skippedNoOptIn} skipped (no marketing opt-in)
+              </span>
+            ) : null}
           </p>
           <Field label="Who should receive this?">
             <select
@@ -371,9 +452,15 @@ export function GrowthCampaignBuilder({
                 })
               }
             >
-              <option value={GROWTH_CAMPAIGN_AUDIENCE.ALL}>All contacts</option>
-              <option value={GROWTH_CAMPAIGN_AUDIENCE.STATUS}>Customer type</option>
-              <option value={GROWTH_CAMPAIGN_AUDIENCE.MANUAL}>Manually select contacts</option>
+              <option value={GROWTH_CAMPAIGN_AUDIENCE.ALL}>
+                All marketing opted-in contacts
+              </option>
+              <option value={GROWTH_CAMPAIGN_AUDIENCE.STATUS}>
+                Customer type (opted-in only)
+              </option>
+              <option value={GROWTH_CAMPAIGN_AUDIENCE.MANUAL}>
+                Manually select opted-in contacts
+              </option>
             </select>
           </Field>
           {draft.audienceType === GROWTH_CAMPAIGN_AUDIENCE.STATUS ? (
@@ -394,12 +481,36 @@ export function GrowthCampaignBuilder({
           ) : null}
           {draft.audienceType === GROWTH_CAMPAIGN_AUDIENCE.MANUAL ? (
             <div className="space-y-2">
-              <input
-                className={inputClass}
-                placeholder="Search contacts"
-                value={contactQuery}
-                onChange={(e) => setContactQuery(e.target.value)}
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  className={inputClass + " flex-1"}
+                  placeholder="Search contacts"
+                  value={contactQuery}
+                  onChange={(e) => setContactQuery(e.target.value)}
+                />
+                <label className="flex items-center gap-2 text-xs text-rs-text-muted">
+                  <input
+                    type="checkbox"
+                    checked={optedInOnlyManual}
+                    onChange={(e) => setOptedInOnlyManual(e.target.checked)}
+                  />
+                  Show opted-in only
+                </label>
+                {!locked && optedInContacts.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      patch({
+                        audienceJson: { contactIds: optedInContacts.map((c) => c.id) },
+                      })
+                    }
+                  >
+                    Select all opted-in
+                  </Button>
+                ) : null}
+              </div>
               <ul className="max-h-64 space-y-1 overflow-auto text-sm">
                 {filteredContacts.map((contact) => {
                   const checked = selectedIds.has(contact.id);
@@ -408,9 +519,10 @@ export function GrowthCampaignBuilder({
                       <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
-                          disabled={locked}
+                          disabled={locked || !contact.marketingOptIn}
                           checked={checked}
                           onChange={() => {
+                            if (!contact.marketingOptIn) return;
                             const next = new Set(selectedIds);
                             if (checked) next.delete(contact.id);
                             else next.add(contact.id);
@@ -419,7 +531,12 @@ export function GrowthCampaignBuilder({
                         />
                         <span>
                           {contact.name}{" "}
-                          <span className="text-fix-text-muted">{contact.email}</span>
+                          <span className="text-rs-text-muted">{contact.email}</span>
+                          {contact.marketingOptIn ? (
+                            <span className="ml-2 text-xs text-forest">Opted in</span>
+                          ) : (
+                            <span className="ml-2 text-xs text-rs-text-muted">No opt-in</span>
+                          )}
                         </span>
                       </label>
                     </li>
@@ -428,8 +545,9 @@ export function GrowthCampaignBuilder({
               </ul>
             </div>
           ) : null}
-          <p className="text-xs text-fix-text-muted">
-            Unsubscribed contacts, missing emails, and contacts without marketing opt-in are removed automatically.
+          <p className="text-xs text-rs-text-muted">
+            Campaigns only send to contacts with marketing opt-in who have not unsubscribed.
+            Contacts without opt-in cannot receive campaign emails.
           </p>
         </Card>
       ) : null}

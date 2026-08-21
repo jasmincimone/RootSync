@@ -87,6 +87,7 @@ export default async function GrowthCampaignBuilderPage({
           name: contact.name,
           email: contact.email,
           status: contact.status,
+          marketingOptIn: contact.marketingOptIn === true,
         }))}
         vendor={{
           displayName: vendor?.displayName ?? "RootSync",

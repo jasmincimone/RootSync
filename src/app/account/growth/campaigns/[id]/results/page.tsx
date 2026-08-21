@@ -9,6 +9,7 @@ import {
   getCampaignAnalytics,
   getCampaignTimeSeries,
   listCampaignActivity,
+  listCampaignRecipients,
 } from "@/lib/growth/campaignAnalytics";
 import { getGrowthCampaignForWorkspace } from "@/lib/growth/campaigns";
 import { resolveCampaignDestinationUrl } from "@/lib/growth/campaignDestinations";
@@ -31,10 +32,11 @@ export default async function GrowthCampaignResultsPage({
   const campaign = await getGrowthCampaignForWorkspace(id, ctx.vendorProfileId, ctx.isPlatformScope);
   if (!campaign) notFound();
 
-  const [analytics, activity, series, destination] = await Promise.all([
+  const [analytics, activity, series, recipients, destination] = await Promise.all([
     getCampaignAnalytics(id),
     listCampaignActivity(id),
     getCampaignTimeSeries(id),
+    listCampaignRecipients(id),
     resolveCampaignDestinationUrl({
       vendorProfileId: campaign.vendorProfileId,
       destinationType: campaign.destinationType,
@@ -45,8 +47,10 @@ export default async function GrowthCampaignResultsPage({
 
   const audienceSummary =
     campaign.audienceType === GROWTH_CAMPAIGN_AUDIENCE.ALL
-      ? `All contacts · ${analytics.recipients} recipients`
-      : `${campaign.audienceType} · ${analytics.recipients} recipients`;
+      ? `Marketing opted-in contacts · ${analytics.recipients} recipients`
+      : campaign.audienceType === GROWTH_CAMPAIGN_AUDIENCE.STATUS
+        ? `Customer type (opted-in only) · ${analytics.recipients} recipients`
+        : `Manual selection (opted-in only) · ${analytics.recipients} recipients`;
 
   return (
     <PageBody wide>
@@ -67,6 +71,19 @@ export default async function GrowthCampaignResultsPage({
           contact: row.contact,
         }))}
         series={series}
+        recipients={recipients.map((row) => ({
+          id: row.id,
+          email: row.email,
+          name: row.name,
+          status: row.status,
+          sentAt: row.sentAt?.toISOString() ?? null,
+          openedAt: row.openedAt?.toISOString() ?? null,
+          clickedAt: row.clickedAt?.toISOString() ?? null,
+          convertedAt: row.convertedAt?.toISOString() ?? null,
+          attributedRevenueCents: row.attributedRevenueCents,
+          contactId: row.contactId,
+          marketingOptIn: row.contact?.marketingOptIn ?? null,
+        }))}
         destinationLabel={destination.ok ? destination.label : campaign.destinationUrl || "Destination unavailable"}
         audienceSummary={audienceSummary}
       />

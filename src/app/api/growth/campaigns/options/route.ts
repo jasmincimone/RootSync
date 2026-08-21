@@ -34,6 +34,7 @@ export async function GET() {
       name: contact.name,
       email: contact.email,
       status: contact.status,
+      marketingOptIn: contact.marketingOptIn === true,
     })),
   });
 }

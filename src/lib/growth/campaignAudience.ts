@@ -30,26 +30,32 @@ export async function listEligibleCampaignContacts(args: {
   contacts: EligibleCampaignContact[];
   skippedUnsubscribed: number;
   skippedInvalid: number;
+  skippedNoMarketingOptIn: number;
 }> {
   const where = growthVendorWhere(args.vendorProfileId, args.isPlatformScope);
   const parsed = parseAudienceJson(args.audienceJson);
   const extra = audienceWhere(args.audienceType, parsed);
 
+  // Load the audience first, then apply consent filters so estimates can show
+  // how many contacts were excluded for missing marketing opt-in.
   const rows = await prisma.growthContact.findMany({
-    where: {
-      ...where,
-      ...extra,
+    where: { ...where, ...extra },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      status: true,
+      unsubscribedAt: true,
       marketingOptIn: true,
-      unsubscribedAt: null,
     },
-    select: { id: true, name: true, email: true, status: true, unsubscribedAt: true },
-    take: MAX_CAMPAIGN_RECIPIENTS * 2,
+    take: MAX_CAMPAIGN_RECIPIENTS * 3,
     orderBy: { lastActivityAt: "desc" },
   });
 
   const contacts: EligibleCampaignContact[] = [];
   let skippedUnsubscribed = 0;
   let skippedInvalid = 0;
+  let skippedNoMarketingOptIn = 0;
   const seen = new Set<string>();
 
   for (const row of rows) {
@@ -63,12 +69,16 @@ export async function listEligibleCampaignContacts(args: {
       skippedUnsubscribed += 1;
       continue;
     }
+    if (!row.marketingOptIn) {
+      skippedNoMarketingOptIn += 1;
+      continue;
+    }
     seen.add(email);
     contacts.push({ id: row.id, name: row.name, email, status: row.status });
     if (contacts.length >= MAX_CAMPAIGN_RECIPIENTS) break;
   }
 
-  return { contacts, skippedUnsubscribed, skippedInvalid };
+  return { contacts, skippedUnsubscribed, skippedInvalid, skippedNoMarketingOptIn };
 }
 
 function audienceWhere(audienceType: string, parsed: CampaignAudienceJson) {

@@ -23,5 +23,6 @@ export async function POST(request: NextRequest) {
     estimatedRecipients: result.contacts.length,
     skippedUnsubscribed: result.skippedUnsubscribed,
     skippedInvalid: result.skippedInvalid,
+    skippedNoMarketingOptIn: result.skippedNoMarketingOptIn,
   });
 }

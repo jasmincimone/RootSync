@@ -113,6 +113,33 @@ export async function getCampaignTimeSeries(campaignId: string) {
   return days;
 }
 
+export async function listCampaignRecipients(campaignId: string) {
+  return prisma.growthCampaignRecipient.findMany({
+    where: { campaignId },
+    orderBy: [{ sentAt: "desc" }, { createdAt: "desc" }],
+    take: 500,
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      status: true,
+      sentAt: true,
+      openedAt: true,
+      clickedAt: true,
+      convertedAt: true,
+      attributedRevenueCents: true,
+      contactId: true,
+      contact: {
+        select: {
+          id: true,
+          marketingOptIn: true,
+          unsubscribedAt: true,
+        },
+      },
+    },
+  });
+}
+
 export async function listContactCampaignHistory(contactId: string) {
   const recipients = await prisma.growthCampaignRecipient.findMany({
     where: { contactId },

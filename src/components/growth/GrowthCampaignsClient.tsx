@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
@@ -62,17 +62,20 @@ function destinationLabel(row: GrowthCampaignDashboardRow) {
   return "Not set";
 }
 
-function bucket(status: string): "draft" | "scheduled" | "sent" | "completed" | "paused" {
+function bucket(
+  status: string,
+): "draft" | "scheduled" | "sent" | "completed" | "paused" | "cancelled" {
   if (status === GROWTH_CAMPAIGN_STATUS.DRAFT) return "draft";
   if (status === GROWTH_CAMPAIGN_STATUS.SCHEDULED) return "scheduled";
   if (status === GROWTH_CAMPAIGN_STATUS.SENDING) return "sent";
   if (status === GROWTH_CAMPAIGN_STATUS.SENT) return "completed";
   if (status === GROWTH_CAMPAIGN_STATUS.PAUSED) return "paused";
+  if (status === GROWTH_CAMPAIGN_STATUS.CANCELLED) return "cancelled";
   return "draft";
 }
 
 const inputClass =
-  "rounded-lg border border-fix-border/25 bg-fix-surface px-3 py-2 text-sm text-fix-heading";
+  "rounded-lg border border-rs-border/25 bg-rs-surface px-3 py-2 text-sm text-rs-heading";
 
 export function GrowthCampaignsClient({
   initialCampaigns,
@@ -85,6 +88,9 @@ export function GrowthCampaignsClient({
   const [objective, setObjective] = useState("ALL");
   const [channel, setChannel] = useState("ALL");
   const [fromDate, setFromDate] = useState("");
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -111,15 +117,36 @@ export function GrowthCampaignsClient({
     draft: filtered.filter((row) => bucket(row.status) === "draft"),
     scheduled: filtered.filter((row) => bucket(row.status) === "scheduled"),
     sent: filtered.filter((row) => bucket(row.status) === "sent"),
+    paused: filtered.filter((row) => bucket(row.status) === "paused"),
     completed: filtered.filter((row) => bucket(row.status) === "completed"),
+    cancelled: filtered.filter((row) => bucket(row.status) === "cancelled"),
   };
+
+  function runAction(campaignId: string, action: "pause" | "resume" | "cancel") {
+    setActionError(null);
+    setPendingId(campaignId);
+    startTransition(async () => {
+      const res = await fetch(`/api/growth/campaigns/${campaignId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setPendingId(null);
+      if (!res.ok) {
+        setActionError(data.error ?? "Could not update campaign");
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-fix-heading">Campaigns</h1>
-          <p className="text-sm text-fix-text-muted">
+          <h1 className="text-lg font-semibold text-rs-heading">Campaigns</h1>
+          <p className="text-sm text-rs-text-muted">
             Who you reach, what you send, where they go, and what converted.
           </p>
         </div>
@@ -132,6 +159,8 @@ export function GrowthCampaignsClient({
           New campaign
         </Button>
       </div>
+
+      {actionError ? <p className="text-sm text-red-700">{actionError}</p> : null}
 
       {initialCampaigns.length === 0 ? (
         <EmptyState
@@ -189,87 +218,189 @@ export function GrowthCampaignsClient({
             </div>
           </Card>
 
-          <Section title="Draft campaigns" rows={grouped.draft} />
-          <Section title="Scheduled campaigns" rows={grouped.scheduled} />
-          <Section title="Active / sending" rows={grouped.sent} />
-          <Section title="Completed campaigns" rows={grouped.completed} />
+          <Section
+            title="Draft campaigns"
+            rows={grouped.draft}
+            pending={pending}
+            pendingId={pendingId}
+            onAction={runAction}
+          />
+          <Section
+            title="Scheduled campaigns"
+            rows={grouped.scheduled}
+            pending={pending}
+            pendingId={pendingId}
+            onAction={runAction}
+          />
+          <Section
+            title="Paused campaigns"
+            rows={grouped.paused}
+            pending={pending}
+            pendingId={pendingId}
+            onAction={runAction}
+          />
+          <Section
+            title="Active / sending"
+            rows={grouped.sent}
+            pending={pending}
+            pendingId={pendingId}
+            onAction={runAction}
+          />
+          <Section
+            title="Completed campaigns"
+            rows={grouped.completed}
+            pending={pending}
+            pendingId={pendingId}
+            onAction={runAction}
+          />
+          <Section
+            title="Cancelled campaigns"
+            rows={grouped.cancelled}
+            pending={pending}
+            pendingId={pendingId}
+            onAction={runAction}
+          />
         </>
       )}
     </div>
   );
 }
 
-function Section({ title, rows }: { title: string; rows: GrowthCampaignDashboardRow[] }) {
+function Section({
+  title,
+  rows,
+  pending,
+  pendingId,
+  onAction,
+}: {
+  title: string;
+  rows: GrowthCampaignDashboardRow[];
+  pending: boolean;
+  pendingId: string | null;
+  onAction: (id: string, action: "pause" | "resume" | "cancel") => void;
+}) {
   if (rows.length === 0) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-fix-heading">{title}</h2>
+      <h2 className="text-sm font-semibold text-rs-heading">{title}</h2>
       <ul className="space-y-3">
-        {rows.map((campaign) => (
-          <li key={campaign.id}>
-            <Card className="space-y-3 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <Link
-                    href={
-                      campaign.status === GROWTH_CAMPAIGN_STATUS.SENT
-                        ? `/account/growth/campaigns/${campaign.id}/results`
-                        : `/account/growth/campaigns/${campaign.id}`
-                    }
-                    className="font-semibold text-fix-heading hover:text-fix-link"
-                  >
-                    {campaign.name}
-                  </Link>
-                  <p className="mt-1 text-sm text-fix-text-muted">
-                    {objectiveLabel(campaign.objective)} · {campaign.channel} ·{" "}
-                    {destinationLabel(campaign)}
-                  </p>
+        {rows.map((campaign) => {
+          const busy = pending && pendingId === campaign.id;
+          const canPause =
+            campaign.status === GROWTH_CAMPAIGN_STATUS.SCHEDULED ||
+            campaign.status === GROWTH_CAMPAIGN_STATUS.SENDING;
+          const canResume = campaign.status === GROWTH_CAMPAIGN_STATUS.PAUSED;
+          const canCancel =
+            campaign.status !== GROWTH_CAMPAIGN_STATUS.SENT &&
+            campaign.status !== GROWTH_CAMPAIGN_STATUS.CANCELLED;
+          const showResults =
+            campaign.status === GROWTH_CAMPAIGN_STATUS.SENT ||
+            campaign.status === GROWTH_CAMPAIGN_STATUS.SENDING ||
+            campaign.recipientCount > 0;
+
+          return (
+            <li key={campaign.id}>
+              <Card className="space-y-3 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <Link
+                      href={
+                        campaign.status === GROWTH_CAMPAIGN_STATUS.SENT
+                          ? `/account/growth/campaigns/${campaign.id}/results`
+                          : `/account/growth/campaigns/${campaign.id}`
+                      }
+                      className="font-semibold text-rs-heading hover:text-rs-link"
+                    >
+                      {campaign.name}
+                    </Link>
+                    <p className="mt-1 text-sm text-rs-text-muted">
+                      {objectiveLabel(campaign.objective)} · {campaign.channel} ·{" "}
+                      {destinationLabel(campaign)}
+                    </p>
+                  </div>
+                  <StatusBadge label={statusLabel(campaign.status)} tone={statusTone(campaign.status)} />
                 </div>
-                <StatusBadge label={statusLabel(campaign.status)} tone={statusTone(campaign.status)} />
-              </div>
-              <dl className="grid grid-cols-2 gap-2 text-xs text-fix-text-muted sm:grid-cols-4 lg:grid-cols-8">
-                <Metric label="Audience" value={String(campaign.recipientCount)} />
-                <Metric
-                  label="Send date"
-                  value={
-                    campaign.sentAt || campaign.scheduledAt
-                      ? new Date(campaign.sentAt || campaign.scheduledAt || "").toLocaleDateString()
-                      : "—"
-                  }
-                />
-                <Metric label="Opens" value={String(campaign.openCount)} />
-                <Metric label="Clicks" value={String(campaign.clickCount)} />
-                <Metric label="Funnel visits" value={String(campaign.destinationVisitCount)} />
-                <Metric label="Conversions" value={String(campaign.conversionCount)} />
-                <Metric
-                  label="Open rate"
-                  value={formatPercent(
-                    campaign.recipientCount ? campaign.openCount / campaign.recipientCount : 0,
-                  )}
-                />
-                <Metric label="Revenue" value={formatRevenue(campaign.revenueCents)} />
-              </dl>
-              <div className="flex flex-wrap gap-2">
-                <ButtonLink
-                  href={`/account/growth/campaigns/${campaign.id}`}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Open
-                </ButtonLink>
-                {campaign.status === GROWTH_CAMPAIGN_STATUS.SENT ? (
+                <dl className="grid grid-cols-2 gap-2 text-xs text-rs-text-muted sm:grid-cols-4 lg:grid-cols-8">
+                  <Metric label="Audience" value={String(campaign.recipientCount)} />
+                  <Metric
+                    label="Send date"
+                    value={
+                      campaign.sentAt || campaign.scheduledAt
+                        ? new Date(campaign.sentAt || campaign.scheduledAt || "").toLocaleDateString()
+                        : "—"
+                    }
+                  />
+                  <Metric label="Opens" value={String(campaign.openCount)} />
+                  <Metric label="Clicks" value={String(campaign.clickCount)} />
+                  <Metric label="Funnel visits" value={String(campaign.destinationVisitCount)} />
+                  <Metric label="Conversions" value={String(campaign.conversionCount)} />
+                  <Metric
+                    label="Open rate"
+                    value={formatPercent(
+                      campaign.recipientCount ? campaign.openCount / campaign.recipientCount : 0,
+                    )}
+                  />
+                  <Metric label="Revenue" value={formatRevenue(campaign.revenueCents)} />
+                </dl>
+                <div className="flex flex-wrap gap-2">
                   <ButtonLink
-                    href={`/account/growth/campaigns/${campaign.id}/results`}
-                    variant="ghost"
+                    href={`/account/growth/campaigns/${campaign.id}`}
+                    variant="secondary"
                     size="sm"
                   >
-                    Results
+                    Open
                   </ButtonLink>
-                ) : null}
-              </div>
-            </Card>
-          </li>
-        ))}
+                  {showResults ? (
+                    <ButtonLink
+                      href={`/account/growth/campaigns/${campaign.id}/results`}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      Results & recipients
+                    </ButtonLink>
+                  ) : null}
+                  {canPause ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => onAction(campaign.id, "pause")}
+                    >
+                      {busy ? "…" : "Pause"}
+                    </Button>
+                  ) : null}
+                  {canResume ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => onAction(campaign.id, "resume")}
+                    >
+                      {busy ? "…" : "Resume"}
+                    </Button>
+                  ) : null}
+                  {canCancel ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => {
+                        if (window.confirm("Cancel this campaign? It will not send.")) {
+                          onAction(campaign.id, "cancel");
+                        }
+                      }}
+                    >
+                      {busy ? "…" : "Cancel"}
+                    </Button>
+                  ) : null}
+                </div>
+              </Card>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -279,7 +410,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt>{label}</dt>
-      <dd className="font-medium text-fix-heading">{value}</dd>
+      <dd className="font-medium text-rs-heading">{value}</dd>
     </div>
   );
 }

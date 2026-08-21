@@ -67,8 +67,77 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   if (body?.action === "pause") {
+    const existing = await getGrowthCampaignForWorkspace(
+      id,
+      auth.ctx.vendorProfileId,
+      auth.ctx.isPlatformScope,
+    );
+    if (!existing) {
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    }
+    if (
+      existing.status !== GROWTH_CAMPAIGN_STATUS.SCHEDULED &&
+      existing.status !== GROWTH_CAMPAIGN_STATUS.SENDING
+    ) {
+      return NextResponse.json(
+        { error: "Only scheduled or sending campaigns can be paused." },
+        { status: 400 },
+      );
+    }
     const updated = await updateGrowthCampaign(id, auth.ctx.vendorProfileId, auth.ctx.isPlatformScope, {
       status: GROWTH_CAMPAIGN_STATUS.PAUSED,
+    });
+    if (!updated || "error" in updated) {
+      return NextResponse.json({ error: !updated ? "Campaign not found" : updated.error }, { status: 400 });
+    }
+    return NextResponse.json({ campaign: updated });
+  }
+
+  if (body?.action === "resume") {
+    const existing = await getGrowthCampaignForWorkspace(
+      id,
+      auth.ctx.vendorProfileId,
+      auth.ctx.isPlatformScope,
+    );
+    if (!existing) {
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    }
+    if (existing.status !== GROWTH_CAMPAIGN_STATUS.PAUSED) {
+      return NextResponse.json({ error: "Only paused campaigns can be resumed." }, { status: 400 });
+    }
+    const nextStatus = existing.scheduledAt
+      ? GROWTH_CAMPAIGN_STATUS.SCHEDULED
+      : GROWTH_CAMPAIGN_STATUS.DRAFT;
+    const updated = await updateGrowthCampaign(id, auth.ctx.vendorProfileId, auth.ctx.isPlatformScope, {
+      status: nextStatus,
+    });
+    if (!updated || "error" in updated) {
+      return NextResponse.json({ error: !updated ? "Campaign not found" : updated.error }, { status: 400 });
+    }
+    return NextResponse.json({ campaign: updated });
+  }
+
+  if (body?.action === "cancel") {
+    const existing = await getGrowthCampaignForWorkspace(
+      id,
+      auth.ctx.vendorProfileId,
+      auth.ctx.isPlatformScope,
+    );
+    if (!existing) {
+      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    }
+    if (
+      existing.status === GROWTH_CAMPAIGN_STATUS.SENT ||
+      existing.status === GROWTH_CAMPAIGN_STATUS.CANCELLED
+    ) {
+      return NextResponse.json(
+        { error: "This campaign already finished or was cancelled." },
+        { status: 400 },
+      );
+    }
+    const updated = await updateGrowthCampaign(id, auth.ctx.vendorProfileId, auth.ctx.isPlatformScope, {
+      status: GROWTH_CAMPAIGN_STATUS.CANCELLED,
+      scheduledAt: null,
     });
     if (!updated || "error" in updated) {
       return NextResponse.json({ error: !updated ? "Campaign not found" : updated.error }, { status: 400 });
