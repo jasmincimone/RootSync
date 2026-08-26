@@ -172,6 +172,12 @@ export type VendorOfferingRow = Offering & {
     meetUrl: string | null;
     googleCalendarEventId: string | null;
   } | null;
+  donationDetails: {
+    allowsCustomAmount: boolean;
+    minAmountCents: number;
+    maxAmountCents: number | null;
+    thankYouMessage: string | null;
+  } | null;
   availabilityRules: Array<{
     dayOfWeek: number;
     startMinutes: number;

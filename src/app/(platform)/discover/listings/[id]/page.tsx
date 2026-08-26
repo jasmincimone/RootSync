@@ -62,6 +62,14 @@ const offeringDetailSelect = {
       meetUrl: true,
     },
   },
+  donationDetails: {
+    select: {
+      allowsCustomAmount: true,
+      minAmountCents: true,
+      maxAmountCents: true,
+      thankYouMessage: true,
+    },
+  },
   variants: {
     orderBy: { sortOrder: "asc" as const },
     select: {
@@ -182,7 +190,16 @@ function PurchasePanel({
     category: string | null;
     imageUrl?: string | null;
   };
-  offering: { paymentUrl: string | null; productUrl: string | null };
+  offering: {
+    paymentUrl: string | null;
+    productUrl: string | null;
+    donationDetails?: {
+      allowsCustomAmount: boolean;
+      minAmountCents: number;
+      maxAmountCents: number | null;
+      thankYouMessage: string | null;
+    } | null;
+  };
   variants: {
     id: string;
     title: string;
@@ -261,34 +278,50 @@ function PurchasePanel({
             href={`/account/vendor/listings/${listing.id}/edit`}
             variant="cta"
             size="md"
-            className="w-full justify-center"
+            className="mb-4 w-full justify-center"
           >
             Edit listing
           </ButtonLink>
-        ) : (
-          <MarketplaceListingPurchase
-            listingId={listing.id}
-            listingTitle={listing.title}
-            imageUrl={listing.imageUrl}
-            publicSlug={listing.publicSlug}
-            listingType={listing.listingType}
-            priceCents={listing.priceCents}
-            variants={variants}
-            optionGroups={optionGroups}
-            vendorProfileId={vendorId}
-            vendorDisplayName={profileName ?? "Vendor"}
-            vendorPublicSlug={vendorPublicSlug}
-            paymentLinkUrl={paymentLinkUrl}
-            productUrl={offering.productUrl}
-            stripeCheckoutReady={stripeCheckoutReady}
-            externalCheckoutOnly={externalCheckoutOnly}
-            inventoryQuantity={inventoryQuantity}
-            requiresShipping={requiresShipping}
-            offersLocalPickup={offersLocalPickup}
-            pickupLocation={pickupLocation}
-            shippingFlatCents={shippingFlatCents}
-          />
-        )}
+        ) : null}
+        <MarketplaceListingPurchase
+          listingId={listing.id}
+          listingTitle={listing.title}
+          imageUrl={listing.imageUrl}
+          publicSlug={listing.publicSlug}
+          listingType={listing.listingType}
+          priceCents={listing.priceCents}
+          variants={variants}
+          optionGroups={optionGroups}
+          vendorProfileId={vendorId}
+          vendorDisplayName={profileName ?? "Vendor"}
+          vendorPublicSlug={vendorPublicSlug}
+          paymentLinkUrl={paymentLinkUrl}
+          productUrl={offering.productUrl}
+          stripeCheckoutReady={stripeCheckoutReady}
+          externalCheckoutOnly={externalCheckoutOnly}
+          inventoryQuantity={inventoryQuantity}
+          requiresShipping={requiresShipping}
+          offersLocalPickup={offersLocalPickup}
+          pickupLocation={pickupLocation}
+          shippingFlatCents={shippingFlatCents}
+          donation={
+            offering.donationDetails
+              ? {
+                  allowsCustomAmount: offering.donationDetails.allowsCustomAmount,
+                  minAmountCents: offering.donationDetails.minAmountCents,
+                  maxAmountCents: offering.donationDetails.maxAmountCents,
+                  thankYouMessage: offering.donationDetails.thankYouMessage,
+                }
+              : listing.listingType === "DONATION"
+                ? {
+                    allowsCustomAmount: true,
+                    minAmountCents: 100,
+                    maxAmountCents: null,
+                    thankYouMessage: null,
+                  }
+                : null
+          }
+        />
 
         {!isOwnerPreview ? (
           <div className="mt-4">
@@ -369,6 +402,7 @@ export default async function DiscoverListingPage({
     service: offering.serviceDetails,
     resource: offering.resourceDetails,
     event: offering.eventDetails,
+    donation: offering.donationDetails,
     effectiveShippingFlatCents,
     rootSyncCheckoutReady:
       checkoutOptions.stripeCheckoutReady && !checkoutOptions.externalCheckoutOnly,

@@ -28,6 +28,8 @@ type Props = {
   /** Path to return after sign-in (defaults to current page). */
   callbackUrl?: string;
   vendorDisplayName?: string | null;
+  /** Buyer-entered donation amount in cents (DONATION listings). */
+  amountCents?: number | null;
 };
 
 export function BuyNowButton({
@@ -44,6 +46,7 @@ export function BuyNowButton({
   requiresFulfillmentChoice = false,
   callbackUrl,
   vendorDisplayName,
+  amountCents = null,
 }: Props) {
   const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
@@ -79,6 +82,7 @@ export function BuyNowButton({
           ...(variantId ? { variantId } : {}),
           ...(unitSelections && unitSelections.length > 0 ? { unitSelections } : {}),
           ...(requiresFulfillmentChoice && fulfillmentMode ? { fulfillmentMode } : {}),
+          ...(typeof amountCents === "number" ? { amountCents } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));

@@ -6,7 +6,6 @@ import {
   DollarSign,
   MessageSquare,
   Package,
-  Search,
   Sparkles,
   Sprout,
   UserCircle,
@@ -16,6 +15,7 @@ import {
 import { GrowthKpiCard } from "@/components/growth/GrowthKpiCard";
 import { GrowthPerformanceChart } from "@/components/growth/GrowthPerformanceChart";
 import { GrowthSparkline } from "@/components/growth/GrowthSparkline";
+import { GrowthWorkspaceSearch } from "@/components/growth/GrowthWorkspaceSearch";
 import { PulseWorkspacePanel } from "@/components/pulse/PulseWorkspacePanel";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
@@ -102,19 +102,7 @@ export function GrowthOverviewDashboard({ data, pulseWorkspace, pulseSummary }: 
     <div className="space-y-6">
       {/* Toolbar — reference top bar */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-fix-border/15 bg-fix-surface/80 p-3 shadow-soft">
-        <label className="relative min-w-[12rem] flex-1">
-          <span className="sr-only">Search growth workspace</span>
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fix-text-muted"
-            aria-hidden
-          />
-          <input
-            type="search"
-            disabled
-            placeholder="Search contacts, campaigns, funnels…"
-            className="w-full rounded-full border border-fix-border/15 bg-fix-bg-muted/40 py-2 pl-9 pr-4 text-sm text-fix-text-muted"
-          />
-        </label>
+        <GrowthWorkspaceSearch />
         <div className="flex items-center gap-2">
           <Link
             href="/account/growth"

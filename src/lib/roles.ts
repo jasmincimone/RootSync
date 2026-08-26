@@ -35,12 +35,13 @@ export const OFFERING_STATUS = {
 
 export type OfferingStatus = (typeof OFFERING_STATUS)[keyof typeof OFFERING_STATUS];
 
-/** Public listing types — Product, Service, Resource, Event */
+/** Public listing types — Product, Service, Resource, Event, Donation */
 export const LISTING_TYPE = {
   PRODUCT: "PRODUCT",
   SERVICE: "SERVICE",
   RESOURCE: "RESOURCE",
   EVENT: "EVENT",
+  DONATION: "DONATION",
 } as const;
 
 export type ListingType = (typeof LISTING_TYPE)[keyof typeof LISTING_TYPE];
@@ -62,6 +63,7 @@ export const ORDER_ITEM_TYPE = {
   SERVICE: "service",
   RESOURCE: "resource",
   EVENT: "event",
+  DONATION: "donation",
   /** In-person / counter POS sale */
   POS: "pos",
   /** @deprecated legacy shop catalog */
@@ -84,6 +86,8 @@ export function orderItemTypeForListingType(listingType: string): OrderItemType 
       return ORDER_ITEM_TYPE.RESOURCE;
     case LISTING_TYPE.EVENT:
       return ORDER_ITEM_TYPE.EVENT;
+    case LISTING_TYPE.DONATION:
+      return ORDER_ITEM_TYPE.DONATION;
     default:
       return ORDER_ITEM_TYPE.MARKETPLACE;
   }
@@ -103,6 +107,8 @@ export function orderItemTypeLabel(type: string): string {
       return "Service";
     case ORDER_ITEM_TYPE.EVENT:
       return "Event";
+    case ORDER_ITEM_TYPE.DONATION:
+      return "Donation";
     case ORDER_ITEM_TYPE.POS:
       return "In-person";
     case ORDER_ITEM_TYPE.MARKETPLACE:

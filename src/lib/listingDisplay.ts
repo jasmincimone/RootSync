@@ -6,6 +6,7 @@ const LABELS: Record<string, string> = {
   [LISTING_TYPE.SERVICE]: "Service",
   [LISTING_TYPE.RESOURCE]: "Resource",
   [LISTING_TYPE.EVENT]: "Event",
+  [LISTING_TYPE.DONATION]: "Donation",
 };
 
 export function listingTypeLabel(listingType: string): string {

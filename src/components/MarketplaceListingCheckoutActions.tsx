@@ -28,7 +28,13 @@ export function MarketplaceListingCheckoutActions({
   const baseHref = discoverListingPath({ id: listingId, publicSlug });
   const href = returnTo ? withDiscoverReturnTo(baseHref, returnTo) : baseHref;
 
-  const label = isService ? "Book now" : isEvent ? "Get tickets" : "Buy now";
+  const label = isService
+    ? "Book now"
+    : isEvent
+      ? "Get tickets"
+      : listingType === LISTING_TYPE.DONATION
+        ? "Donate"
+        : "Buy now";
 
   return (
     <ButtonLink

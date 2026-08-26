@@ -13,6 +13,7 @@ const emptyDetails: SerializedOfferingDetails = {
   service: null,
   resource: null,
   event: null,
+  donation: null,
 };
 
 type WizardStepKey = "basics" | "details" | "options" | "checkout" | "publish";

@@ -17,6 +17,7 @@ export const DISCOVER_TYPE_FILTERS: { value: "" | ListingType; label: string }[]
   { value: LISTING_TYPE.SERVICE, label: "Services" },
   { value: LISTING_TYPE.RESOURCE, label: "Resources" },
   { value: LISTING_TYPE.EVENT, label: "Events" },
+  { value: LISTING_TYPE.DONATION, label: "Donations" },
 ];
 
 /** Common browse categories — vendors may add custom categories on listings. */

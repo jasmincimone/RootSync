@@ -231,8 +231,27 @@ export function VendorOfferingForm({
   );
   const [eventMeetUrl, setEventMeetUrl] = useState(initial?.details.event?.meetUrl ?? "");
 
+  const [donationAllowsCustom, setDonationAllowsCustom] = useState(
+    initial?.details.donation?.allowsCustomAmount !== false,
+  );
+  const [donationMinDollars, setDonationMinDollars] = useState(
+    initial?.details.donation?.minAmountCents != null
+      ? (initial.details.donation.minAmountCents / 100).toFixed(2)
+      : "1.00",
+  );
+  const [donationMaxDollars, setDonationMaxDollars] = useState(
+    initial?.details.donation?.maxAmountCents != null
+      ? (initial.details.donation.maxAmountCents / 100).toFixed(2)
+      : "",
+  );
+  const [donationThankYou, setDonationThankYou] = useState(
+    initial?.details.donation?.thankYouMessage ?? "",
+  );
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showVariantValidation, setShowVariantValidation] = useState(false);
+  const feedbackRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -283,6 +302,21 @@ export function VendorOfferingForm({
         },
       };
     }
+    if (listingType === LISTING_TYPE.DONATION) {
+      const minRaw = Number.parseFloat(donationMinDollars || "1");
+      const maxRaw = donationMaxDollars.trim()
+        ? Number.parseFloat(donationMaxDollars)
+        : null;
+      return {
+        donation: {
+          allowsCustomAmount: donationAllowsCustom,
+          minAmountCents: Math.max(50, Math.round((Number.isFinite(minRaw) ? minRaw : 1) * 100)),
+          maxAmountCents:
+            maxRaw != null && Number.isFinite(maxRaw) ? Math.round(maxRaw * 100) : null,
+          thankYouMessage: donationThankYou.trim() || null,
+        },
+      };
+    }
     return {
       event: {
         startsAt: fromDatetimeLocalValue(eventStartsAt),
@@ -316,6 +350,7 @@ export function VendorOfferingForm({
     const statusForSave = resolveStatusForSave();
     setError(null);
     setSuccess(null);
+    setShowVariantValidation(false);
 
     const hasVariants = variantDrafts.length > 0;
     const cents = hasVariants
@@ -338,14 +373,46 @@ export function VendorOfferingForm({
     }
     if (hasVariants) {
       const payload = draftsToPayload(variantDrafts, listingType);
-      if (payload.length === 0 || payload.some((v) => !v.title || v.priceCents < 0)) {
-        setError("Each deal needs a title and price.");
+      const optionWord =
+        listingType === LISTING_TYPE.DONATION
+          ? "suggested amount"
+          : listingType === LISTING_TYPE.EVENT
+            ? "ticket tier"
+            : listingType === LISTING_TYPE.SERVICE
+              ? "service option"
+              : "deal";
+      const missingTitle = variantDrafts.some((v) => !v.title.trim());
+      const missingPrice = variantDrafts.some(
+        (v) => !v.priceDollars.trim() || Number.isNaN(Number.parseFloat(v.priceDollars)),
+      );
+      if (
+        payload.length === 0 ||
+        missingTitle ||
+        missingPrice ||
+        payload.some((v) => v.priceCents < 0 || Number.isNaN(v.priceCents))
+      ) {
+        setShowVariantValidation(true);
+        const optionsStep = wizardSteps.indexOf("options");
+        if (optionsStep >= 0) setStep(optionsStep);
+        if (missingTitle && missingPrice) {
+          setError(`Each ${optionWord} needs a title and price before you can save.`);
+        } else if (missingTitle) {
+          setError(`Add a title for each ${optionWord} before you can save.`);
+        } else {
+          setError(`Enter a valid price for each ${optionWord} before you can save.`);
+        }
+        requestAnimationFrame(() =>
+          feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+        );
         return;
       }
       if (
         listingType === LISTING_TYPE.PRODUCT &&
         payload.some((v) => !v.unitsIncluded || v.unitsIncluded < 1)
       ) {
+        setShowVariantValidation(true);
+        const optionsStep = wizardSteps.indexOf("options");
+        if (optionsStep >= 0) setStep(optionsStep);
         setError("Each deal needs at least 1 item included.");
         return;
       }
@@ -353,13 +420,19 @@ export function VendorOfferingForm({
         listingType === LISTING_TYPE.SERVICE &&
         payload.some((v) => !v.durationMinutes || v.durationMinutes <= 0)
       ) {
+        setShowVariantValidation(true);
+        const optionsStep = wizardSteps.indexOf("options");
+        if (optionsStep >= 0) setStep(optionsStep);
         setError("Each service option needs duration in minutes.");
         return;
       }
     }
 
-    const optionPayload = optionGroupDraftsToPayload(optionGroupDrafts);
-    if (optionGroupDrafts.length > 0) {
+    const optionPayload =
+      listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE
+        ? optionGroupDraftsToPayload(optionGroupDrafts)
+        : [];
+    if (optionPayload.length > 0) {
       if (optionPayload.some((g) => !g.name || g.values.length === 0)) {
         setError("Each option needs a name and at least one choice.");
         return;
@@ -587,7 +660,9 @@ export function VendorOfferingForm({
       </div>
 
       <form onSubmit={handleFormSubmit} className="space-y-4">
-        <FormFeedback success={success} error={error} />
+        <div ref={feedbackRef}>
+          <FormFeedback success={success} error={error} />
+        </div>
 
         {currentStepKey === "basics" ? (
         <FormSection title="Basics" description="Type, title, pricing, and image">
@@ -607,6 +682,9 @@ export function VendorOfferingForm({
             </option>
             <option value={LISTING_TYPE.RESOURCE}>Resource — ebooks, plans, templates</option>
             <option value={LISTING_TYPE.EVENT}>Event — you host at a set date and time</option>
+            <option value={LISTING_TYPE.DONATION}>
+              Donation — supporters choose or enter an amount
+            </option>
           </select>
           {listingType === LISTING_TYPE.EVENT || listingType === LISTING_TYPE.SERVICE ? (
             <div className="mt-2 rounded-xl border border-fix-border/15 bg-fix-bg-muted/40 p-4 text-xs text-fix-text-muted">
@@ -676,6 +754,11 @@ export function VendorOfferingForm({
           ) : listingType === LISTING_TYPE.RESOURCE ? (
             <p className="mt-1 text-xs text-fix-text-muted">
               Use $0 for a free download (no Stripe). Paid Resources still need Payment Hub setup.
+            </p>
+          ) : listingType === LISTING_TYPE.DONATION ? (
+            <p className="mt-1 text-xs text-fix-text-muted">
+              Starting / display amount. Add suggested amounts on the Options step, and set custom
+              amount rules on Details. Cover image works the same as other listings.
             </p>
           ) : null}
         </div>
@@ -1091,27 +1174,98 @@ export function VendorOfferingForm({
           </FormSection>
         ) : null}
 
+        {currentStepKey === "details" && listingType === LISTING_TYPE.DONATION ? (
+          <FormSection
+            title="Donation details"
+            description="Custom amounts and a short thank-you note"
+          >
+            <fieldset className="space-y-4">
+              <label className="flex items-start gap-2 text-sm text-fix-text">
+                <input
+                  type="checkbox"
+                  checked={donationAllowsCustom}
+                  onChange={(e) => setDonationAllowsCustom(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Allow custom amounts
+                  <span className="mt-0.5 block text-xs text-fix-text-muted">
+                    Supporters can type any amount within your min/max in addition to suggested
+                    options.
+                  </span>
+                </span>
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-fix-text">
+                    Minimum amount (USD)
+                  </label>
+                  <input
+                    type="number"
+                    min={0.5}
+                    step="0.01"
+                    value={donationMinDollars}
+                    onChange={(e) => setDonationMinDollars(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-fix-text">
+                    Maximum amount (USD, optional)
+                  </label>
+                  <input
+                    type="number"
+                    min={0.5}
+                    step="0.01"
+                    value={donationMaxDollars}
+                    onChange={(e) => setDonationMaxDollars(e.target.value)}
+                    placeholder="No maximum"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-fix-text">
+                  Thank-you message (optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={donationThankYou}
+                  onChange={(e) => setDonationThankYou(e.target.value)}
+                  placeholder="Shown near the donate button on your listing"
+                  className={inputClass}
+                />
+              </div>
+            </fieldset>
+          </FormSection>
+        ) : null}
+
         {currentStepKey === "options" ? (
           <FormSection
             title={
               listingType === LISTING_TYPE.EVENT
                 ? "Ticket tiers"
-                : listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE
-                  ? "Deals & item options"
-                  : "Deals & pricing"
+                : listingType === LISTING_TYPE.DONATION
+                  ? "Suggested amounts"
+                  : listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE
+                    ? "Deals & item options"
+                    : "Deals & pricing"
             }
             description={
               listingType === LISTING_TYPE.EVENT
                 ? "General Admission, VIP, Platinum — each with its own price"
-                : listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE
-                  ? "Add Deal 1, Deal 2… then item options underneath (Size, Color, Variety) for every item in a deal"
-                  : "Variations members can choose at checkout"
+                : listingType === LISTING_TYPE.DONATION
+                  ? "Preset amounts supporters can tap ($10, $25, $50…). Optional — custom amounts are configured on Details."
+                  : listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE
+                    ? "Add Deal 1, Deal 2… then item options underneath (Size, Color, Variety) for every item in a deal"
+                    : "Variations members can choose at checkout"
             }
             defaultOpen={
               variantDrafts.length > 0 ||
               optionGroupDrafts.length > 0 ||
               listingType === LISTING_TYPE.EVENT ||
-              listingType === LISTING_TYPE.PRODUCT
+              listingType === LISTING_TYPE.PRODUCT ||
+              listingType === LISTING_TYPE.DONATION
             }
           >
             <fieldset className="space-y-6">
@@ -1120,7 +1274,13 @@ export function VendorOfferingForm({
                 variants={variantDrafts}
                 onChange={setVariantDrafts}
                 disabled={saving}
+                showValidation={showVariantValidation}
               />
+              {showVariantValidation && error ? (
+                <p className="text-xs text-red-700" role="alert">
+                  {error}
+                </p>
+              ) : null}
               {listingType === LISTING_TYPE.PRODUCT || listingType === LISTING_TYPE.RESOURCE ? (
                 <div className="border-t border-fix-border/15 pt-6">
                   <OfferingOptionGroupsEditor
@@ -1148,9 +1308,9 @@ export function VendorOfferingForm({
             className={inputClass}
           />
           <p className="mt-1 text-xs text-fix-text-muted">
-            Use this when you want payment handled on another website. A payment link set here sends
-            shoppers there instead of RootSync checkout for this listing. Leave it blank to keep the
-            RootSync cart, booking, shipping, and order experience.
+            {listingType === LISTING_TYPE.DONATION
+              ? "Optional external donate page (GoFundMe, Stripe Payment Link, etc.). When set, supporters use that link instead of RootSync checkout."
+              : "Use this when you want payment handled on another website. A payment link set here sends shoppers there instead of RootSync checkout for this listing. Leave it blank to keep the RootSync cart, booking, shipping, and order experience."}
           </p>
         </div>
 
@@ -1225,39 +1385,42 @@ export function VendorOfferingForm({
         </FormSection>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-fix-border/15 pt-4">
-          {step > 0 ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={saving || deleting}
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-            >
-              Back
-            </Button>
-          ) : null}
-          {step < lastStepIndex ? (
-            <Button
-              type="button"
-              variant="cta"
-              size="sm"
-              disabled={saving || deleting}
-              onClick={() => setStep((s) => Math.min(lastStepIndex, s + 1))}
-            >
-              Next
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              disabled={saving || deleting || !!success}
-              variant="cta"
-              size="sm"
-              onClick={() => void submit()}
-            >
-              {saving ? "Saving…" : mode === "create" ? "Create offering" : "Save changes"}
-            </Button>
-          )}
+        <div className="space-y-2 border-t border-fix-border/15 pt-4">
+          <FormFeedback success={success} error={error} />
+          <div className="flex flex-wrap items-center gap-2">
+            {step > 0 ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={saving || deleting}
+                onClick={() => setStep((s) => Math.max(0, s - 1))}
+              >
+                Back
+              </Button>
+            ) : null}
+            {step < lastStepIndex ? (
+              <Button
+                type="button"
+                variant="cta"
+                size="sm"
+                disabled={saving || deleting}
+                onClick={() => setStep((s) => Math.min(lastStepIndex, s + 1))}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                disabled={saving || deleting || !!success}
+                variant="cta"
+                size="sm"
+                onClick={() => void submit()}
+              >
+                {saving ? "Saving…" : mode === "create" ? "Create offering" : "Save changes"}
+              </Button>
+            )}
+          </div>
         </div>
       </form>
 

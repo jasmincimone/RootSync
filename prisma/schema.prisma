@@ -276,7 +276,7 @@ model Offering {
   id                 String    @id @default(cuid())
   vendorProfileId    String
   vendorProfile      VendorProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
-  /// PRODUCT | SERVICE | RESOURCE | EVENT — see src/lib/roles.ts LISTING_TYPE
+  /// PRODUCT | SERVICE | RESOURCE | EVENT | DONATION — see src/lib/roles.ts LISTING_TYPE
   listingType        String    @default("PRODUCT")
   /// DRAFT | SCHEDULED | ACTIVE | PAUSED | ARCHIVED — see OFFERING_STATUS
   status             String    @default("DRAFT")
@@ -303,6 +303,7 @@ model Offering {
   serviceDetails     ServiceDetails?
   resourceDetails    ResourceDetails?
   eventDetails       EventDetails?
+  donationDetails    DonationDetails?
   availabilityRules  ServiceAvailabilityRule[]
   intakeQuestions    ServiceIntakeQuestion[]
   bookings           Booking[]
@@ -382,6 +383,18 @@ model ResourceDetails {
   resourceSubtype String?
   format          String?
   fileUrl         String?
+}
+
+model DonationDetails {
+  offeringId         String   @id
+  offering           Offering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  /// When true, buyers can type a custom amount in addition to suggested options.
+  allowsCustomAmount Boolean  @default(true)
+  /// Minimum custom / checkout amount in cents (Stripe floor is 50).
+  minAmountCents     Int      @default(100)
+  /// Optional cap for custom amounts; null = no max.
+  maxAmountCents     Int?
+  thankYouMessage    String?
 }
 
 model EventDetails {

@@ -53,6 +53,12 @@ type Props = {
   pickupLocation?: string | null;
   shippingFlatCents?: number | null;
   compact?: boolean;
+  donation?: {
+    allowsCustomAmount: boolean;
+    minAmountCents: number;
+    maxAmountCents: number | null;
+    thankYouMessage?: string | null;
+  } | null;
 };
 
 const secondaryCheckoutClass =
@@ -80,6 +86,7 @@ export function MarketplaceListingPurchase({
   pickupLocation = null,
   shippingFlatCents = null,
   compact = false,
+  donation = null,
 }: Props) {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     variants[0]?.id ?? null,
@@ -91,11 +98,15 @@ export function MarketplaceListingPurchase({
   const [cartError, setCartError] = useState<string | null>(null);
   const [fulfillmentMode, setFulfillmentMode] = useState<CheckoutFulfillmentMode | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [customAmountDollars, setCustomAmountDollars] = useState("");
+  // Custom amount is the primary control; suggested presets are optional shortcuts.
+  const [amountMode, setAmountMode] = useState<"preset" | "custom">("custom");
 
   const isService = listingType === LISTING_TYPE.SERVICE;
   const isEvent = listingType === LISTING_TYPE.EVENT;
   const isResource = listingType === LISTING_TYPE.RESOURCE;
-  const needsVariant = variants.length > 0;
+  const isDonation = listingType === LISTING_TYPE.DONATION;
+  const needsVariant = !isDonation && variants.length > 0;
   const selectedVariant = selectedVariantId
     ? variants.find((variant) => variant.id === selectedVariantId)
     : null;
@@ -135,12 +146,34 @@ export function MarketplaceListingPurchase({
           (g) => !row.choices.some((c) => c.groupId === g.id && c.valueId),
         ),
       ));
-  const checkoutBlocked = variantBlocked || optionsIncomplete;
   const checkoutUnavailable = !hasStripeCheckout && !hasPaymentLink;
+  const donationMinCents = Math.max(50, donation?.minAmountCents ?? 100);
+  const donationMaxCents = donation?.maxAmountCents ?? null;
+  const allowsCustomDonation = donation?.allowsCustomAmount !== false;
+  const customAmountCents = (() => {
+    const n = Number.parseFloat(customAmountDollars);
+    if (!Number.isFinite(n)) return null;
+    return Math.round(n * 100);
+  })();
+  const donationAmountCents = (() => {
+    if (!isDonation) return null;
+    if (amountMode === "custom" || variants.length === 0) return customAmountCents;
+    return selectedVariant?.priceCents ?? null;
+  })();
+  const donationAmountInvalid =
+    isDonation &&
+    (donationAmountCents == null ||
+      donationAmountCents < donationMinCents ||
+      (donationMaxCents != null && donationAmountCents > donationMaxCents));
+  const checkoutBlocked =
+    (!isDonation && (variantBlocked || optionsIncomplete)) ||
+    (isDonation && donationAmountInvalid);
+
   const canAddToCart =
     hasStripeCheckout &&
     !isService &&
     !isEvent &&
+    !isDonation &&
     !isFreeResource &&
     !soldOut &&
     !checkoutBlocked;
@@ -247,20 +280,28 @@ export function MarketplaceListingPurchase({
       );
     }
 
-    const buyLabel = isEvent ? "Get tickets" : "Buy now";
-    const linkLabel = isEvent ? "Vendor ticket link" : "Vendor checkout";
+    const buyLabel = isDonation ? "Donate" : isEvent ? "Get tickets" : "Buy now";
+    const linkLabel = isDonation
+      ? "External donate link"
+      : isEvent
+        ? "Vendor ticket link"
+        : "Vendor checkout";
     const buyNowProps = {
       listingId,
-      variantId: selectedVariantId,
-      unitSelections: optionGroups.length > 0 ? unitSelections : null,
+      variantId:
+        isDonation && (amountMode === "custom" || variants.length === 0)
+          ? null
+          : selectedVariantId,
+      unitSelections: isDonation || optionGroups.length === 0 ? null : unitSelections,
       size: (compact ? "sm" : "md") as "sm" | "md",
       fullWidth: compact,
-      disabled: checkoutBlocked,
+      disabled: checkoutBlocked || (isDonation && donationAmountInvalid),
       label: buyLabel,
-      quantity,
+      quantity: isDonation ? 1 : quantity,
       vendorDisplayName,
       fulfillmentMode: isPhysicalProduct && !offersLocalPickup ? "ship" : fulfillmentMode,
       requiresFulfillmentChoice: isPhysicalProduct && hasStripeCheckout && offersLocalPickup,
+      amountCents: isDonation ? donationAmountCents : null,
     };
     const addToCartButton = canAddToCart ? (
       <Button
@@ -348,10 +389,80 @@ export function MarketplaceListingPurchase({
     );
   }
 
-  const showConfigurator = needsVariant || optionGroups.length > 0;
+  const showConfigurator = !isDonation && (needsVariant || optionGroups.length > 0);
 
   return (
     <div className={compact ? "flex flex-col gap-3" : "flex flex-col gap-4"}>
+      {isDonation ? (
+        <div className="space-y-3">
+          {allowsCustomDonation ? (
+            <div>
+              <label className="block text-sm font-medium text-fix-heading" htmlFor={`donate-${listingId}`}>
+                Donation amount
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-sm text-fix-text-muted">$</span>
+                <input
+                  id={`donate-${listingId}`}
+                  type="number"
+                  min={(donationMinCents / 100).toFixed(2)}
+                  max={donationMaxCents != null ? (donationMaxCents / 100).toFixed(2) : undefined}
+                  step="0.01"
+                  inputMode="decimal"
+                  placeholder={(donationMinCents / 100).toFixed(2)}
+                  value={customAmountDollars}
+                  onChange={(e) => {
+                    setAmountMode("custom");
+                    setCustomAmountDollars(e.target.value);
+                  }}
+                  onFocus={() => setAmountMode("custom")}
+                  className="w-full max-w-[10rem] rounded-lg border border-fix-border/25 bg-fix-surface px-3 py-2 text-sm text-fix-heading"
+                />
+              </div>
+              <p className="mt-1 text-xs text-fix-text-muted">
+                Minimum {formatPrice(donationMinCents)}
+                {donationMaxCents != null ? ` · Maximum ${formatPrice(donationMaxCents)}` : ""}
+              </p>
+            </div>
+          ) : null}
+          {variants.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-fix-heading">
+                {allowsCustomDonation ? "Suggested amounts" : "Choose an amount"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {variants.map((variant) => {
+                  const selected = amountMode === "preset" && selectedVariantId === variant.id;
+                  return (
+                    <button
+                      key={variant.id}
+                      type="button"
+                      onClick={() => {
+                        setAmountMode("preset");
+                        setSelectedVariantId(variant.id);
+                        setCustomAmountDollars((variant.priceCents / 100).toFixed(2));
+                      }}
+                      className={
+                        selected
+                          ? "rounded-full bg-forest px-4 py-2 text-sm font-medium text-fix-primary-foreground"
+                          : "rounded-full border border-fix-border/25 bg-fix-surface px-4 py-2 text-sm font-medium text-fix-heading hover:bg-fix-bg-muted"
+                      }
+                    >
+                      {variant.title?.trim()
+                        ? `${variant.title} · ${formatPrice(variant.priceCents)}`
+                        : formatPrice(variant.priceCents)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          {donation?.thankYouMessage?.trim() ? (
+            <p className="text-sm text-fix-text-muted">{donation.thankYouMessage.trim()}</p>
+          ) : null}
+        </div>
+      ) : null}
+
       {showConfigurator ? (
         <ListingDealConfigurator
           deals={variants}

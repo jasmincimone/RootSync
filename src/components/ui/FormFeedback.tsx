@@ -20,7 +20,7 @@ export function FormFeedback({
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-bark" role="alert">
+        <p className="text-xs text-red-700" role="alert">
           {error}
         </p>
       ) : null}

@@ -1,3 +1,7 @@
+import {
+  DONATION_STRIPE_MIN_CENTS,
+  resolveDonationCheckoutAmountCents,
+} from "@/lib/donationCheckout";
 import { prisma } from "@/lib/prisma";
 import { LISTING_TYPE, ORDER_ITEM_TYPE, orderItemTypeForListingType } from "@/lib/roles";
 import { publicListingWhere } from "@/lib/offeringListing";
@@ -82,6 +86,11 @@ export type MarketplaceListingCheckout = {
     eventDetails: {
       capacity: number | null;
     } | null;
+    donationDetails: {
+      allowsCustomAmount: boolean;
+      minAmountCents: number;
+      maxAmountCents: number | null;
+    } | null;
   };
 };
 
@@ -92,7 +101,7 @@ export async function loadListingForCheckout(
     where: {
       id: listingId,
       ...publicListingWhere,
-      priceCents: { gt: 0 },
+      OR: [{ priceCents: { gt: 0 } }, { listingType: LISTING_TYPE.DONATION }],
     },
     select: {
       id: true,
@@ -160,6 +169,13 @@ export async function loadListingForCheckout(
             },
           },
           eventDetails: { select: { capacity: true } },
+          donationDetails: {
+            select: {
+              allowsCustomAmount: true,
+              minAmountCents: true,
+              maxAmountCents: true,
+            },
+          },
         },
       },
     },
@@ -263,8 +279,11 @@ export async function createMarketplaceListingCheckout(args: {
   fulfillmentMode?: CheckoutFulfillmentMode | null;
   campaignToken?: string | null;
   marketingOptIn?: boolean;
+  /** Buyer-entered donation amount in cents (DONATION listings only). */
+  amountCents?: number | null;
 }): Promise<{ url: string; orderId: string }> {
-  const { listing, quantity, email, userId, origin } = args;
+  const { listing, email, userId, origin } = args;
+  const quantity = listing.listingType === LISTING_TYPE.DONATION ? 1 : args.quantity;
   const needsShipping = listingRequiresShipping(listing);
   const offersPickup = listingCheckoutOffersPickup(listing);
   const fulfillmentMode = resolveShippingFulfillmentMode({
@@ -273,20 +292,33 @@ export async function createMarketplaceListingCheckout(args: {
     fulfillmentMode: args.fulfillmentMode,
   });
   const variant = await resolveOfferingVariant(listing.offeringId, args.variantId);
-  const unitsIncluded = variant?.unitsIncluded ?? 1;
-  const optionGroups = serializeOfferingOptionGroups(listing.offering.optionGroups ?? []);
+  const unitsIncluded =
+    listing.listingType === LISTING_TYPE.DONATION ? 1 : (variant?.unitsIncluded ?? 1);
+  const optionGroups =
+    listing.listingType === LISTING_TYPE.DONATION
+      ? []
+      : serializeOfferingOptionGroups(listing.offering.optionGroups ?? []);
   let unitSelections: UnitSelectionSnapshot[] | null = null;
   try {
     unitSelections = validateAndSnapshotUnitSelections({
       unitsIncluded,
       optionGroups,
-      raw: args.unitSelections,
+      raw: listing.listingType === LISTING_TYPE.DONATION ? null : args.unitSelections,
     });
   } catch (e) {
     throw e instanceof Error ? e : new Error("Invalid option selections.");
   }
 
-  const unitPriceCents = variant?.priceCents ?? listing.priceCents;
+  const unitPriceCents = resolveDonationCheckoutAmountCents({
+    listingType: listing.listingType,
+    listingPriceCents: listing.priceCents,
+    variantPriceCents: variant?.priceCents ?? null,
+    amountCents: args.amountCents ?? null,
+    rules: listing.offering.donationDetails,
+  });
+  if (unitPriceCents < DONATION_STRIPE_MIN_CENTS) {
+    throw new Error("Amount must be at least $0.50.");
+  }
   const lineName = variant ? `${listing.title} — ${variant.title}` : listing.title;
   const selectionSummary = formatUnitSelectionsSummary(unitSelections);
   const subtotalCents = unitPriceCents * quantity;
@@ -461,10 +493,13 @@ async function prepareCartLine(item: MarketplaceCartCheckoutItem): Promise<Prepa
 
   if (
     listing.listingType === LISTING_TYPE.SERVICE ||
-    listing.listingType === LISTING_TYPE.EVENT
+    listing.listingType === LISTING_TYPE.EVENT ||
+    listing.listingType === LISTING_TYPE.DONATION
   ) {
     throw new Error(
-      `${listing.title} can’t go in the cart — book or buy tickets from the listing page.`,
+      listing.listingType === LISTING_TYPE.DONATION
+        ? `${listing.title} can’t go in the cart — donate from the listing page.`
+        : `${listing.title} can’t go in the cart — book or buy tickets from the listing page.`,
     );
   }
 

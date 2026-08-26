@@ -94,6 +94,8 @@ type Props = {
   variants: VariantDraft[];
   onChange: (variants: VariantDraft[]) => void;
   disabled?: boolean;
+  /** When set, highlight invalid rows (e.g. after a failed save). */
+  showValidation?: boolean;
 };
 
 function optionsHelp(listingType: string): { heading: string; body: string; empty: string; titlePh: string } {
@@ -124,6 +126,15 @@ function optionsHelp(listingType: string): { heading: string; body: string; empt
       titlePh: "e.g. Seed Session",
     };
   }
+  if (listingType === LISTING_TYPE.DONATION) {
+    return {
+      heading: "Suggested amounts",
+      body: "Add preset donation amounts shoppers can tap (for example $10, $25, $50). They can still type a custom amount if you allow it on the Details step.",
+      empty:
+        "No suggested amounts yet — shoppers can use a custom amount (if enabled) or the base amount on Basics.",
+      titlePh: "e.g. Support $25",
+    };
+  }
   return {
     heading: "Options & variations",
     body: "One offering, multiple choices — each with its own name and price. Shared description and image apply to all.",
@@ -132,12 +143,19 @@ function optionsHelp(listingType: string): { heading: string; body: string; empt
   };
 }
 
-export function OfferingVariantEditor({ listingType, variants, onChange, disabled }: Props) {
+export function OfferingVariantEditor({
+  listingType,
+  variants,
+  onChange,
+  disabled,
+  showValidation = false,
+}: Props) {
   const showDuration = listingType === LISTING_TYPE.SERVICE;
   const showSku = listingType === LISTING_TYPE.PRODUCT;
   const isEvent = listingType === LISTING_TYPE.EVENT;
+  const isDonation = listingType === LISTING_TYPE.DONATION;
   const help = optionsHelp(listingType);
-  const rowLabel = isEvent ? "Ticket" : showSku ? "Deal" : "Option";
+  const rowLabel = isEvent ? "Ticket" : isDonation ? "Amount" : showSku ? "Deal" : "Option";
 
   return (
     <div className="space-y-3">
@@ -212,7 +230,13 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                   }
                   placeholder={help.titlePh}
                   className={inputClass}
+                  aria-invalid={showValidation && !v.title.trim()}
                 />
+                {showValidation && !v.title.trim() ? (
+                  <p className="mt-1 text-xs text-red-700">
+                    Add a title for this {rowLabel.toLowerCase()}.
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -233,7 +257,15 @@ export function OfferingVariantEditor({ listingType, variants, onChange, disable
                       )
                     }
                     className={inputClass}
+                    aria-invalid={
+                      showValidation &&
+                      (!v.priceDollars.trim() || Number.isNaN(Number.parseFloat(v.priceDollars)))
+                    }
                   />
+                  {showValidation &&
+                  (!v.priceDollars.trim() || Number.isNaN(Number.parseFloat(v.priceDollars))) ? (
+                    <p className="mt-1 text-xs text-red-700">Enter a valid price.</p>
+                  ) : null}
                 </div>
                 {showSku ? (
                   <div>

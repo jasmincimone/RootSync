@@ -58,11 +58,19 @@ export type EventDetailsInput = {
   googleCalendarEventId?: string | null;
 };
 
+export type DonationDetailsInput = {
+  allowsCustomAmount?: boolean;
+  minAmountCents?: number | null;
+  maxAmountCents?: number | null;
+  thankYouMessage?: string | null;
+};
+
 export type OfferingDetailsPayload = {
   product?: ProductDetailsInput;
   service?: ServiceDetailsInput;
   resource?: ResourceDetailsInput;
   event?: EventDetailsInput;
+  donation?: DonationDetailsInput;
 };
 
 export function assertPublishableOfferingDetails(args: {
@@ -92,6 +100,22 @@ export function assertPublishableOfferingDetails(args: {
   if (args.listingType === LISTING_TYPE.RESOURCE) {
     if (!args.details.resource?.fileUrl?.trim()) {
       throw new Error("Upload the Resource file before publishing.");
+    }
+    return;
+  }
+
+  if (args.listingType === LISTING_TYPE.DONATION) {
+    const donation = args.details.donation;
+    const min = Math.max(50, donation?.minAmountCents ?? 100);
+    const max = donation?.maxAmountCents ?? null;
+    if (max != null && max < min) {
+      throw new Error("Maximum donation must be greater than or equal to the minimum.");
+    }
+    if (
+      donation?.allowsCustomAmount === false &&
+      (typeof args.priceCents !== "number" || args.priceCents < 50)
+    ) {
+      throw new Error("Add suggested donation amounts on the Options step before publishing.");
     }
     return;
   }
@@ -126,6 +150,7 @@ export type SerializedOfferingDetails = {
   service: ServiceDetailsInput | null;
   resource: ResourceDetailsInput | null;
   event: EventDetailsInput | null;
+  donation: DonationDetailsInput | null;
 };
 
 function parseOptionalInt(value: unknown): number | null | undefined {
@@ -244,6 +269,24 @@ export function parseOfferingDetailsFromBody(
     };
   }
 
+  if (listingType === LISTING_TYPE.DONATION) {
+    const donation = (raw.donation ?? raw) as Record<string, unknown>;
+    return {
+      donation: {
+        ...(typeof donation.allowsCustomAmount === "boolean"
+          ? { allowsCustomAmount: donation.allowsCustomAmount }
+          : {}),
+        ...(donation.minAmountCents !== undefined || "minAmountCents" in donation
+          ? { minAmountCents: parseOptionalInt(donation.minAmountCents) ?? 100 }
+          : {}),
+        ...(donation.maxAmountCents !== undefined || "maxAmountCents" in donation
+          ? { maxAmountCents: parseOptionalInt(donation.maxAmountCents) ?? null }
+          : {}),
+        thankYouMessage: parseOptionalString(donation.thankYouMessage),
+      },
+    };
+  }
+
   const event = (raw.event ?? raw) as Record<string, unknown>;
   const startsAt = parseOptionalDate(event.startsAt, "start date");
   const endsAt = parseOptionalDate(event.endsAt, "end date");
@@ -317,6 +360,12 @@ export function serializeOfferingDetails(
       meetUrl: string | null;
       googleCalendarEventId: string | null;
     } | null;
+    donationDetails: {
+      allowsCustomAmount: boolean;
+      minAmountCents: number;
+      maxAmountCents: number | null;
+      thankYouMessage: string | null;
+    } | null;
   },
 ): SerializedOfferingDetails {
   return {
@@ -361,6 +410,14 @@ export function serializeOfferingDetails(
           googleCalendarEventId: offering.eventDetails.googleCalendarEventId,
         }
       : null,
+    donation: offering.donationDetails
+      ? {
+          allowsCustomAmount: offering.donationDetails.allowsCustomAmount,
+          minAmountCents: offering.donationDetails.minAmountCents,
+          maxAmountCents: offering.donationDetails.maxAmountCents,
+          thankYouMessage: offering.donationDetails.thankYouMessage,
+        }
+      : null,
   };
 }
 
@@ -370,6 +427,7 @@ export const vendorOfferingInclude = {
   serviceDetails: true,
   resourceDetails: true,
   eventDetails: true,
+  donationDetails: true,
   availabilityRules: {
     orderBy: [{ dayOfWeek: "asc" as const }, { startMinutes: "asc" as const }],
   },
@@ -405,6 +463,9 @@ async function deleteDetailForType(
       break;
     case LISTING_TYPE.EVENT:
       await tx.eventDetails.deleteMany({ where: { offeringId } });
+      break;
+    case LISTING_TYPE.DONATION:
+      await tx.donationDetails.deleteMany({ where: { offeringId } });
       break;
   }
 }
@@ -466,6 +527,17 @@ async function createDetailForType(
           externalJoinUrl: details?.event?.externalJoinUrl ?? null,
           meetUrl: details?.event?.meetUrl ?? null,
           googleCalendarEventId: details?.event?.googleCalendarEventId ?? null,
+        },
+      });
+      break;
+    case LISTING_TYPE.DONATION:
+      await tx.donationDetails.create({
+        data: {
+          offeringId,
+          allowsCustomAmount: details?.donation?.allowsCustomAmount ?? true,
+          minAmountCents: Math.max(50, details?.donation?.minAmountCents ?? 100),
+          maxAmountCents: details?.donation?.maxAmountCents ?? null,
+          thankYouMessage: details?.donation?.thankYouMessage ?? null,
         },
       });
       break;
@@ -605,6 +677,33 @@ export async function upsertOfferingDetails(
           ...(details.event.meetUrl !== undefined ? { meetUrl: details.event.meetUrl } : {}),
           ...(details.event.googleCalendarEventId !== undefined
             ? { googleCalendarEventId: details.event.googleCalendarEventId }
+            : {}),
+        },
+      });
+      break;
+    case LISTING_TYPE.DONATION:
+      if (!details.donation) return;
+      await tx.donationDetails.upsert({
+        where: { offeringId },
+        create: {
+          offeringId,
+          allowsCustomAmount: details.donation.allowsCustomAmount ?? true,
+          minAmountCents: Math.max(50, details.donation.minAmountCents ?? 100),
+          maxAmountCents: details.donation.maxAmountCents ?? null,
+          thankYouMessage: details.donation.thankYouMessage ?? null,
+        },
+        update: {
+          ...(details.donation.allowsCustomAmount !== undefined
+            ? { allowsCustomAmount: details.donation.allowsCustomAmount }
+            : {}),
+          ...(details.donation.minAmountCents !== undefined
+            ? { minAmountCents: Math.max(50, details.donation.minAmountCents ?? 100) }
+            : {}),
+          ...(details.donation.maxAmountCents !== undefined
+            ? { maxAmountCents: details.donation.maxAmountCents }
+            : {}),
+          ...(details.donation.thankYouMessage !== undefined
+            ? { thankYouMessage: details.donation.thankYouMessage }
             : {}),
         },
       });

@@ -1,8 +1,9 @@
-import { BookOpen, Calendar, MapPin, Package, Sparkles, Users } from "lucide-react";
+import { BookOpen, Calendar, Heart, MapPin, Package, Sparkles, Users } from "lucide-react";
 
 import { Card } from "@/components/ui/Card";
 import { resourceSubtypeLabel } from "@/config/resourceSubtypes";
 import { formatFlatShippingLabel } from "@/lib/checkoutFulfillment";
+import { formatPrice } from "@/lib/format";
 import { listingDisplayPrice, listingTypeLabel } from "@/lib/listingDisplay";
 import { LISTING_TYPE, EVENT_ATTENDANCE_MODE, type EventAttendanceMode, type FulfillmentMethod, type ServiceKind } from "@/lib/roles";
 
@@ -78,6 +79,12 @@ type ListingDetailPanelsProps = {
     externalJoinUrl: string | null;
     meetUrl: string | null;
   } | null;
+  donation?: {
+    allowsCustomAmount: boolean;
+    minAmountCents: number;
+    maxAmountCents: number | null;
+    thankYouMessage?: string | null;
+  } | null;
   /** Resolved ship rate (listing override or vendor default) for display */
   effectiveShippingFlatCents?: number | null;
   /** When false, do not promise RootSync post-purchase join emails. */
@@ -96,6 +103,12 @@ export function ListingDetailHighlights({
   const subtypeLabel = resource ? resourceSubtypeLabel(resource.resourceSubtype) : null;
   const showShippingCost =
     listingType === LISTING_TYPE.PRODUCT && product?.requiresShipping;
+  const priceLabel =
+    listingType === LISTING_TYPE.DONATION
+      ? variantCount > 0 || priceCents > 0
+        ? `From ${formatPrice(Math.max(priceCents, 0))}`
+        : "Choose an amount"
+      : listingDisplayPrice(priceCents, variantCount);
 
   return (
     <div className="space-y-2">
@@ -110,7 +123,7 @@ export function ListingDetailHighlights({
           </span>
         ) : null}
         <span className="ml-auto text-lg font-semibold text-fix-heading sm:text-xl">
-          {listingDisplayPrice(priceCents, variantCount)}
+          {priceLabel}
         </span>
       </div>
       {showShippingCost ? (
@@ -129,9 +142,38 @@ export function ListingTypeDetailCard({
   service,
   resource,
   event,
+  donation = null,
   effectiveShippingFlatCents = null,
   rootSyncCheckoutReady = true,
 }: Omit<ListingDetailPanelsProps, "priceCents" | "variantCount">) {
+  if (listingType === LISTING_TYPE.DONATION) {
+    return (
+      <Card className="overflow-hidden border-fix-border/15 p-0">
+        <div className="border-b border-fix-border/15 bg-fix-bg-muted/50 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <Heart className="h-5 w-5 text-fix-link" aria-hidden />
+            <h2 className="text-sm font-semibold text-fix-heading">Donation</h2>
+          </div>
+          <p className="mt-1 text-sm text-fix-text-muted">
+            Support this vendor with a suggested amount or an amount you choose.
+          </p>
+        </div>
+        <dl className="px-5 py-1">
+          <DetailRow
+            label="Custom amounts"
+            value={donation?.allowsCustomAmount === false ? "Suggested amounts only" : "Allowed"}
+          />
+          {donation?.minAmountCents != null ? (
+            <DetailRow label="Minimum" value={formatPrice(donation.minAmountCents)} />
+          ) : null}
+          {donation?.maxAmountCents != null ? (
+            <DetailRow label="Maximum" value={formatPrice(donation.maxAmountCents)} />
+          ) : null}
+        </dl>
+      </Card>
+    );
+  }
+
   if (listingType === LISTING_TYPE.RESOURCE && resource) {
     const subtype = resourceSubtypeLabel(resource.resourceSubtype);
     return (

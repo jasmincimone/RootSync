@@ -50,6 +50,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const rawVariantId = body.variantId;
     const variantId = typeof rawVariantId === "string" ? rawVariantId.trim() : "";
     const unitSelections = body.unitSelections;
+    const amountCentsRaw = body.amountCents;
+    const amountCents =
+      typeof amountCentsRaw === "number"
+        ? amountCentsRaw
+        : typeof amountCentsRaw === "string"
+          ? Number.parseInt(amountCentsRaw, 10)
+          : null;
 
     const listing = await loadListingForCheckout(listingId);
     if (!listing) {
@@ -72,6 +79,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       fulfillmentMode: parseCheckoutFulfillmentMode(body.fulfillmentMode),
       campaignToken: campaignTokenFromRequest(request),
       marketingOptIn,
+      amountCents: Number.isFinite(amountCents) ? amountCents : null,
     });
 
     return NextResponse.json(result);
