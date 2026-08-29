@@ -20,11 +20,45 @@ export const FUNNEL_PAGE_COLORS = [
   { label: "Espresso", value: "#342a0f" },
 ] as const;
 
-export const FUNNEL_SECTION_KINDS = ["hero", "body", "cta", "band"] as const;
+export const FUNNEL_SECTION_KINDS = [
+  "hero",
+  "body",
+  "band",
+  "cta",
+  "imageText",
+  "quote",
+  "faq",
+] as const;
 export type FunnelSectionKind = (typeof FUNNEL_SECTION_KINDS)[number];
 
 export const FUNNEL_SECTION_SHAPES = ["none", "rounded", "pill", "split"] as const;
 export type FunnelSectionShape = (typeof FUNNEL_SECTION_SHAPES)[number];
+
+/** Design-system-safe page background gradients (preset ids stored on theme). */
+export const FUNNEL_PAGE_GRADIENTS = [
+  {
+    id: "cream-sage",
+    label: "Cream → Sage",
+    css: "linear-gradient(180deg, #F8F4EE 0%, #e4ead9 100%)",
+  },
+  {
+    id: "white-cream",
+    label: "Soft white",
+    css: "linear-gradient(180deg, #FFFFFF 0%, #F8F4EE 100%)",
+  },
+  {
+    id: "forest-sage",
+    label: "Forest fade",
+    css: "linear-gradient(135deg, #044730 0%, #7A8B63 100%)",
+  },
+  {
+    id: "terracotta-gold",
+    label: "Terracotta glow",
+    css: "linear-gradient(135deg, #B55A30 0%, #B8895F 100%)",
+  },
+] as const;
+
+export type FunnelPageGradientId = (typeof FUNNEL_PAGE_GRADIENTS)[number]["id"];
 
 export type FunnelPageSection = {
   id: string;
@@ -42,6 +76,8 @@ export type FunnelPageTheme = {
   accent: string;
   /** Optional full-bleed cover behind page content (solid `background` still shows while loading / as fallback). */
   backgroundImageUrl?: string | null;
+  /** Optional preset gradient layered under the background image. */
+  backgroundGradient?: FunnelPageGradientId | null;
 };
 
 export type FunnelPageContent = {
@@ -107,6 +143,40 @@ function allowedShape(value: unknown): FunnelSectionShape {
   return FUNNEL_SECTION_SHAPES.includes(value as FunnelSectionShape)
     ? (value as FunnelSectionShape)
     : "none";
+}
+
+function allowedGradient(value: unknown): FunnelPageGradientId | null {
+  if (typeof value !== "string" || !value) return null;
+  return FUNNEL_PAGE_GRADIENTS.some((g) => g.id === value) ? (value as FunnelPageGradientId) : null;
+}
+
+export function resolveFunnelPageBackgroundStyle(theme: FunnelPageTheme): {
+  backgroundColor: string;
+  backgroundImage?: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
+  backgroundRepeat?: string;
+} {
+  const gradient = FUNNEL_PAGE_GRADIENTS.find((g) => g.id === theme.backgroundGradient);
+  const layers: string[] = [];
+  if (theme.backgroundImageUrl) layers.push(`url(${theme.backgroundImageUrl})`);
+  if (gradient) layers.push(gradient.css);
+  return {
+    backgroundColor: theme.background,
+    backgroundImage: layers.length ? layers.join(", ") : undefined,
+    backgroundSize: theme.backgroundImageUrl ? "cover" : gradient ? "cover" : undefined,
+    backgroundPosition: theme.backgroundImageUrl ? "center" : undefined,
+    backgroundRepeat: "no-repeat",
+  };
+}
+
+export function funnelSectionKindName(kind: FunnelSectionKind): string {
+  if (kind === "cta") return "button";
+  if (kind === "band") return "shape";
+  if (kind === "imageText") return "image + text";
+  if (kind === "faq") return "FAQ";
+  if (kind === "quote") return "quote";
+  return kind;
 }
 
 function allowedKind(value: unknown): FunnelSectionKind {
@@ -179,6 +249,37 @@ export function createFunnelSection(kind: FunnelSectionKind): FunnelPageSection 
       media: [],
     };
   }
+  if (kind === "imageText") {
+    return {
+      id: newSectionId(),
+      kind,
+      html: "<h2>Headline beside your photo</h2><p>Explain the offer in a short paragraph.</p>",
+      shape: "rounded",
+      background: "#FFFFFF",
+      media: [],
+    };
+  }
+  if (kind === "quote") {
+    return {
+      id: newSectionId(),
+      kind,
+      html: "<blockquote><p>What someone said about working with you.</p><p>— Happy customer</p></blockquote>",
+      shape: "rounded",
+      background: "#F8F4EE",
+      media: [],
+    };
+  }
+  if (kind === "faq") {
+    return {
+      id: newSectionId(),
+      kind,
+      html:
+        "<h3>Who is this for?</h3><p>Describe your ideal supporter or customer.</p>" +
+        "<h3>What happens after I sign up?</h3><p>Explain the next step in plain language.</p>",
+      shape: "none",
+      media: [],
+    };
+  }
   return { id: newSectionId(), kind: "body", html: "<p></p>", shape: "none", media: [] };
 }
 
@@ -224,6 +325,7 @@ export function parseFunnelPageContent(
           ? themeRaw.accent
           : defaults.theme.accent,
       backgroundImageUrl: sanitizeBackgroundImageUrl(themeRaw.backgroundImageUrl),
+      backgroundGradient: allowedGradient(themeRaw.backgroundGradient),
     },
     sections: sections.length ? sections : defaults.sections,
   };
@@ -237,6 +339,9 @@ export function funnelSectionLabel(kind: FunnelSectionKind, index: number): stri
   if (kind === "cta") return `Button ${index + 1}`;
   if (kind === "band") return `Shape ${index + 1}`;
   if (kind === "hero") return `Hero ${index + 1}`;
+  if (kind === "imageText") return `Image + text ${index + 1}`;
+  if (kind === "quote") return `Quote ${index + 1}`;
+  if (kind === "faq") return `FAQ ${index + 1}`;
   return `Body ${index + 1}`;
 }
 

@@ -7,9 +7,12 @@ import {
   addFunnelMedia,
   canMoveFunnelMedia,
   createDefaultFunnelPage,
+  createFunnelSection,
+  funnelSectionKindName,
   listFunnelMedia,
   moveFunnelMedia,
   parseFunnelPageContent,
+  resolveFunnelPageBackgroundStyle,
 } from "@/lib/growth/funnelPage";
 
 function image(id: string): PulsePostMediaItem {
@@ -87,5 +90,38 @@ describe("parseFunnelPageContent theme", () => {
       media: [],
     });
     assert.equal(page.theme.backgroundImageUrl, null);
+  });
+
+  it("keeps allowed gradient presets", () => {
+    const page = parseFunnelPageContent({
+      version: 1,
+      theme: {
+        background: "#F8F4EE",
+        textColor: "#342a0f",
+        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+        accent: "#044730",
+        backgroundGradient: "cream-sage",
+      },
+      sections: [],
+      ctaHref: "",
+      media: [],
+    });
+    assert.equal(page.theme.backgroundGradient, "cream-sage");
+    const style = resolveFunnelPageBackgroundStyle(page.theme);
+    assert.match(style.backgroundImage ?? "", /linear-gradient/);
+  });
+});
+
+describe("funnel section layouts", () => {
+  it("creates quote, faq, and imageText sections with defaults", () => {
+    const quote = createFunnelSection("quote");
+    const faq = createFunnelSection("faq");
+    const imageText = createFunnelSection("imageText");
+    assert.equal(quote.kind, "quote");
+    assert.match(quote.html, /blockquote/);
+    assert.equal(faq.kind, "faq");
+    assert.match(faq.html, /Who is this for/);
+    assert.equal(imageText.kind, "imageText");
+    assert.equal(funnelSectionKindName("imageText"), "image + text");
   });
 });

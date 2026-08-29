@@ -13,6 +13,8 @@ import { PulseRichTextEditor } from "@/components/pulse/PulseRichTextEditor";
 import {
   FUNNEL_PAGE_COLORS,
   FUNNEL_PAGE_FONTS,
+  FUNNEL_PAGE_GRADIENTS,
+  FUNNEL_SECTION_KINDS,
   FUNNEL_SECTION_SHAPES,
   MAX_FUNNEL_PAGE_MEDIA,
   PAGE_MEDIA_ID,
@@ -22,12 +24,12 @@ import {
   countFunnelMedia,
   createDefaultFunnelPage,
   createFunnelSection,
+  funnelSectionKindName,
   listFunnelMedia,
   moveFunnelMedia,
   removeFunnelMedia,
   type FunnelMediaBucketId,
   type FunnelPageContent,
-  type FunnelSectionKind,
   type FunnelSectionShape,
 } from "@/lib/growth/funnelPage";
 import { PulsePostMediaPreviewRow } from "@/components/pulse/PulsePostMediaGallery";
@@ -251,9 +253,26 @@ export function GrowthFunnelMaker({
 
           <FormSection
             title="Pictures & video"
-            description="Gallery media for the top of the page or a chosen section. Images open a crop tool first."
+            description="Gallery blocks you place between sections — not the same as photos embedded in rich text."
             defaultOpen
           >
+            <div className="rounded-xl border border-fix-border/15 bg-fix-bg-muted/50 p-3 text-xs text-fix-text-muted">
+              <p className="font-medium text-fix-heading">Gallery vs inline media</p>
+              <ul className="mt-2 list-disc space-y-1 pl-4">
+                <li>
+                  <span className="font-medium text-fix-text">Pictures &amp; video</span> (below): carousel
+                  blocks at the top of the page or inside a section — pick the destination in the dropdown.
+                </li>
+                <li>
+                  <span className="font-medium text-fix-text">Rich text toolbar</span>: embed photos inside a
+                  section&apos;s story (great for body copy, not for image + text layouts).
+                </li>
+                <li>
+                  For <span className="font-medium text-fix-text">Image + text</span> sections, add the photo
+                  here and assign it to that section.
+                </li>
+              </ul>
+            </div>
 <Card className="space-y-3 p-3">
             <PulsePostMediaEditor
               items={
@@ -291,11 +310,7 @@ export function GrowthFunnelMaker({
                 <option value={PAGE_MEDIA_ID}>Top of page</option>
                 {page.sections.map((section, index) => (
                   <option key={section.id} value={section.id}>
-                    {section.kind === "cta"
-                      ? `Button ${index + 1}`
-                      : section.kind === "band"
-                        ? `Shape ${index + 1}`
-                        : `${section.kind} ${index + 1}`}
+                    {funnelSectionKindName(section.kind)} {index + 1}
                   </option>
                 ))}
               </select>
@@ -352,7 +367,7 @@ export function GrowthFunnelMaker({
 
           <FormSection
             title="Theme"
-            description="Colors, font, and optional full-page background image."
+            description="Colors, font, gradient presets, and optional full-page background image."
             defaultOpen
           >
 <fieldset className="space-y-2">
@@ -394,7 +409,51 @@ export function GrowthFunnelMaker({
             </label>
 
             <div className="space-y-2 border-t border-fix-border/15 pt-3">
-              <p className="text-xs font-medium text-fix-text-muted">Page background image (optional)</p>
+              <p className="text-xs font-medium text-fix-text-muted">Background gradient (optional)</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={
+                    !page.theme.backgroundGradient
+                      ? "rounded-full border-2 border-forest px-3 py-1 text-xs font-medium text-fix-heading"
+                      : "rounded-full border border-fix-border/25 px-3 py-1 text-xs text-fix-text-muted"
+                  }
+                  onClick={() =>
+                    setPage((prev) => ({
+                      ...prev,
+                      theme: { ...prev.theme, backgroundGradient: null },
+                    }))
+                  }
+                >
+                  None
+                </button>
+                {FUNNEL_PAGE_GRADIENTS.map((gradient) => (
+                  <button
+                    key={gradient.id}
+                    type="button"
+                    title={gradient.label}
+                    aria-label={gradient.label}
+                    className={
+                      page.theme.backgroundGradient === gradient.id
+                        ? "h-9 w-14 rounded-lg border-2 border-forest ring-2 ring-forest/30"
+                        : "h-9 w-14 rounded-lg border border-fix-border/25"
+                    }
+                    style={{ background: gradient.css }}
+                    onClick={() =>
+                      setPage((prev) => ({
+                        ...prev,
+                        theme: { ...prev.theme, backgroundGradient: gradient.id },
+                      }))
+                    }
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-fix-text-muted">
+                Soft presets from the RootSync palette. Layered under a background photo if you add one.
+              </p>
+            </div>
+
+            <div className="space-y-2 border-t border-fix-border/15 pt-3">
               <p className="text-xs text-fix-text-muted">
                 Covers the full page behind your sections. Solid background color still shows as a fallback.
               </p>
@@ -451,7 +510,7 @@ export function GrowthFunnelMaker({
 
           <FormSection
             title="Public page sections"
-            description="Hero, body, shapes, and buttons visitors see at your funnel URL."
+            description="Hero, FAQ, quotes, image + text, shapes, and buttons visitors see at your funnel URL."
             defaultOpen
           >
 <div className="space-y-3">
@@ -463,7 +522,7 @@ export function GrowthFunnelMaker({
                 </p>
               </div>
               <div className="flex flex-wrap gap-1">
-                {(["hero", "body", "band", "cta"] as FunnelSectionKind[]).map((kind) => (
+                {FUNNEL_SECTION_KINDS.map((kind) => (
                   <Button
                     key={kind}
                     type="button"
@@ -477,7 +536,7 @@ export function GrowthFunnelMaker({
                       }))
                     }
                   >
-                    Add {kind === "cta" ? "button" : kind === "band" ? "shape" : kind}
+                    Add {funnelSectionKindName(kind)}
                   </Button>
                 ))}
               </div>
@@ -487,11 +546,7 @@ export function GrowthFunnelMaker({
               <Card key={section.id} className="space-y-3 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
-                    {section.kind === "cta"
-                      ? "Button block"
-                      : section.kind === "band"
-                        ? "Shape / band"
-                        : section.kind}
+                    {funnelSectionKindName(section.kind)} block
                   </p>
                   <div className="flex flex-wrap gap-1">
                     <Button
@@ -534,9 +589,21 @@ export function GrowthFunnelMaker({
                     placeholder={
                       section.kind === "hero"
                         ? "Headline, intro, photos…"
-                        : "Write this section — add photos, video, files, and links…"
+                        : section.kind === "faq"
+                          ? "Use headings for questions and paragraphs for answers…"
+                          : section.kind === "quote"
+                            ? "Pull quote and attribution…"
+                            : section.kind === "imageText"
+                              ? "Headline and copy beside your gallery photo…"
+                              : "Write this section — add photos, video, files, and links…"
                     }
-                    minHeightClass={section.kind === "hero" ? "min-h-[8rem]" : "min-h-[11rem]"}
+                    minHeightClass={
+                      section.kind === "hero"
+                        ? "min-h-[8rem]"
+                        : section.kind === "faq"
+                          ? "min-h-[12rem]"
+                          : "min-h-[11rem]"
+                    }
                   />
                 ) : (
                   <p className="text-sm text-fix-text-muted">
@@ -544,6 +611,11 @@ export function GrowthFunnelMaker({
                     want a second call to action.
                   </p>
                 )}
+                {section.kind === "imageText" ? (
+                  <p className="text-xs text-fix-text-muted">
+                    Add the side image in Pictures &amp; video → assign to this section.
+                  </p>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label className="text-xs text-fix-text-muted">
                     Section color

@@ -26,16 +26,16 @@ Give vendors a **Pulse-quality page maker** for GrowSpace funnels: live preview,
 
 ## Phases
 
-### Phase 1 — Studio chrome & media polish (this sprint)
+### Phase 1 — Studio chrome & media polish ✅
 
 - Group maker into `FormSection`s (Basics, Theme, Media, Sections)
 - Image crop + aspect picker on funnel image uploads (reuse `ImageCropModal`)
 - Optional **page background image** (cover) in addition to solid color
 
-### Phase 2 — Layout depth
+### Phase 2 — Layout depth ✅
 
-- More section layouts (e.g. image+text, quote, FAQ block)
-- Soft gradient backgrounds (presets only; design-system safe)
+- More section layouts: **image + text**, **quote**, **FAQ**
+- Soft gradient background presets (design-system safe)
 - Clearer dual-media guidance (gallery vs inline embeds)
 
 ### Phase 3 — Fullscreen studio
