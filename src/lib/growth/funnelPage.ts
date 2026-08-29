@@ -442,6 +442,51 @@ export function canMoveFunnelMedia(
 }
 
 /** Move one file within its section, or into the previous/next section. */
+export function reorderFunnelSections(
+  page: FunnelPageContent,
+  fromIndex: number,
+  toIndex: number,
+): FunnelPageContent {
+  if (fromIndex === toIndex) return page;
+  const sections = [...page.sections];
+  if (fromIndex < 0 || fromIndex >= sections.length) return page;
+  if (toIndex < 0 || toIndex >= sections.length) return page;
+  const [item] = sections.splice(fromIndex, 1);
+  sections.splice(toIndex, 0, item);
+  return { ...page, sections };
+}
+
+/** Reorder media in global display order (page media, then each section). */
+export function reorderFunnelMediaFlat(
+  page: FunnelPageContent,
+  fromFlatIndex: number,
+  toFlatIndex: number,
+): FunnelPageContent {
+  if (fromFlatIndex === toFlatIndex) return page;
+  const rows = listFunnelMedia(page);
+  if (fromFlatIndex < 0 || fromFlatIndex >= rows.length) return page;
+  if (toFlatIndex < 0 || toFlatIndex >= rows.length) return page;
+
+  const from = rows[fromFlatIndex];
+  let next = removeFunnelMedia(page, from.bucketId, from.index);
+
+  const freshRows = listFunnelMedia(next);
+  const adjustedTo = fromFlatIndex < toFlatIndex ? toFlatIndex - 1 : toFlatIndex;
+  const to = freshRows[adjustedTo];
+  if (!to) {
+    const buckets = bucketOrder(next);
+    const lastBucket = buckets[buckets.length - 1];
+    return setMediaBucket(next, lastBucket, [...getMediaBucket(next, lastBucket), from.item]);
+  }
+
+  const targetBucket = to.bucketId;
+  const targetItems = getMediaBucket(next, targetBucket);
+  const insertAt = fromFlatIndex < toFlatIndex ? to.index + 1 : to.index;
+  const inserted = [...targetItems];
+  inserted.splice(Math.max(0, Math.min(insertAt, inserted.length)), 0, from.item);
+  return setMediaBucket(next, targetBucket, inserted);
+}
+
 export function moveFunnelMedia(
   page: FunnelPageContent,
   bucketId: FunnelMediaBucketId,

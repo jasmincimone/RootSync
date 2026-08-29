@@ -4,18 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GitBranch } from "lucide-react";
 
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoPopover } from "@/components/ui/InfoPopover";
 import { FunnelPagePreview } from "@/components/growth/FunnelPagePreview";
-import {
-  emptyFunnelDraft,
-  GrowthFunnelMaker,
-  type FunnelMakerDraft,
-} from "@/components/growth/GrowthFunnelMaker";
-import { DEFAULT_GROWTH_FUNNEL_STEPS, FUNNEL_TERM_CARDS } from "@/lib/growth/funnelGuide";
-import { parseFunnelPageContent, type FunnelPageContent } from "@/lib/growth/funnelPage";
+import { FUNNEL_TERM_CARDS } from "@/lib/growth/funnelGuide";
+import type { FunnelPageContent } from "@/lib/growth/funnelPage";
 import { vendorFunnelPublicPath } from "@/lib/growth/publicPath";
 import { GROWTH_FUNNEL_STEP_TYPE_LABELS } from "@/lib/growth/roles";
 
@@ -129,8 +124,6 @@ export function GrowthFunnelsClient({
   const router = useRouter();
   const [funnels, setFunnels] = useState(initialFunnels);
   const [contacts, setContacts] = useState(initialContacts);
-  const [maker, setMaker] = useState<FunnelMakerDraft | null>(null);
-  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [assignMessage, setAssignMessage] = useState<string | null>(null);
@@ -180,104 +173,16 @@ export function GrowthFunnelsClient({
 
       <Card className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
         <div>
-          <h2 className="text-sm font-semibold text-fix-heading">Funnel maker</h2>
+          <h2 className="text-sm font-semibold text-fix-heading">Funnel design studio</h2>
           <p className="mt-1 text-sm text-fix-text-muted">
-            Each save writes that funnel only — you can keep several. Edit one, or start a new one
-            anytime.
+            Open the fullscreen studio to design pages with live preview, mobile frame, and
+            drag-and-drop sections.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="cta"
-          size="sm"
-          onClick={() => {
-            setSaveNotice(null);
-            setMaker(emptyFunnelDraft());
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
+        <ButtonLink href="/account/growth/funnels/new/studio" variant="cta" size="sm">
           New funnel
-        </Button>
+        </ButtonLink>
       </Card>
-
-      {saveNotice ? <p className="text-sm text-forest">{saveNotice}</p> : null}
-
-      {maker ? (
-        <GrowthFunnelMaker
-          key={maker.id ?? "new"}
-          draft={maker}
-          vendorPublicSlug={vendorPublicSlug}
-          onCancel={() => {
-            setMaker(null);
-            setSaveNotice(null);
-          }}
-          onSaved={(funnel, page) => {
-            const publicSlug = funnel.landingPage?.slug ?? maker.publicSlug;
-            const next: GrowthFunnelRow = {
-              id: funnel.id,
-              name: funnel.name,
-              description: funnel.description,
-              objective: funnel.objective,
-              ctaLabel: funnel.ctaLabel,
-              publicSlug,
-              isActive: funnel.isActive,
-              assignDiscoverCheckout: false,
-              contactCount: 0,
-              page: parseFunnelPageContent(funnel.landingPage?.contentJson ?? page, {
-                name: funnel.name,
-                objective: funnel.objective,
-                description: funnel.description,
-              }),
-              steps: DEFAULT_GROWTH_FUNNEL_STEPS.map((step, index) => ({
-                id: `step-${index}`,
-                label: step.label,
-                stepType: step.stepType,
-                sortOrder: index,
-              })),
-            };
-            setFunnels((prev) => {
-              const previous = prev.find((row) => row.id === funnel.id);
-              const merged: GrowthFunnelRow = {
-                ...next,
-                assignDiscoverCheckout:
-                  previous?.assignDiscoverCheckout ?? funnel.assignDiscoverCheckout ?? false,
-                contactCount:
-                  typeof funnel.contactCount === "number"
-                    ? funnel.contactCount
-                    : previous?.contactCount ?? 0,
-                steps:
-                  funnel.steps?.map((step, index) => ({
-                    id: step.id,
-                    label: step.label,
-                    stepType: step.stepType,
-                    sortOrder: step.sortOrder ?? index,
-                  })) ??
-                  previous?.steps ??
-                  next.steps,
-              };
-              const exists = prev.some((row) => row.id === merged.id);
-              return exists
-                ? prev.map((row) => (row.id === merged.id ? { ...row, ...merged } : row))
-                : [merged, ...prev];
-            });
-            setMaker({
-              id: funnel.id,
-              name: funnel.name,
-              objective: funnel.objective ?? "",
-              description: funnel.description ?? "",
-              ctaLabel: funnel.ctaLabel ?? "Continue",
-              publicSlug,
-              page: parseFunnelPageContent(funnel.landingPage?.contentJson ?? page, {
-                name: funnel.name,
-                objective: funnel.objective,
-                description: funnel.description,
-              }),
-            });
-            setSaveNotice("Saved. This funnel stays open so you can keep editing or start another.");
-            router.refresh();
-          }}
-        />
-      ) : null}
 
       {funnels.length === 0 ? (
         <EmptyState
@@ -312,27 +217,13 @@ export function GrowthFunnelsClient({
                 >
                   <div className="space-y-3 border-t border-fix-border/15 pt-3">
                     <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
+                      <ButtonLink
+                        href={`/account/growth/funnels/${funnel.id}/studio`}
                         variant="cta"
                         size="sm"
-                        disabled={pending}
-                        onClick={() => {
-                          setAssigningId(null);
-                          setMaker({
-                            id: funnel.id,
-                            name: funnel.name,
-                            objective: funnel.objective ?? "",
-                            description: funnel.description ?? "",
-                            ctaLabel: funnel.ctaLabel ?? "Continue",
-                            publicSlug: funnel.publicSlug,
-                            page: funnel.page,
-                          });
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
                       >
-                        Edit
-                      </Button>
+                        Open studio
+                      </ButtonLink>
                       <Button
                         type="button"
                         variant="secondary"

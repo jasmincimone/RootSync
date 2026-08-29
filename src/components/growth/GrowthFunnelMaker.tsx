@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
+import { GripVertical } from "lucide-react";
 
 import { FormSection } from "@/components/FormSection";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FunnelPagePreview } from "@/components/growth/FunnelPagePreview";
+import { FunnelStudioPreview } from "@/components/growth/FunnelStudioPreview";
 import { PulsePostMediaEditor } from "@/components/pulse/PulsePostMediaEditor";
 import { PulseRichTextEditor } from "@/components/pulse/PulseRichTextEditor";
 import {
@@ -28,6 +30,8 @@ import {
   listFunnelMedia,
   moveFunnelMedia,
   removeFunnelMedia,
+  reorderFunnelMediaFlat,
+  reorderFunnelSections,
   type FunnelMediaBucketId,
   type FunnelPageContent,
   type FunnelSectionShape,
@@ -69,11 +73,13 @@ export function GrowthFunnelMaker({
   vendorPublicSlug,
   onCancel,
   onSaved,
+  variant = "embedded",
 }: {
   draft: FunnelMakerDraft;
   vendorPublicSlug: string | null;
   onCancel: () => void;
   onSaved: (funnel: SavedFunnel, page: FunnelPageContent) => void;
+  variant?: "embedded" | "studio";
 }) {
   const [name, setName] = useState(draft.name);
   const [objective, setObjective] = useState(draft.objective);
@@ -89,8 +95,11 @@ export function GrowthFunnelMaker({
   const [pending, startTransition] = useTransition();
   const [bgCropSrc, setBgCropSrc] = useState<string | null>(null);
   const [bgUploading, setBgUploading] = useState(false);
+  const [dragSectionId, setDragSectionId] = useState<string | null>(null);
+  const [dragMediaFlatIndex, setDragMediaFlatIndex] = useState<number | null>(null);
   const bgImageInputRef = useRef<HTMLInputElement>(null);
   const mediaRows = listFunnelMedia(page);
+  const isStudio = variant === "studio";
   const funnelPathPrefix = vendorPublicSlug
     ? `rootsync.io/${vendorPublicSlug}/funnels/`
     : "rootsync.io/{profile-url}/funnels/";
@@ -107,32 +116,13 @@ export function GrowthFunnelMaker({
       const index = prev.sections.findIndex((section) => section.id === id);
       const nextIndex = index + direction;
       if (index < 0 || nextIndex < 0 || nextIndex >= prev.sections.length) return prev;
-      const sections = [...prev.sections];
-      const [item] = sections.splice(index, 1);
-      sections.splice(nextIndex, 0, item);
-      return { ...prev, sections };
+      return reorderFunnelSections(prev, index, nextIndex);
     });
   }
 
-  return (
-    <Card className="space-y-4 p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-fix-heading">
-            {draft.id ? "Funnel design studio" : "New funnel design studio"}
-          </h2>
-          <p className="mt-1 text-sm text-fix-text-muted">
-            Design the public page with Pulse writing tools, cropped photos, theme controls, and a
-            live preview.
-          </p>
-        </div>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
-          Close
-        </Button>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-4">
+  const editor = (
+    <>
+      <div className="space-y-4">
           <FormSection
             title="Basics"
             description="Workspace name, URL, and primary button — visitors see the page sections below."
@@ -319,11 +309,42 @@ export function GrowthFunnelMaker({
               <p className="text-sm text-fix-text-muted">No pictures or video yet.</p>
             ) : (
               <ul className="space-y-2">
-                {mediaRows.map((row) => {
+                {mediaRows.map((row, flatIndex) => {
                   const canUp = canMoveFunnelMedia(page, row.bucketId, row.index, -1);
                   const canDown = canMoveFunnelMedia(page, row.bucketId, row.index, 1);
+                  const draggingMedia = dragMediaFlatIndex === flatIndex;
                   return (
-                  <li key={row.item.id}>
+                  <li
+                    key={row.item.id}
+                    className={draggingMedia ? "opacity-60" : undefined}
+                    onDragOver={(e) => {
+                      if (!isStudio) return;
+                      e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      if (!isStudio || dragMediaFlatIndex == null || dragMediaFlatIndex === flatIndex) return;
+                      e.preventDefault();
+                      setPage((prev) => reorderFunnelMediaFlat(prev, dragMediaFlatIndex, flatIndex));
+                      setDragMediaFlatIndex(null);
+                    }}
+                  >
+                    <div className="flex items-start gap-1">
+                      {isStudio ? (
+                        <button
+                          type="button"
+                          draggable
+                          aria-label="Drag to reorder media"
+                          className="mt-2 shrink-0 cursor-grab rounded p-1 text-fix-text-muted hover:bg-fix-bg-muted active:cursor-grabbing"
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            setDragMediaFlatIndex(flatIndex);
+                          }}
+                          onDragEnd={() => setDragMediaFlatIndex(null)}
+                        >
+                          <GripVertical className="h-4 w-4" aria-hidden />
+                        </button>
+                      ) : null}
+                      <div className="min-w-0 flex-1">
                     <PulsePostMediaPreviewRow
                       item={row.item}
                       onRemove={() =>
@@ -357,6 +378,8 @@ export function GrowthFunnelMaker({
                       }
                     />
                     <p className="mt-1 px-2 text-xs text-fix-text-muted">{row.locationLabel}</p>
+                      </div>
+                    </div>
                   </li>
                   );
                 })}
@@ -543,11 +566,43 @@ export function GrowthFunnelMaker({
             </div>
 
             {page.sections.map((section, index) => (
-              <Card key={section.id} className="space-y-3 p-3">
+              <Card
+                key={section.id}
+                className={dragSectionId === section.id ? "space-y-3 p-3 opacity-60" : "space-y-3 p-3"}
+                onDragOver={(e) => {
+                  if (!isStudio) return;
+                  e.preventDefault();
+                }}
+                onDrop={(e) => {
+                  if (!isStudio || !dragSectionId || dragSectionId === section.id) return;
+                  e.preventDefault();
+                  const fromIndex = page.sections.findIndex((item) => item.id === dragSectionId);
+                  if (fromIndex < 0) return;
+                  setPage((prev) => reorderFunnelSections(prev, fromIndex, index));
+                  setDragSectionId(null);
+                }}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-1">
+                    {isStudio ? (
+                      <button
+                        type="button"
+                        draggable
+                        aria-label="Drag to reorder section"
+                        className="shrink-0 cursor-grab rounded p-1 text-fix-text-muted hover:bg-fix-bg-muted active:cursor-grabbing"
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move";
+                          setDragSectionId(section.id);
+                        }}
+                        onDragEnd={() => setDragSectionId(null)}
+                      >
+                        <GripVertical className="h-4 w-4" aria-hidden />
+                      </button>
+                    ) : null}
                   <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
                     {funnelSectionKindName(section.kind)} block
                   </p>
+                  </div>
                   <div className="flex flex-wrap gap-1">
                     <Button
                       type="button"
@@ -688,17 +743,38 @@ export function GrowthFunnelMaker({
           >
             {pending ? "Saving…" : draft.id ? "Save funnel" : "Create funnel"}
           </Button>
-        </div>
-
-        <div className="lg:sticky lg:top-4">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-fix-text-muted">
-            Live preview
-          </p>
-          <FunnelPagePreview page={page} ctaLabel={ctaLabel} />
-        </div>
       </div>
+    </>
+  );
 
-      {bgCropSrc ? (
+  const preview = isStudio ? (
+    <div className="xl:sticky xl:top-4">
+      <FunnelStudioPreview page={page} ctaLabel={ctaLabel} />
+    </div>
+  ) : (
+    <div className="lg:sticky lg:top-4">
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-fix-text-muted">
+        Live preview
+      </p>
+      <FunnelPagePreview page={page} ctaLabel={ctaLabel} />
+    </div>
+  );
+
+  const layout = (
+    <div
+      className={
+        isStudio
+          ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]"
+          : "grid gap-6 lg:grid-cols-2"
+      }
+    >
+      {editor}
+      {preview}
+    </div>
+  );
+
+  const cropModal =
+    bgCropSrc ? (
         <ImageCropModal
           imageSrc={bgCropSrc}
           initialAspect={16 / 9}
@@ -731,8 +807,35 @@ export function GrowthFunnelMaker({
             }
           }}
         />
-      ) : null}
+      ) : null;
 
+  if (isStudio) {
+    return (
+      <>
+        {layout}
+        {cropModal}
+      </>
+    );
+  }
+
+  return (
+    <Card className="space-y-4 p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-fix-heading">
+            {draft.id ? "Funnel design studio" : "New funnel design studio"}
+          </h2>
+          <p className="mt-1 text-sm text-fix-text-muted">
+            Design the public page with Pulse writing tools, cropped photos, theme controls, and a
+            live preview.
+          </p>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
+          Close
+        </Button>
+      </div>
+      {layout}
+      {cropModal}
     </Card>
   );
 }

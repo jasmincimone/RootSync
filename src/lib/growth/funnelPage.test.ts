@@ -12,6 +12,8 @@ import {
   listFunnelMedia,
   moveFunnelMedia,
   parseFunnelPageContent,
+  reorderFunnelMediaFlat,
+  reorderFunnelSections,
   resolveFunnelPageBackgroundStyle,
 } from "@/lib/growth/funnelPage";
 
@@ -54,6 +56,29 @@ describe("moveFunnelMedia", () => {
 
     assert.deepEqual(page.media.map((item) => item.id), ["one"]);
     assert.deepEqual(page.sections[0].media, []);
+  });
+});
+
+describe("reorderFunnelSections", () => {
+  it("moves a section to a new index", () => {
+    let page = createDefaultFunnelPage({ name: "Garden" });
+    page = { ...page, sections: [...page.sections, createFunnelSection("faq")] };
+    const ids = page.sections.map((section) => section.id);
+    const reordered = reorderFunnelSections(page, 0, 1);
+    assert.equal(reordered.sections[0].id, ids[1]);
+    assert.equal(reordered.sections[1].id, ids[0]);
+  });
+});
+
+describe("reorderFunnelMediaFlat", () => {
+  it("moves media across buckets in display order", () => {
+    let page = createDefaultFunnelPage({ name: "Garden" });
+    const heroId = page.sections[0].id;
+    page = addFunnelMedia(page, image("top"));
+    page = addFunnelMedia(page, image("hero"), heroId);
+    const reordered = reorderFunnelMediaFlat(page, 1, 0);
+    assert.deepEqual(reordered.media.map((item) => item.id), ["hero", "top"]);
+    assert.deepEqual(reordered.sections[0].media, []);
   });
 });
 
