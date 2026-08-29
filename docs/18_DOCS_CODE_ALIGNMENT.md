@@ -53,7 +53,7 @@ Use it when:
 |------|------------|------------|--------|
 | Platform identity | RootSync local-living platform | RootSync branding live; Fix Collective parent in legal copy | **Partial** |
 | User types | Visitor, Member, Vendor, Administrator | `User` + `CUSTOMER`/`VENDOR`/`ADMIN` roles | **Partial** |
-| Marketplace model | Offering → Listing → Product/Service/Resource/Event | `Offering` + `Listing` + type details and live UX (ADR-001) | **Aligned** (MVP) |
+| Marketplace model | Offering → Listing → Product/Service/Resource/Event/Donation | `Offering` + `Listing` + type details and live UX (ADR-001, ADR-010) | **Aligned** (MVP) |
 | Verified vendors | Admin verification + trust indicators | APPROVED gate + reusable badge/explainer | **Aligned** |
 | Discover | Unified discovery (vendors, listings, directory, map, search) | `/discover` with search, filters, map, favorites, spotlights | **Aligned** (MVP) |
 | Directory listings | Imported businesses with assisted claim path | USDA model/import, Discover detail/map, claim request + admin review | **Aligned** (MVP) |
@@ -61,6 +61,7 @@ Use it when:
 | Resources (digital) | Listing type Resource | Private Blob upload, paid-order ownership gate, secure delivery | **Aligned** (MVP) |
 | Services / Consultations | Service type + booking | Full flow: slots, Checkout, Meet, cancel, refund | **Aligned** (MVP) |
 | Events | Listing type Event (classes/workshops) | Attendance modes, ticket tiers, checkout, confirmation + join email | **Aligned** (MVP) |
+| Donations | Listing type Donation (custom + suggested amounts) | `DonationDetails`, buy-now amount, Discover filter (ADR-010) | **Aligned** (MVP) |
 | Community | Member discussions | `CommunityPost` live; UI branded **Pulse** | **Partial** — rename complete in nav; table deferred |
 | Pulse (platform service) | Contribution ledger + Individual + Platform Pulse | Phase 1–2 shipped; v2 spec documented | **Partial** — see [22_PULSE_SYSTEM.md](./22_PULSE_SYSTEM.md) |
 | Messaging | Member ↔ Member / Vendor | `DirectThread` / `DirectMessage`; UI **Stay Synced** | **Aligned** |
@@ -70,7 +71,7 @@ Use it when:
 | Pulse reviews | Legitimate post-interaction trust signal | Order/booking eligibility + Vendor Pulse review UI | **Partial** |
 | GrowSpace | Vendor growth workspace | Overview + CRM + Funnels + Campaign builder live; later modules hidden | **Partial** (Phase 1) |
 | Legacy platform shops | Vendor profile IS the shop | Redirects live; `ShopPage` + admin shops + `/products/` remain | **Legacy** |
-| Governance | RFC → PRD → ADR → Changelog | PRDs and ADR-001–008 exist; changelog discipline remains partial | **Partial** |
+| Governance | RFC → PRD → ADR → Changelog | PRDs and ADR-001–010 exist; changelog discipline remains partial | **Partial** |
 
 **App version:** `package.json` → `0.1.0` (pre-1.0 rapid iteration per [VERSIONING.md](./governance/VERSIONING.md)).
 

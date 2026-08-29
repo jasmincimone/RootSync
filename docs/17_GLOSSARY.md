@@ -78,7 +78,7 @@ Members may:
 
 ## Vendor
 
-A verified Member who offers Products, Services, Resources, and/or Events.
+A verified Member who offers Products, Services, Resources, Events, and/or Donations.
 
 Every Vendor is also a Member.
 
@@ -120,6 +120,7 @@ Listing Types include:
 - Service
 - Resource
 - Event
+- Donation
 
 Every Listing belongs to exactly one Vendor.
 
@@ -199,6 +200,12 @@ Examples:
 
 ---
 
+## Donation
+
+A listing type for voluntary contributions. Buyers enter a custom amount and/or choose suggested amounts (variants), then pay via Stripe Connect or an optional external link. See [ADR-010](./adr/ADR-010-donation-listing-type.md).
+
+---
+
 # Discovery
 
 ## Discover
@@ -212,6 +219,7 @@ Discover includes:
 - Services
 - Resources
 - Events
+- Donations
 - Directory Listings
 
 ---

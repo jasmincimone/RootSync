@@ -112,8 +112,9 @@ export function ServiceBookingConfigFields({
       <div>
         <h3 className="text-sm font-semibold text-fix-heading">Weekly availability</h3>
         <p className="mt-1 text-xs text-fix-text-muted">
-          Members book in slots matching your service duration. Leave empty to use platform
-          defaults (Mon–Fri 9am–5pm Eastern).
+          Members book in slots matching your service duration (starts every 30 minutes for
+          30- and 60-minute services). Leave empty to use platform defaults (Mon–Fri 9am–5pm
+          Eastern).
         </p>
 
         <div className="mt-3">

@@ -142,6 +142,7 @@ Listing Types:
 - Service
 - Resource
 - Event
+- Donation
 
 Every Listing belongs to exactly one Vendor.
 
@@ -212,6 +213,12 @@ Examples:
 - Workshop
 - Class
 - Community Event
+
+---
+
+## Donation
+
+A voluntary contribution listing. Supporters type a custom amount and/or choose suggested amounts (variants). Checkout uses Stripe Connect or an optional external payment link. Donations are not added to cart. See [ADR-010](./adr/ADR-010-donation-listing-type.md).
 
 ---
 

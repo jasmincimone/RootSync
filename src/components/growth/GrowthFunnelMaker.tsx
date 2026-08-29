@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
+import { FormSection } from "@/components/FormSection";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FunnelPagePreview } from "@/components/growth/FunnelPagePreview";
@@ -83,6 +85,9 @@ export function GrowthFunnelMaker({
   const [mediaBucket, setMediaBucket] = useState<FunnelMediaBucketId>(PAGE_MEDIA_ID);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [bgCropSrc, setBgCropSrc] = useState<string | null>(null);
+  const [bgUploading, setBgUploading] = useState(false);
+  const bgImageInputRef = useRef<HTMLInputElement>(null);
   const mediaRows = listFunnelMedia(page);
   const funnelPathPrefix = vendorPublicSlug
     ? `rootsync.io/${vendorPublicSlug}/funnels/`
@@ -112,11 +117,11 @@ export function GrowthFunnelMaker({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-fix-heading">
-            {draft.id ? "Edit funnel" : "Create funnel"}
+            {draft.id ? "Funnel design studio" : "New funnel design studio"}
           </h2>
           <p className="mt-1 text-sm text-fix-text-muted">
-            Same writing tools as a Pulse post, plus a dedicated Pictures & video block for the
-            landing page. Preview updates as you go.
+            Design the public page with Pulse writing tools, cropped photos, theme controls, and a
+            live preview.
           </p>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
@@ -126,6 +131,12 @@ export function GrowthFunnelMaker({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
+          <FormSection
+            title="Basics"
+            description="Workspace name, URL, and primary button — visitors see the page sections below."
+            defaultOpen
+          >
+
           <div>
             <label className="text-xs font-medium text-fix-text-muted">Funnel name (workspace)</label>
             <input
@@ -215,7 +226,35 @@ export function GrowthFunnelMaker({
             )}
           </div>
 
-          <Card className="space-y-3 p-3">
+          
+          <div>
+            <label className="text-xs font-medium text-fix-text-muted">Button label</label>
+            <input
+              className={inputClass}
+              value={ctaLabel}
+              onChange={(e) => setCtaLabel(e.target.value)}
+              placeholder="Book a consult"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-fix-text-muted">Button link</label>
+            <input
+              className={inputClass}
+              value={page.ctaHref}
+              onChange={(e) => setPage((prev) => ({ ...prev, ctaHref: e.target.value }))}
+              placeholder="https://…"
+            />
+          </div>
+
+
+          </FormSection>
+
+          <FormSection
+            title="Pictures & video"
+            description="Gallery media for the top of the page or a chosen section. Images open a crop tool first."
+            defaultOpen
+          >
+<Card className="space-y-3 p-3">
             <PulsePostMediaEditor
               items={
                 mediaBucket === PAGE_MEDIA_ID
@@ -235,8 +274,9 @@ export function GrowthFunnelMaker({
                 });
               }}
               disabled={pending}
+              enableImageCrop
               heading="Pictures & video"
-              description="Add several photos or videos, then move each one up or down to place it between sections. Images up to 5 MB, videos up to 50 MB."
+              description="Add photos (with crop), videos, or files, then move each one up or down between sections."
               maxItems={MAX_FUNNEL_PAGE_MEDIA}
               itemCount={countFunnelMedia(page)}
               hideItems
@@ -308,26 +348,14 @@ export function GrowthFunnelMaker({
               </ul>
             )}
           </Card>
-          <div>
-            <label className="text-xs font-medium text-fix-text-muted">Button label</label>
-            <input
-              className={inputClass}
-              value={ctaLabel}
-              onChange={(e) => setCtaLabel(e.target.value)}
-              placeholder="Book a consult"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-fix-text-muted">Button link</label>
-            <input
-              className={inputClass}
-              value={page.ctaHref}
-              onChange={(e) => setPage((prev) => ({ ...prev, ctaHref: e.target.value }))}
-              placeholder="https://…"
-            />
-          </div>
+          </FormSection>
 
-          <fieldset className="space-y-2">
+          <FormSection
+            title="Theme"
+            description="Colors, font, and optional full-page background image."
+            defaultOpen
+          >
+<fieldset className="space-y-2">
             <legend className="text-xs font-medium text-fix-text-muted">Page look</legend>
             <ColorRow
               label="Background"
@@ -364,9 +392,69 @@ export function GrowthFunnelMaker({
                 ))}
               </select>
             </label>
-          </fieldset>
 
-          <div className="space-y-3">
+            <div className="space-y-2 border-t border-fix-border/15 pt-3">
+              <p className="text-xs font-medium text-fix-text-muted">Page background image (optional)</p>
+              <p className="text-xs text-fix-text-muted">
+                Covers the full page behind your sections. Solid background color still shows as a fallback.
+              </p>
+              {page.theme.backgroundImageUrl ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <img
+                    src={page.theme.backgroundImageUrl}
+                    alt=""
+                    className="h-16 w-28 rounded-lg object-cover ring-1 ring-fix-border/20"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={pending || bgUploading}
+                    onClick={() =>
+                      setPage((prev) => ({
+                        ...prev,
+                        theme: { ...prev.theme, backgroundImageUrl: null },
+                      }))
+                    }
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : null}
+              <input
+                ref={bgImageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => setBgCropSrc(reader.result as string);
+                  reader.readAsDataURL(file);
+                }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={pending || bgUploading}
+                onClick={() => bgImageInputRef.current?.click()}
+              >
+                {bgUploading ? "Uploading…" : page.theme.backgroundImageUrl ? "Replace background image" : "Add background image"}
+              </Button>
+            </div>
+
+          </fieldset>
+          </FormSection>
+
+          <FormSection
+            title="Public page sections"
+            description="Hero, body, shapes, and buttons visitors see at your funnel URL."
+            defaultOpen
+          >
+<div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-semibold text-fix-heading">Public page</h3>
@@ -487,6 +575,8 @@ export function GrowthFunnelMaker({
             ))}
           </div>
 
+          </FormSection>
+
           {error ? <p className="text-sm text-red-700">{error}</p> : null}
           <Button
             type="button"
@@ -535,6 +625,42 @@ export function GrowthFunnelMaker({
           <FunnelPagePreview page={page} ctaLabel={ctaLabel} />
         </div>
       </div>
+
+      {bgCropSrc ? (
+        <ImageCropModal
+          imageSrc={bgCropSrc}
+          initialAspect={16 / 9}
+          onCancel={() => setBgCropSrc(null)}
+          onCrop={async (blob) => {
+            setBgCropSrc(null);
+            setBgUploading(true);
+            setError(null);
+            try {
+              const fd = new FormData();
+              fd.set("file", blob, "funnel-bg.jpg");
+              const res = await fetch("/api/community/posts/upload", { method: "POST", body: fd });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                setError(typeof data.error === "string" ? data.error : "Background upload failed");
+                return;
+              }
+              if (typeof data.url !== "string") {
+                setError("Background upload failed");
+                return;
+              }
+              setPage((prev) => ({
+                ...prev,
+                theme: { ...prev.theme, backgroundImageUrl: data.url },
+              }));
+            } catch {
+              setError("Background upload failed");
+            } finally {
+              setBgUploading(false);
+            }
+          }}
+        />
+      ) : null}
+
     </Card>
   );
 }

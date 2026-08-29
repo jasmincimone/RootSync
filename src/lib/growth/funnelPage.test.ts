@@ -9,6 +9,7 @@ import {
   createDefaultFunnelPage,
   listFunnelMedia,
   moveFunnelMedia,
+  parseFunnelPageContent,
 } from "@/lib/growth/funnelPage";
 
 function image(id: string): PulsePostMediaItem {
@@ -50,5 +51,41 @@ describe("moveFunnelMedia", () => {
 
     assert.deepEqual(page.media.map((item) => item.id), ["one"]);
     assert.deepEqual(page.sections[0].media, []);
+  });
+});
+
+describe("parseFunnelPageContent theme", () => {
+  it("keeps a safe background image URL on the theme", () => {
+    const page = parseFunnelPageContent({
+      version: 1,
+      theme: {
+        background: "#F8F4EE",
+        textColor: "#342a0f",
+        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+        accent: "#044730",
+        backgroundImageUrl: "/uploads/pulse-posts/bg.jpg",
+      },
+      sections: [],
+      ctaHref: "",
+      media: [],
+    });
+    assert.equal(page.theme.backgroundImageUrl, "/uploads/pulse-posts/bg.jpg");
+  });
+
+  it("drops unsafe background image URLs", () => {
+    const page = parseFunnelPageContent({
+      version: 1,
+      theme: {
+        background: "#F8F4EE",
+        textColor: "#342a0f",
+        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+        accent: "#044730",
+        backgroundImageUrl: "javascript:alert(1)",
+      },
+      sections: [],
+      ctaHref: "",
+      media: [],
+    });
+    assert.equal(page.theme.backgroundImageUrl, null);
   });
 });

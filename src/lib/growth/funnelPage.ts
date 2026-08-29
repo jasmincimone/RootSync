@@ -40,6 +40,8 @@ export type FunnelPageTheme = {
   textColor: string;
   fontFamily: string;
   accent: string;
+  /** Optional full-bleed cover behind page content (solid `background` still shows while loading / as fallback). */
+  backgroundImageUrl?: string | null;
 };
 
 export type FunnelPageContent = {
@@ -79,6 +81,20 @@ function escapeText(value: string): string {
 
 function isHexColor(value: string): boolean {
   return /^#([0-9a-fA-F]{6})$/.test(value);
+}
+
+function sanitizeBackgroundImageUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 2048) return null;
+  if (
+    trimmed.startsWith("/uploads/") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("http://")
+  ) {
+    return trimmed;
+  }
+  return null;
 }
 
 function allowedFont(value: string): string {
@@ -207,6 +223,7 @@ export function parseFunnelPageContent(
         typeof themeRaw.accent === "string" && isHexColor(themeRaw.accent)
           ? themeRaw.accent
           : defaults.theme.accent,
+      backgroundImageUrl: sanitizeBackgroundImageUrl(themeRaw.backgroundImageUrl),
     },
     sections: sections.length ? sections : defaults.sections,
   };

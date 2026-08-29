@@ -34,7 +34,13 @@ export function FunnelPagePreview({
     <div
       className={cn("overflow-hidden rounded-2xl", className)}
       style={{
-        background: page.theme.background,
+        backgroundColor: page.theme.background,
+        backgroundImage: page.theme.backgroundImageUrl
+          ? `url(${page.theme.backgroundImageUrl})`
+          : undefined,
+        backgroundSize: page.theme.backgroundImageUrl ? "cover" : undefined,
+        backgroundPosition: page.theme.backgroundImageUrl ? "center" : undefined,
+        backgroundRepeat: page.theme.backgroundImageUrl ? "no-repeat" : undefined,
         color: page.theme.textColor,
         fontFamily: page.theme.fontFamily,
       }}

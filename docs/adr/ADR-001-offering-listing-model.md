@@ -51,7 +51,7 @@ Every Offering has exactly one Listing (created together). Vendors edit the Offe
 
 ### 3. Listing types
 
-`PRODUCT` · `SERVICE` · `RESOURCE` · `EVENT`
+`PRODUCT` · `SERVICE` · `RESOURCE` · `EVENT` · `DONATION` (fifth type: [ADR-010](./ADR-010-donation-listing-type.md))
 
 Each Offering has one type. Type-specific fields live in optional 1:1 detail tables:
 
@@ -59,6 +59,7 @@ Each Offering has one type. Type-specific fields live in optional 1:1 detail tab
 - **ServiceDetails** — `serviceKind` (CONSULTATION | ONE_TIME | SUBSCRIPTION), duration, radius, terms, booking URL
 - **ResourceDetails** — format, file URL
 - **EventDetails** — starts/ends, location, venue, capacity
+- **DonationDetails** — custom amount rules, min/max, thank-you copy (see ADR-010)
 
 ### 4. Listing table (public index)
 

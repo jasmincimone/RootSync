@@ -108,10 +108,10 @@ export function formatGoogleCalendarDateTime(date: Date, timeZone: string): stri
   return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}:00`;
 }
 
-/** Slot start grid: hourly for 60+ min sessions, half-hourly for 30, else 15 minutes. */
+/** Slot start grid: half-hourly when duration is a multiple of 30, else 15 minutes. */
 export function slotGridIntervalMinutes(durationMinutes: number): number {
-  if (durationMinutes >= 60 && durationMinutes % 60 === 0) return 60;
   if (durationMinutes >= 30 && durationMinutes % 30 === 0) return 30;
+  if (durationMinutes >= 15 && durationMinutes % 15 === 0) return 15;
   return 15;
 }
 

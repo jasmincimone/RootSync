@@ -56,11 +56,15 @@ function mockListing(overrides?: {
 }
 
 describe("bookingSlots", () => {
-  it("uses hourly grid for 60-minute sessions", () => {
-    assert.equal(slotGridIntervalMinutes(60), 60);
+  it("uses half-hour grid for 60-minute sessions", () => {
+    assert.equal(slotGridIntervalMinutes(60), 30);
   });
 
-  it("generates on-the-hour start times for 60-minute Monday slots", () => {
+  it("uses half-hour grid for 90-minute sessions", () => {
+    assert.equal(slotGridIntervalMinutes(90), 30);
+  });
+
+  it("generates on-the-hour and half-hour start times for 60-minute Monday slots", () => {
     const listing = mockListing({ durationMinutes: 60 });
     // Use a Monday window in the future so slots are not filtered as past.
     const now = new Date();
@@ -84,15 +88,26 @@ describe("bookingSlots", () => {
       bookedRanges: [],
     });
     assert.ok(slots.length > 0, `expected slots between ${from.toISOString()} and ${to.toISOString()}`);
+    const minuteMarks = new Set<number>();
     for (const slot of slots) {
       const start = new Date(slot.startAt);
       assert.ok(
         slotStartIsGridAligned(start, 60, "America/New_York"),
-        `expected on-the-hour slot, got ${slot.startAt}`,
+        `expected half-hour-aligned slot, got ${slot.startAt}`,
       );
       const durationMs = new Date(slot.endAt).getTime() - start.getTime();
       assert.equal(durationMs, 60 * 60_000);
+      const localHour = new Date(slot.startAt).toLocaleString("en-US", {
+        timeZone: "America/New_York",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false,
+      });
+      const [, minutePart] = localHour.split(":");
+      minuteMarks.add(Number.parseInt(minutePart ?? "0", 10));
     }
+    assert.ok(minuteMarks.has(0), "expected on-the-hour slots");
+    assert.ok(minuteMarks.has(30), "expected half-hour slots");
   });
 
   it("variant duration overrides service default", () => {

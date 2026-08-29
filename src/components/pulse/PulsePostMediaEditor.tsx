@@ -8,6 +8,7 @@ import {
   newPulsePostMediaItem,
   type PulsePostMediaItem,
 } from "@/config/pulsePostMedia";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { PulsePostMediaPreviewRow } from "@/components/pulse/PulsePostMediaGallery";
 import { FormFeedback } from "@/components/ui/FormFeedback";
 
@@ -20,6 +21,8 @@ type Props = {
   maxItems?: number;
   itemCount?: number;
   hideItems?: boolean;
+  /** When true, images open the crop modal before upload (funnel / campaign polish). */
+  enableImageCrop?: boolean;
 };
 
 type ErrorPayload = {
@@ -33,6 +36,10 @@ const UPLOAD_ENDPOINT = "/api/community/posts/upload";
 const ACCEPT =
   "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.pdf,.zip,.epub,.docx,.xlsx,.pptx,.txt,.csv,.mp4,.webm,.mov";
 
+function isImageFile(file: File) {
+  return file.type.startsWith("image/") && file.type !== "image/gif";
+}
+
 export function PulsePostMediaEditor({
   items,
   onChange,
@@ -42,18 +49,20 @@ export function PulsePostMediaEditor({
   maxItems = MAX_PULSE_POST_MEDIA,
   itemCount,
   hideItems = false,
+  enableImageCrop = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   const used = itemCount ?? items.length;
   const atLimit = used >= maxItems;
 
-  async function uploadFile(file: File): Promise<PulsePostMediaItem | null> {
+  async function uploadFile(file: File | Blob, fileName: string): Promise<PulsePostMediaItem | null> {
     const fd = new FormData();
-    fd.set("file", file);
+    fd.set("file", file, fileName);
     const res = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: fd });
     const rawBody = await res.text();
     let parsed: ErrorPayload & {
@@ -82,9 +91,16 @@ export function PulsePostMediaEditor({
     return newPulsePostMediaItem({
       type: parsed.type,
       url: parsed.url,
-      fileName: parsed.fileName ?? file.name,
-      label: file.name,
+      fileName: parsed.fileName ?? fileName,
+      label: fileName,
     });
+  }
+
+  async function appendUploaded(created: PulsePostMediaItem) {
+    const next = [...items, created];
+    onChange(next);
+    setUploadSuccess("Attachment added.");
+    window.setTimeout(() => setUploadSuccess(null), 4000);
   }
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -94,6 +110,14 @@ export function PulsePostMediaEditor({
 
     setUploadError(null);
     setUploadSuccess(null);
+
+    if (enableImageCrop && files.length === 1 && isImageFile(files[0])) {
+      const reader = new FileReader();
+      reader.onload = () => setCropSrc(reader.result as string);
+      reader.readAsDataURL(files[0]);
+      return;
+    }
+
     setUploading(true);
     let next = items;
     let added = 0;
@@ -103,7 +127,10 @@ export function PulsePostMediaEditor({
           setUploadError(`You can attach up to ${maxItems} items.`);
           break;
         }
-        const created = await uploadFile(file);
+        if (enableImageCrop && isImageFile(file) && files.length > 1) {
+          // Multi-select: skip crop for batch; still upload.
+        }
+        const created = await uploadFile(file, file.name);
         if (!created) break;
         next = [...next, created];
         added += 1;
@@ -137,7 +164,7 @@ export function PulsePostMediaEditor({
           ref={inputRef}
           type="file"
           accept={ACCEPT}
-          multiple
+          multiple={!enableImageCrop}
           className="sr-only"
           disabled={disabled || uploading || atLimit}
           onChange={onFileChange}
@@ -153,7 +180,13 @@ export function PulsePostMediaEditor({
           ) : (
             <ImagePlus className="h-4 w-4" aria-hidden />
           )}
-          {uploading ? "Uploading…" : atLimit ? "Attachment limit reached" : "Add photo, video, or file"}
+          {uploading
+            ? "Uploading…"
+            : atLimit
+              ? "Attachment limit reached"
+              : enableImageCrop
+                ? "Add photo (crop), video, or file"
+                : "Add photo, video, or file"}
         </button>
       </div>
 
@@ -169,6 +202,31 @@ export function PulsePostMediaEditor({
           ))}
         </ul>
       )}
+
+      {cropSrc ? (
+        <ImageCropModal
+          imageSrc={cropSrc}
+          initialAspect={16 / 9}
+          onCancel={() => setCropSrc(null)}
+          onCrop={async (blob) => {
+            setCropSrc(null);
+            if (atLimit) {
+              setUploadError(`You can attach up to ${maxItems} items.`);
+              return;
+            }
+            setUploading(true);
+            setUploadError(null);
+            try {
+              const created = await uploadFile(blob, "funnel-media.jpg");
+              if (created) await appendUploaded(created);
+            } catch (err) {
+              setUploadError(err instanceof Error ? err.message : "Upload failed");
+            } finally {
+              setUploading(false);
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }

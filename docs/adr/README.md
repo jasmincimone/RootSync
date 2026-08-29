@@ -11,3 +11,5 @@ Accepted ADRs for RootSync. Format: [ADR_GUIDELINES.md](../governance/ADR_GUIDEL
 | [ADR-006](./ADR-006-directory-listings.md) | Directory Listing model (USDA import, claim) | Accepted |
 | [ADR-007](./ADR-007-growth-workspace.md) | Growth Workspace — Marketing, CRM, and Growth System | Accepted |
 | [ADR-008](./ADR-008-pulse-system.md) | Pulse System — foundational contribution service (Individual + Platform Pulse) | Accepted |
+| [ADR-009](./ADR-009-guest-service-bookings.md) | Guest Service Bookings (no account required) | Accepted |
+| [ADR-010](./ADR-010-donation-listing-type.md) | Donation Listing Type | Accepted |
