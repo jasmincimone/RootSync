@@ -12,6 +12,7 @@ import { platformApplicationFeeCents } from "@/lib/platformFee";
 import { connectDestinationPaymentIntentData } from "@/lib/stripeCheckoutWebhook";
 import { BOOKING_STATUS } from "@/lib/roles";
 import { campaignCheckoutMetadata } from "@/lib/growth/campaignAttribution";
+import { clampServiceBookingQuantity } from "@/lib/serviceBookingQuantity";
 
 export type IntakeAnswerInput = {
   questionId?: string;
@@ -25,7 +26,8 @@ export type CreateServiceBookingInput = {
   memberUserId: string | null;
   memberEmail: string;
   memberName: string | null;
-  scheduledStartAt: string;
+  /** One ISO start time per session. Single-session checkouts pass a one-element array. */
+  scheduledStartAts: string[];
   intakeNotes?: string | null;
   intakeAnswers?: IntakeAnswerInput[];
   origin: string;
@@ -42,37 +44,67 @@ function listingImageUrl(imageUrl: string | null, baseUrl: string): string[] | u
   }
 }
 
+function slotsOverlap(
+  a: { startAt: Date; endAt: Date },
+  b: { startAt: Date; endAt: Date },
+): boolean {
+  return a.startAt < b.endAt && a.endAt > b.startAt;
+}
+
 export async function createServiceBookingCheckout(
   input: CreateServiceBookingInput,
-): Promise<{ url: string; bookingId: string; orderId: string }> {
+): Promise<{ url: string; bookingIds: string[]; orderId: string }> {
   const { listing, memberUserId, memberEmail, memberName, origin } = input;
   const variantId = listing.selectedVariantId ?? null;
-  const slot = parseSlotSelection(input.scheduledStartAt, listing, variantId);
-  if (!slot) {
-    throw new Error("Invalid appointment time.");
+  const quantity = clampServiceBookingQuantity(input.scheduledStartAts.length);
+  const scheduledStartAts = input.scheduledStartAts.slice(0, quantity);
+
+  if (scheduledStartAts.length === 0) {
+    throw new Error("Choose at least one appointment time.");
   }
 
-  // Only paid bookings claim a slot, so two people may check out for the same time.
-  // Whoever pays first keeps it; confirmPaidServiceBooking refunds the loser.
+  const parsedSlots = scheduledStartAts.map((startAt) => {
+    const slot = parseSlotSelection(startAt, listing, variantId);
+    if (!slot) throw new Error("Invalid appointment time.");
+    return slot;
+  });
+
+  for (let i = 0; i < parsedSlots.length; i++) {
+    for (let j = i + 1; j < parsedSlots.length; j++) {
+      if (slotsOverlap(parsedSlots[i]!, parsedSlots[j]!)) {
+        throw new Error("Choose a different time for each session — times cannot overlap.");
+      }
+    }
+  }
+
   const booked = await prisma.booking.findMany({
     where: {
       listingId: listing.id,
       status: BOOKING_STATUS.CONFIRMED,
-      scheduledStartAt: { lt: slot.endAt },
-      scheduledEndAt: { gt: slot.startAt },
     },
     select: { scheduledStartAt: true, scheduledEndAt: true },
   });
-
-  if (!slotIsAvailable(slot.startAt, slot.endAt, listing, booked.map((b) => ({
+  const confirmedRanges = booked.map((b) => ({
     startAt: b.scheduledStartAt,
     endAt: b.scheduledEndAt,
-  })), variantId)) {
-    throw new Error("That time slot is no longer available. Please choose another.");
+  }));
+
+  for (let i = 0; i < parsedSlots.length; i++) {
+    const slot = parsedSlots[i]!;
+    const blocked = [
+      ...confirmedRanges,
+      ...parsedSlots
+        .filter((_, j) => j !== i)
+        .map((other) => ({ startAt: other.startAt, endAt: other.endAt })),
+    ];
+    if (!slotIsAvailable(slot.startAt, slot.endAt, listing, blocked, variantId)) {
+      throw new Error("That time slot is no longer available. Please choose another.");
+    }
   }
 
   const serviceDetails = listing.offering.serviceDetails!;
   const priceCents = resolveBookingPriceCents(listing);
+  const totalCents = priceCents * parsedSlots.length;
   const variant = variantId
     ? listing.offering.variants.find((v) => v.id === variantId)
     : null;
@@ -82,65 +114,67 @@ export async function createServiceBookingCheckout(
   const vendorEmail = resolveVendorEmail(listing);
   const baseUrl = appBaseUrl(origin);
 
-  const booking = await prisma.$transaction(async (tx) => {
-    const createdBooking = await tx.booking.create({
-      data: {
-        listingId: listing.id,
-        offeringId: listing.offeringId,
-        variantId: variant?.id ?? null,
-        vendorProfileId: listing.vendorProfileId,
-        memberUserId,
-        memberEmail,
-        memberName,
-        vendorEmail,
-        status: BOOKING_STATUS.PENDING_PAYMENT,
-        serviceKind: serviceDetails.serviceKind,
-        fulfillmentMethod: serviceDetails.fulfillmentMethod,
-        scheduledStartAt: slot.startAt,
-        scheduledEndAt: slot.endAt,
-        timeZone: slot.timeZone,
-        priceCents,
-        intakeNotes: input.intakeNotes?.trim() || null,
-        intakeAnswers: input.intakeAnswers?.length
-          ? {
-              create: input.intakeAnswers.map((a) => ({
-                questionText: a.questionText.trim(),
-                answer: a.answer.trim(),
-              })),
-            }
-          : undefined,
-      },
-    });
-
+  const checkout = await prisma.$transaction(async (tx) => {
     const order = await tx.order.create({
       data: {
         userId: memberUserId ?? null,
         email: memberEmail,
         status: "pending",
         marketingOptIn: input.marketingOptIn ?? false,
-        subtotalCents: priceCents,
-        totalCents: priceCents,
+        subtotalCents: totalCents,
+        totalCents,
         items: {
           create: {
             productId: listing.id,
-            name: lineName,
-            quantity: 1,
+            name:
+              parsedSlots.length > 1
+                ? `${lineName} · ${parsedSlots.length} sessions`
+                : lineName,
+            quantity: parsedSlots.length,
             priceCents,
             type: "service_booking",
             listingId: listing.id,
             variantId: variant?.id ?? null,
           },
         },
-        booking: { connect: { id: createdBooking.id } },
       },
     });
 
-    await tx.booking.update({
-      where: { id: createdBooking.id },
-      data: { orderId: order.id },
-    });
+    const bookingIds: string[] = [];
+    for (const slot of parsedSlots) {
+      const createdBooking = await tx.booking.create({
+        data: {
+          listingId: listing.id,
+          offeringId: listing.offeringId,
+          variantId: variant?.id ?? null,
+          vendorProfileId: listing.vendorProfileId,
+          memberUserId,
+          memberEmail,
+          memberName,
+          vendorEmail,
+          status: BOOKING_STATUS.PENDING_PAYMENT,
+          serviceKind: serviceDetails.serviceKind,
+          fulfillmentMethod: serviceDetails.fulfillmentMethod,
+          scheduledStartAt: slot.startAt,
+          scheduledEndAt: slot.endAt,
+          timeZone: slot.timeZone,
+          priceCents,
+          intakeNotes: input.intakeNotes?.trim() || null,
+          orderId: order.id,
+          intakeAnswers: input.intakeAnswers?.length
+            ? {
+                create: input.intakeAnswers.map((a) => ({
+                  questionText: a.questionText.trim(),
+                  answer: a.answer.trim(),
+                })),
+              }
+            : undefined,
+        },
+      });
+      bookingIds.push(createdBooking.id);
+    }
 
-    return { booking: createdBooking, order };
+    return { order, bookingIds };
   });
 
   const connectAccountId = listing.vendorProfile.user.stripeConnectAccountId;
@@ -162,20 +196,24 @@ export async function createServiceBookingCheckout(
 
   const stripe = getConnectStripeClient();
   const images = listingImageUrl(listing.imageUrl, baseUrl);
-  const applicationFeeCents = platformApplicationFeeCents(priceCents);
+  const applicationFeeCents = platformApplicationFeeCents(totalCents);
+  const primaryBookingId = checkout.bookingIds[0]!;
 
   const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
     mode: "payment",
     customer_email: memberEmail,
     line_items: [
       {
-        quantity: 1,
+        quantity: parsedSlots.length,
         price_data: {
           currency: "usd",
           unit_amount: priceCents,
           product_data: {
             name: lineName,
-            description: `Service booking · ${listing.description.slice(0, 400) || listing.title}`,
+            description:
+              parsedSlots.length > 1
+                ? `${parsedSlots.length} service sessions · ${listing.description.slice(0, 360) || listing.title}`
+                : `Service booking · ${listing.description.slice(0, 400) || listing.title}`,
             images,
           },
         },
@@ -184,15 +222,17 @@ export async function createServiceBookingCheckout(
     success_url: `${baseUrl}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}&booking=1`,
     cancel_url: `${baseUrl}${discoverBookPath(listing, variantId)}`,
     metadata: {
-      orderId: booking.order.id,
-      bookingId: booking.booking.id,
+      orderId: checkout.order.id,
+      bookingId: primaryBookingId,
+      bookingIds: JSON.stringify(checkout.bookingIds),
+      bookingCount: String(checkout.bookingIds.length),
       listingId: listing.id,
       vendorProfileId: listing.vendorProfileId,
       type: "service_booking",
       ...(await campaignCheckoutMetadata(input.campaignToken)),
     },
     payment_intent_data: connectDestinationPaymentIntentData(
-      priceCents,
+      totalCents,
       connectAccountId,
       applicationFeeCents,
     ),
@@ -200,20 +240,18 @@ export async function createServiceBookingCheckout(
 
   const session = await stripe.checkout.sessions.create(sessionParams);
 
-  await prisma.$transaction([
-    prisma.order.update({
-      where: { id: booking.order.id },
-      data: { stripeSessionId: session.id },
-    }),
-    prisma.booking.update({
-      where: { id: booking.booking.id },
-      data: { stripeSessionId: session.id },
-    }),
-  ]);
+  await prisma.order.update({
+    where: { id: checkout.order.id },
+    data: { stripeSessionId: session.id },
+  });
 
   if (!session.url) {
     throw new Error("Stripe Checkout session missing URL");
   }
 
-  return { url: session.url, bookingId: booking.booking.id, orderId: booking.order.id };
+  return {
+    url: session.url,
+    bookingIds: checkout.bookingIds,
+    orderId: checkout.order.id,
+  };
 }

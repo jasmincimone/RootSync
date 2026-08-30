@@ -116,7 +116,8 @@ async function resolveOrderVendor(
           },
         },
       },
-      booking: {
+      bookings: {
+        take: 1,
         select: {
           vendorProfileId: true,
           listingId: true,
@@ -126,11 +127,12 @@ async function resolveOrderVendor(
     },
   });
 
-  if (order?.booking) {
+  const booking = order?.bookings[0];
+  if (booking) {
     return {
-      vendorProfileId: order.booking.vendorProfileId,
-      listingId: order.booking.listingId,
-      vendorUserId: order.booking.vendorProfile.userId,
+      vendorProfileId: booking.vendorProfileId,
+      listingId: booking.listingId,
+      vendorUserId: booking.vendorProfile.userId,
     };
   }
 
@@ -342,7 +344,8 @@ export async function loadPendingVendorReviews(userId: string) {
             },
           },
         },
-        booking: {
+        bookings: {
+          take: 1,
           select: {
             id: true,
             vendorProfileId: true,
@@ -382,15 +385,16 @@ export async function loadPendingVendorReviews(userId: string) {
   }[] = [];
 
   for (const order of orders) {
-    if (order.booking) {
+    const booking = order.bookings[0];
+    if (booking) {
       const key = `booking-order:${order.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      if (order.booking.vendorProfile.userId === userId) continue;
+      if (booking.vendorProfile.userId === userId) continue;
       pending.push({
-        vendorProfileId: order.booking.vendorProfileId,
-        vendorName: order.booking.vendorProfile.displayName,
-        listingTitle: order.booking.listing?.title ?? null,
+        vendorProfileId: booking.vendorProfileId,
+        vendorName: booking.vendorProfile.displayName,
+        listingTitle: booking.listing?.title ?? null,
         orderId: order.id,
         date: order.createdAt,
       });

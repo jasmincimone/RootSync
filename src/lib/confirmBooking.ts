@@ -14,7 +14,10 @@ import { getCalendarService } from "@/services/calendar/calendar.service";
  * Idempotent: marks order paid (if needed), creates calendar event + Meet link, sends confirmation emails.
  * Safe to call from Stripe webhooks and from checkout confirmation when webhooks are delayed (local dev).
  */
-export async function confirmPaidServiceBooking(bookingId: string): Promise<void> {
+export async function confirmPaidServiceBooking(
+  bookingId: string,
+  options?: { siblingBookingIds?: string[] },
+): Promise<void> {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     include: {
@@ -38,9 +41,10 @@ export async function confirmPaidServiceBooking(bookingId: string): Promise<void
     return;
   }
 
+  const excludeIds = new Set([booking.id, ...(options?.siblingBookingIds ?? [])]);
   const slotTaken = await prisma.booking.findFirst({
     where: {
-      id: { not: booking.id },
+      id: { notIn: [...excludeIds] },
       listingId: booking.listingId,
       status: BOOKING_STATUS.CONFIRMED,
       scheduledStartAt: { lt: booking.scheduledEndAt },
@@ -179,11 +183,25 @@ async function releaseBookingToSlotWinner(bookingId: string): Promise<void> {
         cancellationReason: "That time was booked by someone who paid first.",
       },
     });
-    if (booking.order && booking.order.status !== "refunded") {
-      await tx.order.update({
-        where: { id: booking.order.id },
-        data: { status: "cancelled" },
+    if (booking.order) {
+      await tx.booking.updateMany({
+        where: {
+          orderId: booking.order.id,
+          id: { not: bookingId },
+          status: { not: BOOKING_STATUS.CANCELLED },
+        },
+        data: {
+          status: BOOKING_STATUS.CANCELLED,
+          cancelledAt: new Date(),
+          cancellationReason: "Checkout could not be completed for every session.",
+        },
       });
+      if (booking.order.status !== "refunded") {
+        await tx.order.update({
+          where: { id: booking.order.id },
+          data: { status: "cancelled" },
+        });
+      }
     }
   });
 
@@ -350,9 +368,9 @@ export async function confirmPaidServiceBookingFromStripeSession(
     return { confirmed: false };
   }
 
-  const bookingId = session.metadata?.bookingId;
   const orderId = session.metadata?.orderId;
-  if (!bookingId) {
+  const bookingIds = parseBookingIdsFromStripeSession(session);
+  if (bookingIds.length === 0) {
     return { confirmed: false };
   }
 
@@ -371,6 +389,56 @@ export async function confirmPaidServiceBookingFromStripeSession(
     await hookOrderVerified(orderId);
   }
 
-  await confirmPaidServiceBooking(bookingId);
-  return { confirmed: true, bookingId };
+  const bookings = await prisma.booking.findMany({
+    where: { id: { in: bookingIds } },
+    select: {
+      id: true,
+      status: true,
+      listingId: true,
+      scheduledStartAt: true,
+      scheduledEndAt: true,
+    },
+  });
+
+  for (const booking of bookings) {
+    if (booking.status === BOOKING_STATUS.CANCELLED) continue;
+    const slotTaken = await prisma.booking.findFirst({
+      where: {
+        id: { notIn: bookingIds },
+        listingId: booking.listingId,
+        status: BOOKING_STATUS.CONFIRMED,
+        scheduledStartAt: { lt: booking.scheduledEndAt },
+        scheduledEndAt: { gt: booking.scheduledStartAt },
+      },
+      select: { id: true },
+    });
+    if (slotTaken) {
+      await releaseBookingToSlotWinner(booking.id);
+      return { confirmed: false };
+    }
+  }
+
+  for (const bookingId of bookingIds) {
+    await confirmPaidServiceBooking(bookingId, { siblingBookingIds: bookingIds });
+  }
+
+  return { confirmed: true, bookingId: bookingIds[0] };
+}
+
+function parseBookingIdsFromStripeSession(
+  session: { metadata?: Record<string, string> | null },
+): string[] {
+  const raw = session.metadata?.bookingIds;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((id): id is string => typeof id === "string" && id.length > 0);
+      }
+    } catch {
+      // fall through to single bookingId
+    }
+  }
+  const single = session.metadata?.bookingId?.trim();
+  return single ? [single] : [];
 }

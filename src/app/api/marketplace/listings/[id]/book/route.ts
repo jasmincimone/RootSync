@@ -57,10 +57,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
     if (limited) return limited;
 
-    const scheduledStartAt =
-      typeof body.scheduledStartAt === "string" ? body.scheduledStartAt.trim() : "";
-    if (!scheduledStartAt) {
-      return NextResponse.json({ error: "Choose an appointment time." }, { status: 400 });
+    const scheduledStartAts = Array.isArray(body.scheduledStartAts)
+      ? (body.scheduledStartAts as unknown[])
+          .filter((value): value is string => typeof value === "string")
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : typeof body.scheduledStartAt === "string" && body.scheduledStartAt.trim()
+        ? [body.scheduledStartAt.trim()]
+        : [];
+
+    if (scheduledStartAts.length === 0) {
+      return NextResponse.json({ error: "Choose an appointment time for each session." }, { status: 400 });
     }
 
     const intakeNotes = typeof body.intakeNotes === "string" ? body.intakeNotes : null;
@@ -89,7 +96,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       memberUserId: actor.userId,
       memberEmail: actor.email,
       memberName: actor.name,
-      scheduledStartAt,
+      scheduledStartAts,
       intakeNotes,
       intakeAnswers,
       origin: request.nextUrl.origin,

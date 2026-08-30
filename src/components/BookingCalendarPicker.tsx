@@ -26,6 +26,7 @@ type Props = {
   timeZone: string;
   selectedStartAt: string | null;
   onSelectStartAt: (startAt: string | null) => void;
+  disabledStartAts?: string[];
   loading?: boolean;
 };
 
@@ -40,8 +41,10 @@ export function BookingCalendarPicker({
   timeZone,
   selectedStartAt,
   onSelectStartAt,
+  disabledStartAts = [],
   loading = false,
 }: Props) {
+  const disabledStartAtSet = useMemo(() => new Set(disabledStartAts), [disabledStartAts]);
   const today = useMemo(() => todayInTimeZone(timeZone), [timeZone]);
 
   const slotsByDay = useMemo(() => {
@@ -235,18 +238,22 @@ export function BookingCalendarPicker({
           <div className="mt-3 flex flex-wrap gap-2">
             {selectedDaySlots.map((slot) => {
               const selected = selectedStartAt === slot.startAt;
+              const disabled = disabledStartAtSet.has(slot.startAt);
               return (
                 <button
                   key={slot.startAt}
                   type="button"
+                  disabled={disabled}
                   onClick={() => onSelectStartAt(slot.startAt)}
                   className={cn(
                     "min-w-[5.5rem] rounded-full px-4 py-2 text-sm font-medium ring-1 ring-inset transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber",
+                    disabled && "cursor-not-allowed opacity-40",
                     selected
                       ? "bg-amber/15 text-fix-heading ring-amber/50"
                       : "bg-fix-surface text-fix-text-muted ring-fix-border/20 hover:bg-fix-bg-muted",
                   )}
                   aria-pressed={selected}
+                  aria-disabled={disabled}
                 >
                   {formatTimeLabel(slot.startAt, slot.timeZone || timeZone)}
                 </button>

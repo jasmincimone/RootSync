@@ -61,6 +61,16 @@ type OrderFromApi = {
     calendarHtmlLink: string | null;
     serviceTitle: string;
   } | null;
+  bookings?: Array<{
+    id: string;
+    status: string;
+    scheduledStartAt: string;
+    scheduledEndAt: string;
+    timeZone: string;
+    meetLink: string | null;
+    calendarHtmlLink: string | null;
+    serviceTitle: string;
+  }>;
   eventJoin?: {
     eventTitle: string;
     ticketLabel: string;
@@ -166,6 +176,13 @@ export function OrderConfirmationClient() {
     hour: "2-digit",
     minute: "2-digit",
   });
+  const appointments =
+    order.bookings && order.bookings.length > 0
+      ? order.bookings
+      : order.booking
+        ? [order.booking]
+        : [];
+  const hasAppointments = appointments.length > 0;
 
   const hasShipping =
     order.shippingName &&
@@ -202,8 +219,10 @@ export function OrderConfirmationClient() {
             </svg>
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-fix-heading">
-            {order.booking
-              ? "Booking confirmed"
+            {hasAppointments
+              ? appointments.length > 1
+                ? "Bookings confirmed"
+                : "Booking confirmed"
               : order.eventJoin
                 ? "Ticket confirmed"
                 : "Thank you for your order"}
@@ -214,7 +233,7 @@ export function OrderConfirmationClient() {
           <div className="mt-3 flex justify-center">
             <OrderStatusBadge status={order.status} />
           </div>
-          {order.booking || order.eventJoin ? (
+          {hasAppointments || order.eventJoin ? (
             <p className="mt-1 text-sm text-fix-text-muted">
               A confirmation has been sent to{" "}
               <strong className="text-fix-heading">{order.email}</strong>.
@@ -244,27 +263,43 @@ export function OrderConfirmationClient() {
           )}
         </div>
 
-        {order.booking ? (
+        {hasAppointments ? (
           <Card className="mt-8 p-6">
-            <h2 className="text-lg font-semibold text-fix-heading">Appointment</h2>
-            <p className="mt-2 text-fix-heading">{order.booking.serviceTitle}</p>
-            <p className="mt-2 text-sm text-fix-text-muted">
-              {new Intl.DateTimeFormat("en-US", {
-                timeZone: order.booking.timeZone,
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              }).format(new Date(order.booking.scheduledStartAt))}
-            </p>
-            <BookingMeetLink
-              className="mt-4 justify-center"
-              meetLink={order.booking.meetLink}
-              calendarHtmlLink={order.booking.calendarHtmlLink}
-              status={order.booking.status}
-            />
+            <h2 className="text-lg font-semibold text-fix-heading">
+              {appointments.length > 1 ? "Appointments" : "Appointment"}
+            </h2>
+            <div className="mt-4 space-y-6">
+              {appointments.map((appointment, index) => (
+                <div
+                  key={appointment.id}
+                  className={index > 0 ? "border-t border-fix-border/15 pt-6" : undefined}
+                >
+                  {appointments.length > 1 ? (
+                    <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
+                      Session {index + 1}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-fix-heading">{appointment.serviceTitle}</p>
+                  <p className="mt-2 text-sm text-fix-text-muted">
+                    {new Intl.DateTimeFormat("en-US", {
+                      timeZone: appointment.timeZone,
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    }).format(new Date(appointment.scheduledStartAt))}
+                  </p>
+                  <BookingMeetLink
+                    className="mt-4 justify-center"
+                    meetLink={appointment.meetLink}
+                    calendarHtmlLink={appointment.calendarHtmlLink}
+                    status={appointment.status}
+                  />
+                </div>
+              ))}
+            </div>
             <p className="mt-4 text-center text-sm text-fix-text-muted">
               Confirmation and calendar details were sent to{" "}
               <strong className="text-fix-heading">{order.email}</strong>.

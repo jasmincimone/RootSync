@@ -73,7 +73,8 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      booking: {
+      bookings: {
+        orderBy: { scheduledStartAt: "asc" },
         select: {
           id: true,
           status: true,
@@ -146,16 +147,26 @@ export async function GET(request: NextRequest) {
       format: i.format,
       unitSelections: i.unitSelections ?? null,
     })),
-    booking: order.booking
+    bookings: order.bookings.map((booking) => ({
+      id: booking.id,
+      status: booking.status,
+      scheduledStartAt: booking.scheduledStartAt.toISOString(),
+      scheduledEndAt: booking.scheduledEndAt.toISOString(),
+      timeZone: booking.timeZone,
+      meetLink: booking.meetLink,
+      calendarHtmlLink: booking.calendarHtmlLink,
+      serviceTitle: booking.listing.title,
+    })),
+    booking: order.bookings[0]
       ? {
-          id: order.booking.id,
-          status: order.booking.status,
-          scheduledStartAt: order.booking.scheduledStartAt.toISOString(),
-          scheduledEndAt: order.booking.scheduledEndAt.toISOString(),
-          timeZone: order.booking.timeZone,
-          meetLink: order.booking.meetLink,
-          calendarHtmlLink: order.booking.calendarHtmlLink,
-          serviceTitle: order.booking.listing.title,
+          id: order.bookings[0].id,
+          status: order.bookings[0].status,
+          scheduledStartAt: order.bookings[0].scheduledStartAt.toISOString(),
+          scheduledEndAt: order.bookings[0].scheduledEndAt.toISOString(),
+          timeZone: order.bookings[0].timeZone,
+          meetLink: order.bookings[0].meetLink,
+          calendarHtmlLink: order.bookings[0].calendarHtmlLink,
+          serviceTitle: order.bookings[0].listing.title,
         }
       : null,
     eventJoin,

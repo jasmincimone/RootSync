@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
+import { Minus, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { BookingCalendarPicker } from "@/components/BookingCalendarPicker";
@@ -10,6 +11,10 @@ import { CheckoutAuthGate } from "@/components/CheckoutAuthGate";
 import { CheckoutMarketingOptIn } from "@/components/CheckoutMarketingOptIn";
 import { BOOKING_CANCELLATION_POLICY_LONG } from "@/lib/bookingPolicy";
 import { formatPrice } from "@/lib/format";
+import {
+  clampServiceBookingQuantity,
+  MAX_SERVICE_BOOKING_QUANTITY,
+} from "@/lib/serviceBookingQuantity";
 
 type IntakeQuestion = {
   id: string;
@@ -51,7 +56,8 @@ export function ServiceBookingWizard({
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [timeZone, setTimeZone] = useState("America/New_York");
   const [loadingSlots, setLoadingSlots] = useState(true);
-  const [selectedStartAt, setSelectedStartAt] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [selectedStartAts, setSelectedStartAts] = useState<Array<string | null>>([null]);
   const [intakeNotes, setIntakeNotes] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -65,6 +71,8 @@ export function ServiceBookingWizard({
   const loginHref = `/login?callbackUrl=${encodeURIComponent(
     bookPath ?? `/discover/listings/${listingId}/book`,
   )}`;
+  const totalCents = priceCents * quantity;
+  const allSessionsScheduled = selectedStartAts.every((startAt) => Boolean(startAt));
 
   const loadSlots = useCallback(async () => {
     setLoadingSlots(true);
@@ -89,9 +97,42 @@ export function ServiceBookingWizard({
     void loadSlots();
   }, [loadSlots]);
 
+  function changeQuantity(next: number) {
+    const clamped = clampServiceBookingQuantity(next);
+    setQuantity(clamped);
+    setSelectedStartAts((prev) => {
+      if (clamped === prev.length) return prev;
+      if (clamped > prev.length) {
+        return [...prev, ...Array.from({ length: clamped - prev.length }, () => null)];
+      }
+      return prev.slice(0, clamped);
+    });
+    setError(null);
+  }
+
+  function updateSessionStartAt(index: number, startAt: string | null) {
+    setSelectedStartAts((prev) => {
+      const next = [...prev];
+      next[index] = startAt;
+      return next;
+    });
+    setError(null);
+  }
+
+  const disabledStartAtsBySession = useMemo(
+    () =>
+      selectedStartAts.map((startAt, index) =>
+        selectedStartAts
+          .filter((value, otherIndex) => otherIndex !== index && value)
+          .map((value) => value as string),
+      ),
+    [selectedStartAts],
+  );
+
   async function handleSubmit() {
-    if (!selectedStartAt) {
-      setError("Choose a time slot.");
+    const scheduledStartAts = selectedStartAts.filter((startAt): startAt is string => Boolean(startAt));
+    if (scheduledStartAts.length !== quantity) {
+      setError(`Choose a time for all ${quantity} session${quantity === 1 ? "" : "s"}.`);
       return;
     }
     if (!signedIn && !guestEmail.trim()) {
@@ -110,7 +151,7 @@ export function ServiceBookingWizard({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          scheduledStartAt: selectedStartAt,
+          scheduledStartAts,
           intakeNotes,
           intakeAnswers,
           ...(variantId ? { variantId } : {}),
@@ -153,27 +194,77 @@ export function ServiceBookingWizard({
     );
   }
 
+  const intakeStep = signedIn ? 3 : 4;
+
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-semibold text-fix-heading">1. Choose a time</h2>
+        <h2 className="text-lg font-semibold text-fix-heading">1. How many sessions?</h2>
         <p className="mt-1 text-sm text-fix-text-muted">
-          {durationMinutes}-minute session · {formatPrice(priceCents)}
+          {durationMinutes}-minute session · {formatPrice(priceCents)} each
         </p>
-        <div className="mt-5">
-          <BookingCalendarPicker
-            slots={slots}
-            timeZone={timeZone}
-            selectedStartAt={selectedStartAt}
-            onSelectStartAt={setSelectedStartAt}
-            loading={loadingSlots}
-          />
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-fix-text">Sessions</span>
+          <div
+            className="inline-flex items-center gap-1 rounded-full border border-fix-border/25 bg-fix-surface p-1 ring-1 ring-inset ring-fix-border/15"
+            role="group"
+            aria-label="Number of sessions"
+          >
+            <button
+              type="button"
+              onClick={() => changeQuantity(quantity - 1)}
+              disabled={quantity <= 1}
+              aria-label="Remove one session"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-fix-heading transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Minus className="h-4 w-4" aria-hidden />
+            </button>
+            <span className="w-12 text-center text-sm font-semibold text-fix-heading">{quantity}</span>
+            <button
+              type="button"
+              onClick={() => changeQuantity(quantity + 1)}
+              disabled={quantity >= MAX_SERVICE_BOOKING_QUANTITY}
+              aria-label="Add one session"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-fix-heading transition-colors hover:bg-fix-bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+          {quantity > 1 ? (
+            <span className="text-sm text-fix-text-muted">{formatPrice(totalCents)} total</span>
+          ) : null}
         </div>
+      </div>
+
+      <div className="space-y-8">
+        {Array.from({ length: quantity }, (_, index) => (
+          <div key={`session-${index}`}>
+            <h2 className="text-lg font-semibold text-fix-heading">
+              2{quantity > 1 ? `.${index + 1}` : ""}. Choose a time
+              {quantity > 1 ? ` · Session ${index + 1}` : ""}
+            </h2>
+            <p className="mt-1 text-sm text-fix-text-muted">
+              {selectedStartAts[index]
+                ? "Time selected — tap another slot to change it."
+                : "Pick an open slot to continue."}
+            </p>
+            <div className="mt-5">
+              <BookingCalendarPicker
+                slots={slots}
+                timeZone={timeZone}
+                selectedStartAt={selectedStartAts[index] ?? null}
+                onSelectStartAt={(startAt) => updateSessionStartAt(index, startAt)}
+                disabledStartAts={disabledStartAtsBySession[index]}
+                loading={loadingSlots}
+              />
+            </div>
+          </div>
+        ))}
       </div>
 
       {!signedIn ? (
         <div>
-          <h2 className="text-lg font-semibold text-fix-heading">2. Your details</h2>
+          <h2 className="text-lg font-semibold text-fix-heading">3. Your details</h2>
           <p className="mt-1 text-sm text-fix-text-muted">
             We send your confirmation, calendar invite, and Meet link here.
           </p>
@@ -225,9 +316,7 @@ export function ServiceBookingWizard({
       ) : null}
 
       <div>
-        <h2 className="text-lg font-semibold text-fix-heading">
-          {signedIn ? "2" : "3"}. Intake
-        </h2>
+        <h2 className="text-lg font-semibold text-fix-heading">{intakeStep}. Intake</h2>
         {terms ? (
           <p className="mt-2 whitespace-pre-wrap text-sm text-fix-text-muted">{terms}</p>
         ) : null}
@@ -277,13 +366,18 @@ export function ServiceBookingWizard({
           type="button"
           variant="cta"
           size="lg"
-          disabled={submitting || !selectedStartAt || loadingSlots}
+          disabled={submitting || !allSessionsScheduled || loadingSlots}
           onClick={() => void handleSubmit()}
         >
           {submitting
             ? "Redirecting to payment…"
-            : `Continue to payment · ${formatPrice(priceCents)}`}
+            : `Continue to payment · ${formatPrice(totalCents)}`}
         </Button>
+        {!allSessionsScheduled ? (
+          <p className="mt-2 text-sm text-fix-text-muted">
+            Choose a time for each session before continuing.
+          </p>
+        ) : null}
         <p className="mt-3 text-sm text-fix-text-muted">{BOOKING_CANCELLATION_POLICY_LONG}</p>
       </div>
     </div>

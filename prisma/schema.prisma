@@ -470,7 +470,7 @@ model Order {
   updatedAt           DateTime  @updatedAt
   user                User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   items               OrderItem[]
-  booking             Booking?
+  bookings            Booking[]
   vendorPulseReview   VendorPulseReview?
 
   @@index([userId])
@@ -610,9 +610,9 @@ model Booking {
   priceCents        Int
   intakeNotes       String?
   vendorNotes       String?
-  orderId           String?   @unique
+  orderId           String?
   order             Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  stripeSessionId   String?   @unique
+  stripeSessionId   String?
   calendarEventId   String?
   calendarProvider  String?
   meetLink          String?
