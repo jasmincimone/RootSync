@@ -1,9 +1,9 @@
 ---
 title: PRD — Funnel Design Studio
-version: 0.1
-status: Draft
+version: 1.0
+status: Shipped
 owner: Jasmin Smith
-last_updated: 2026-08-26
+last_updated: 2026-08-30
 related:
   - ../adr/ADR-007-growth-workspace.md
   - PRD-Marketing-Funnel.md

@@ -39,10 +39,8 @@ export function FunnelDesignStudio({
 
       <GrowthFunnelMaker
         key={draft.id ?? "new"}
-        variant="studio"
         draft={draft}
         vendorPublicSlug={vendorPublicSlug}
-        onCancel={() => router.push("/account/growth/funnels")}
         onSaved={(funnel) => {
           setSaveNotice("Saved.");
           if (!draft.id) {

@@ -8,7 +8,6 @@ import { FormSection } from "@/components/FormSection";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { FunnelPagePreview } from "@/components/growth/FunnelPagePreview";
 import { FunnelStudioPreview } from "@/components/growth/FunnelStudioPreview";
 import { PulsePostMediaEditor } from "@/components/pulse/PulsePostMediaEditor";
 import { PulseRichTextEditor } from "@/components/pulse/PulseRichTextEditor";
@@ -71,15 +70,11 @@ type SavedFunnel = {
 export function GrowthFunnelMaker({
   draft,
   vendorPublicSlug,
-  onCancel,
   onSaved,
-  variant = "embedded",
 }: {
   draft: FunnelMakerDraft;
   vendorPublicSlug: string | null;
-  onCancel: () => void;
   onSaved: (funnel: SavedFunnel, page: FunnelPageContent) => void;
-  variant?: "embedded" | "studio";
 }) {
   const [name, setName] = useState(draft.name);
   const [objective, setObjective] = useState(draft.objective);
@@ -99,7 +94,6 @@ export function GrowthFunnelMaker({
   const [dragMediaFlatIndex, setDragMediaFlatIndex] = useState<number | null>(null);
   const bgImageInputRef = useRef<HTMLInputElement>(null);
   const mediaRows = listFunnelMedia(page);
-  const isStudio = variant === "studio";
   const funnelPathPrefix = vendorPublicSlug
     ? `rootsync.io/${vendorPublicSlug}/funnels/`
     : "rootsync.io/{profile-url}/funnels/";
@@ -318,32 +312,29 @@ export function GrowthFunnelMaker({
                     key={row.item.id}
                     className={draggingMedia ? "opacity-60" : undefined}
                     onDragOver={(e) => {
-                      if (!isStudio) return;
                       e.preventDefault();
                     }}
                     onDrop={(e) => {
-                      if (!isStudio || dragMediaFlatIndex == null || dragMediaFlatIndex === flatIndex) return;
+                      if (dragMediaFlatIndex == null || dragMediaFlatIndex === flatIndex) return;
                       e.preventDefault();
                       setPage((prev) => reorderFunnelMediaFlat(prev, dragMediaFlatIndex, flatIndex));
                       setDragMediaFlatIndex(null);
                     }}
                   >
                     <div className="flex items-start gap-1">
-                      {isStudio ? (
-                        <button
-                          type="button"
-                          draggable
-                          aria-label="Drag to reorder media"
-                          className="mt-2 shrink-0 cursor-grab rounded p-1 text-fix-text-muted hover:bg-fix-bg-muted active:cursor-grabbing"
-                          onDragStart={(e) => {
-                            e.dataTransfer.effectAllowed = "move";
-                            setDragMediaFlatIndex(flatIndex);
-                          }}
-                          onDragEnd={() => setDragMediaFlatIndex(null)}
-                        >
-                          <GripVertical className="h-4 w-4" aria-hidden />
-                        </button>
-                      ) : null}
+                      <button
+                        type="button"
+                        draggable
+                        aria-label="Drag to reorder media"
+                        className="mt-2 shrink-0 cursor-grab rounded p-1 text-fix-text-muted hover:bg-fix-bg-muted active:cursor-grabbing"
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move";
+                          setDragMediaFlatIndex(flatIndex);
+                        }}
+                        onDragEnd={() => setDragMediaFlatIndex(null)}
+                      >
+                        <GripVertical className="h-4 w-4" aria-hidden />
+                      </button>
                       <div className="min-w-0 flex-1">
                     <PulsePostMediaPreviewRow
                       item={row.item}
@@ -570,11 +561,10 @@ export function GrowthFunnelMaker({
                 key={section.id}
                 className={dragSectionId === section.id ? "space-y-3 p-3 opacity-60" : "space-y-3 p-3"}
                 onDragOver={(e) => {
-                  if (!isStudio) return;
                   e.preventDefault();
                 }}
                 onDrop={(e) => {
-                  if (!isStudio || !dragSectionId || dragSectionId === section.id) return;
+                  if (!dragSectionId || dragSectionId === section.id) return;
                   e.preventDefault();
                   const fromIndex = page.sections.findIndex((item) => item.id === dragSectionId);
                   if (fromIndex < 0) return;
@@ -584,21 +574,19 @@ export function GrowthFunnelMaker({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-1">
-                    {isStudio ? (
-                      <button
-                        type="button"
-                        draggable
-                        aria-label="Drag to reorder section"
-                        className="shrink-0 cursor-grab rounded p-1 text-fix-text-muted hover:bg-fix-bg-muted active:cursor-grabbing"
-                        onDragStart={(e) => {
-                          e.dataTransfer.effectAllowed = "move";
-                          setDragSectionId(section.id);
-                        }}
-                        onDragEnd={() => setDragSectionId(null)}
-                      >
-                        <GripVertical className="h-4 w-4" aria-hidden />
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      draggable
+                      aria-label="Drag to reorder section"
+                      className="shrink-0 cursor-grab rounded p-1 text-fix-text-muted hover:bg-fix-bg-muted active:cursor-grabbing"
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "move";
+                        setDragSectionId(section.id);
+                      }}
+                      onDragEnd={() => setDragSectionId(null)}
+                    >
+                      <GripVertical className="h-4 w-4" aria-hidden />
+                    </button>
                   <p className="text-xs font-semibold uppercase tracking-wide text-fix-text-muted">
                     {funnelSectionKindName(section.kind)} block
                   </p>
@@ -747,27 +735,14 @@ export function GrowthFunnelMaker({
     </>
   );
 
-  const preview = isStudio ? (
+  const preview = (
     <div className="xl:sticky xl:top-4">
       <FunnelStudioPreview page={page} ctaLabel={ctaLabel} />
-    </div>
-  ) : (
-    <div className="lg:sticky lg:top-4">
-      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-fix-text-muted">
-        Live preview
-      </p>
-      <FunnelPagePreview page={page} ctaLabel={ctaLabel} />
     </div>
   );
 
   const layout = (
-    <div
-      className={
-        isStudio
-          ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]"
-          : "grid gap-6 lg:grid-cols-2"
-      }
-    >
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
       {editor}
       {preview}
     </div>
@@ -809,34 +784,11 @@ export function GrowthFunnelMaker({
         />
       ) : null;
 
-  if (isStudio) {
-    return (
-      <>
-        {layout}
-        {cropModal}
-      </>
-    );
-  }
-
   return (
-    <Card className="space-y-4 p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-fix-heading">
-            {draft.id ? "Funnel design studio" : "New funnel design studio"}
-          </h2>
-          <p className="mt-1 text-sm text-fix-text-muted">
-            Design the public page with Pulse writing tools, cropped photos, theme controls, and a
-            live preview.
-          </p>
-        </div>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
-          Close
-        </Button>
-      </div>
+    <>
       {layout}
       {cropModal}
-    </Card>
+    </>
   );
 }
 

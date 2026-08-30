@@ -184,7 +184,8 @@ Per [17_GLOSSARY.md](./17_GLOSSARY.md) deprecated terms:
 | Feature | PRD | Code | Status |
 |---------|-----|------|--------|
 | Directory Listings | [PRD-Directory-Listings.md](./PRDs/PRD-Directory-Listings.md) | Browse, map, favorites, assisted claim | **Aligned** (MVP) |
-| Marketing Funnel | [PRD-Marketing-Funnel.md](./PRDs/PRD-Marketing-Funnel.md) | GrowSpace CRM, Funnels, public `/{vendor}/funnels/{slug}` | **Partial** |
+| Marketing Funnel | [PRD-Marketing-Funnel.md](./PRDs/PRD-Marketing-Funnel.md) | GrowSpace CRM, Funnels, public `/{vendor}/funnels/{slug}` | **Partial** — CRM + landing pages live; email sync, QR, segmentation still roadmap |
+| Funnel Design Studio | [PRD-Funnel-Design-Studio.md](./PRDs/PRD-Funnel-Design-Studio.md) | `FunnelDesignStudio`, `/account/growth/funnels/*/studio`, `FunnelPagePreview` | **Aligned** (MVP) — Phases 1–3 shipped |
 | Consultations | [PRD-Consultation-Booking.md](./PRDs/PRD-Consultation-Booking.md) | Service booking engine | **Aligned** (as Service subtype) |
 
 ### Phase 3 (roadmap)
@@ -203,6 +204,7 @@ Reviews, Analytics, Referrals, Native Apps — **Deferred**. Events and Resource
 | Directory Listings | Map + search + assisted claim | `/discover/directory/[id]` | **Aligned** (MVP) |
 | Storefront | Vendor-managed public page | `/discover/vendors/[id]`; share URL `/{publicSlug}` when claimed | **Aligned** |
 | Funnel landing | Vendor marketing page | `/{vendorSlug}/funnels/{funnelSlug}` | **Aligned** (MVP) — URL picker like listings |
+| Funnel design studio | Fullscreen page maker | `/account/growth/funnels/[id]/studio`, `/new/studio` | **Aligned** (MVP) — live preview, mobile frame, DnD |
 | Campaign landing | Vendor campaign page | `/{vendorSlug}/campaigns/{campaignSlug}` reserved | **Partial** — email campaigns live in GrowSpace; public campaign pages still reserved |
 | Resources | Discover filter + paid/free order access | `/discover?type=RESOURCE`, claim-free + `/api/download` | **Aligned** (MVP) |
 | Booking | Service scheduling | `/discover/listings/[id]/book` | **Aligned** (MVP) |
