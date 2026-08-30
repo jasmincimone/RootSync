@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-08-30 — v0.1.89
+
+### Fixed
+
+- Changelog documents the v0.1.88 release (entry was missing from the file when that commit shipped)
+
+------------------------------------------------------------------------
+
+## 2026-08-30 — v0.1.88
+
+### Changed
+
+- **Funnel Design Studio** PRD marked **Shipped**; alignment doc updated
+- Changelog backfilled for v0.1.84–v0.1.87
+- `GrowthFunnelMaker` simplified to studio-only (removed unused embedded editor path)
+
+------------------------------------------------------------------------
+
 ## 2026-08-30 — v0.1.87
 
 ### Added
